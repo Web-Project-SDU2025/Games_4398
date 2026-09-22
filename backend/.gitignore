@@ -1,0 +1,34 @@
+# 后端开发环境配置
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE配置
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# 编译输出
+*.class
+*.jar
+*.war
+
+# 系统文件
+.DS_Store
+Thumbs.db

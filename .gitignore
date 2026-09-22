@@ -1,0 +1,82 @@
+# ========== 敏感信息和本地配置 ==========
+# 环境变量（数据库密码、JWT密钥等）
+.env
+.env.*
+!.env.example
+
+# Spring Boot 本地配置
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# 证书和密钥文件
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+
+# ========== 构建输出和依赖 ==========
+# Maven
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# NPM/前端
+node_modules/
+dist/
+.vite/
+
+# TypeScript 编译输出
+*.tsbuildinfo
+
+# ========== 日志和数据 ==========
+logs/
+*.log
+*.log.*
+
+# 用户上传文件
+uploads/
+
+# 数据库备份
+*.sql.gz
+*.dump
+*.bak
+
+# ========== IDE 和编辑器 ==========
+.idea/
+*.iml
+*.iws
+*.ipr
+
+.vscode/
+*.code-workspace
+
+# Eclipse
+.settings/
+.classpath
+.project
+
+# ========== 操作系统 ==========
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========== 临时文件 ==========
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ========== 其他 ==========
+# 测试覆盖率报告
+coverage/
+*.cover
+.nyc_output/
+
+# 缓存
+.cache/
+.parcel-cache/

@@ -1,0 +1,29 @@
+{
+  "name": "4398-game-management-frontend",
+  "version": "1.0.0",
+  "description": "4398游戏管理系统前端",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "keywords": [
+    "game",
+    "management",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "^5.3.3",
+    "vite": "^8.3.0",
+    "vue-tsc": "^3.3.11"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  }
+}
