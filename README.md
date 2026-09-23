@@ -1,4 +1,4 @@
-# 4398游戏管理系统
+# 4398 游戏管理系统
 
 ## 项目简介
 
@@ -9,6 +9,7 @@
 ## 技术栈
 
 后端：Java 21 + Spring Boot 3.2.0 + Spring Data JPA + MySQL 8.0+ + JWT 认证
+
 前端：Vue 3 + TypeScript + Vite + HTML5 + CSS3
 
 ## 项目结构
