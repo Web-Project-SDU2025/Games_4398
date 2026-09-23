@@ -100,6 +100,40 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
+-- 游戏表
+CREATE TABLE IF NOT EXISTS `game` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '游戏ID',
+    `name` VARCHAR(100) NOT NULL COMMENT '游戏名称',
+    `description` TEXT COMMENT '游戏描述',
+    `cover_image` VARCHAR(255) COMMENT '封面图片URL',
+    `category` VARCHAR(50) COMMENT '游戏分类',
+    `tags` VARCHAR(255) COMMENT '游戏标签（逗号分隔）',
+    `game_url` VARCHAR(500) COMMENT '游戏链接或路径',
+    `status` TINYINT DEFAULT 1 COMMENT '状态：0-下架 1-上架',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX `idx_name` (`name`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='游戏表';
+
+-- 用户游戏清单表
+CREATE TABLE IF NOT EXISTS `user_game_list` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `game_id` BIGINT NOT NULL COMMENT '游戏ID',
+    `status` TINYINT DEFAULT 1 COMMENT '状态：1-收藏 2-正在玩 3-已完成',
+    `play_time` INT DEFAULT 0 COMMENT '游戏时长（分钟）',
+    `last_play_time` DATETIME COMMENT '最后游玩时间',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '添加时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY `uk_user_game` (`user_id`, `game_id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_game_id` (`game_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`game_id`) REFERENCES `game`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户游戏清单表';
+
 -- 插入初始数据
 
 -- 插入管理员角色
@@ -134,5 +168,23 @@ INSERT INTO `dictionary_data` (`type_id`, `label`, `value`, `order_num`) VALUES
 (2, '女', 'female', 2),
 (2, '未知', 'unknown', 3);
 
+-- 插入游戏分类字典
+INSERT INTO `dictionary_type` (`name`, `code`, `description`) VALUES
+('游戏分类', 'game_category', '游戏类型分类'),
+('游戏状态', 'game_status', '游戏上下架状态'),
+('用户游戏状态', 'user_game_status', '用户游戏清单状态');
+
+INSERT INTO `dictionary_data` (`type_id`, `label`, `value`, `order_num`) VALUES
+(3, '动作', 'action', 1),
+(3, '冒险', 'adventure', 2),
+(3, '角色扮演', 'rpg', 3),
+(3, '策略', 'strategy', 4),
+(3, '休闲', 'casual', 5),
+(4, '上架', '1', 1),
+(4, '下架', '0', 2),
+(5, '收藏', '1', 1),
+(5, '正在玩', '2', 2),
+(5, '已完成', '3', 3);
+
 -- 完成初始化
-SELECT '数据库初始化完成！' AS message;
+SELECT '数据库已完成初始化' AS message;

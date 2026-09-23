@@ -97,7 +97,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 记录请求日志
             Date endDate = new Date();
             double requestTime = (int) (endDate.getTime() - startDate.getTime()) / 1000.;
-            String startTime = DateTimeTool.parseDateTime(startDate);
+            String startTime = DateTimeTool.formatDateTime(startDate, "yyyy-MM-dd HH:mm:ss");
             logger.info(url + "," + username + "," + startTime + "," + requestTime);
 
         } catch (Exception exception) {

@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# 开发环境配置文件（包含敏感信息）
+src/main/resources/application-dev.properties
+
 # IDE配置
 .idea/
 *.iws
