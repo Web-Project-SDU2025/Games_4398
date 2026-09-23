@@ -79,56 +79,6 @@ npm run type-check  # TypeScript 类型检查
 
 ---
 
-## 项目结构
-
-```
-4398/
-├── backend/                          # 后端项目
-│   ├── src/main/java/com/game/system/
-│   │   ├── GameManagementSystemApplication.java  # 主启动类
-│   │   ├── config/
-│   │   │   └── CorsConfig.java                   # 跨域配置
-│   │   ├── util/
-│   │   │   ├── CommonMethod.java                 # 通用工具类
-│   │   │   ├── DateTimeTool.java                 # 日期工具类
-│   │   │   └── JwtUtil.java                      # JWT工具类
-│   │   ├── payload/
-│   │   │   ├── request/DataRequest.java          # 请求封装
-│   │   │   └── response/DataResponse.java        # 响应封装
-│   │   └── controller/
-│   │       └── BaseController.java               # 基础控制器
-│   ├── src/main/resources/
-│   │   └── application.properties                # 应用配置
-│   ├── init.sql                                  # 数据库初始化脚本
-│   └── pom.xml                                   # Maven配置
-│
-└── frontend/                         # 前端项目
-    ├── src/
-    │   ├── components/               # Vue组件
-    │   │   ├── Login.vue             # 登录组件
-    │   │   └── Home.vue              # 主页组件
-    │   ├── api/
-    │   │   └── index.ts              # API接口封装
-    │   ├── utils/
-    │   │   ├── http.ts               # HTTP请求工具
-    │   │   ├── datetime.ts           # 日期工具
-    │   │   └── common.ts             # 通用工具
-    │   ├── types/
-    │   │   └── index.ts              # TypeScript类型定义
-    │   ├── main.ts                   # 登录页入口
-    │   └── home.ts                   # 主页入口
-    ├── assets/
-    │   └── style.css                 # 全局样式
-    ├── views/
-    │   └── home.html                 # 主页HTML
-    ├── index.html                    # 登录页HTML
-    ├── vite.config.ts                # Vite配置
-    ├── tsconfig.json                 # TypeScript配置
-    └── package.json                  # NPM配置
-```
-
----
-
 ## 核心功能模块
 
 ### 后端工具类

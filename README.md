@@ -13,27 +13,178 @@
 
 ## 项目结构
 
+设计者：Octorange/Windy-Field（强迫症患者 bushi）
+
+下面的目录树只记录当前存在的文件。只有 `README.md` 的目录是预留目录，说明中的规划类名不是已经实现的代码。构建产物、依赖和 IDE 文件不列入。
+
 ```
 4398/
-├── backend/                 # 后端项目
-│   ├── src/main/java/com/game/system/
-│   │   ├── config/         # 配置类
-│   │   ├── util/           # 工具类
-│   │   ├── payload/        # 请求响应封装
-│   │   └── controller/     # 控制器
-│   ├── src/main/resources/
-│   │   └── application.properties
-│   ├── init.sql            # 数据库初始化脚本
-│   └── pom.xml
+├── backend/                                                # 后端项目
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/game/system/
+│   │   │   │   ├── GameManagementSystemApplication.java    # 主启动类
+│   │   │   │   │
+│   │   │   │   ├── config/                                 # 配置类
+│   │   │   │   │   ├── ApplicationConfiguration.java       # 应用配置
+│   │   │   │   │   ├── CorsConfig.java                     # 跨域配置
+│   │   │   │   │   ├── JwtAuthenticationFilter.java        # JWT 过滤器
+│   │   │   │   │   └── SecurityConfiguration.java          # 安全配置
+│   │   │   │   │
+│   │   │   │   ├── controller/                             # 控制器层
+│   │   │   │   │   ├── BaseController.java                 # 基础控制器
+│   │   │   │   │   ├── GameController.java
+│   │   │   │   │   ├── UserController.java
+│   │   │   │   │   └── UserGameListController.java
+│   │   │   │   │
+│   │   │   │   ├── service/                                # 服务层
+│   │   │   │   │   ├── impl/                               # 服务实现
+│   │   │   │   │   │   └── README.md                       # 服务实现说明，暂无实现类
+│   │   │   │   │   ├── JwtService.java
+│   │   │   │   │   ├── UserDetailsImpl.java
+│   │   │   │   │   ├── UserDetailsServiceImpl.java
+│   │   │   │   │   └── README.md                           # 服务层说明
+│   │   │   │   │
+│   │   │   │   ├── repository/                             # 数据访问层
+│   │   │   │   │   └── README.md                           # 数据访问层说明
+│   │   │   │   │
+│   │   │   │   ├── entity/                                 # 实体类
+│   │   │   │   │   └── README.md                           # 实体类说明
+│   │   │   │   │
+│   │   │   │   ├── dto/                                    # 数据传输对象
+│   │   │   │   │   └── README.md                           # DTO 说明
+│   │   │   │   │
+│   │   │   │   ├── payload/                                # 现有请求和响应封装
+│   │   │   │   │   ├── request/DataRequest.java
+│   │   │   │   │   └── response/DataResponse.java
+│   │   │   │   │
+│   │   │   │   ├── exception/                              # 自定义异常
+│   │   │   │   │   └── README.md                           # 异常处理说明
+│   │   │   │   │
+│   │   │   │   ├── enums/                                  # 枚举类
+│   │   │   │   │   └── README.md                           # 枚举类说明
+│   │   │   │   │
+│   │   │   │   ├── util/                                   # 工具类
+│   │   │   │   │   ├── CommonMethod.java                   # 通用方法
+│   │   │   │   │   ├── DateTimeTool.java                   # 日期工具
+│   │   │   │   │   ├── JwtUtil.java                        # JWT 工具
+│   │   │   │   │   ├── ComDataUtil.java
+│   │   │   │   │   └── LoginControlUtil.java
+│   │   │   │   │
+│   │   │   │   ├── aspect/                                 # AOP 切面
+│   │   │   │   │   └── README.md                           # AOP 切面说明
+│   │   │   │   │
+│   │   │   │   ├── interceptor/                            # 拦截器
+│   │   │   │   │   └── README.md                           # 拦截器说明
+│   │   │   │   │
+│   │   │   │   └── validator/                              # 自定义验证器
+│   │   │   │       └── README.md                           # 验证器说明
+│   │   │   │
+│   │   │   └── resources/                                  # 资源文件
+│   │   │       ├── application.properties                  # 主配置文件
+│   │   │       ├── application-dev.properties              # 本地开发配置（Git 忽略）
+│   │   │       │
+│   │   │       ├── static/                                 # 静态资源
+│   │   │       │   └── README.md                           # 静态资源说明
+│   │   │       │
+│   │   │       ├── templates/                              # 模板文件
+│   │   │       │   └── README.md                           # 模板文件说明
+│   │   │       │
+│   │   │       └── db/                                     # 数据库相关
+│   │   │           └── migration/                          # 数据库迁移脚本
+│   │   │               └── README.md                       # 迁移脚本说明
+│   │   │
+│   │   └── test/                                           # 测试目录
+│   │       ├── java/com/game/system/
+│   │       │   ├── README.md                               # 测试总说明
+│   │       │   │
+│   │       │   ├── controller/                             # 控制器测试
+│   │       │   │   └── README.md                           # 控制器测试说明
+│   │       │   │
+│   │       │   ├── service/                                # 服务测试
+│   │       │   │   └── README.md                           # 服务测试说明
+│   │       │   │
+│   │       │   └── repository/                             # 数据访问测试
+│   │       │       └── README.md                           # 数据访问测试说明
+│   │       │
+│   │       └── resources/                                  # 测试资源
+│   │           └── README.md                               # 测试资源说明
+│   │
+│   ├── .gitignore
+│   ├── DATABASE_CONFIGURATION.md                           # 数据库配置说明
+│   ├── DATABASE_TODO_COMPLETION_REPORT.md
+│   ├── DATABASE_TODO_LIST.md
+│   ├── init.sql                                            # 数据库初始化脚本
+│   ├── pom.xml                                             # Maven 配置文件
+│   └── test-api.http                                       # API 测试文件
 │
-└── frontend/                # 前端项目
-    ├── src/
-    │   ├── components/      # Vue组件
-    │   ├── api/            # API接口
-    │   ├── utils/          # 工具类
-    │   └── types/          # 类型定义
-    ├── vite.config.ts      # Vite配置
-    └── package.json
+├── frontend/                                               # 前端项目
+│   ├── src/
+│   │   ├── api/                                            # API 接口
+│   │   │   └── index.ts                                    # API 接口封装
+│   │   │
+│   │   ├── assets/                                         # 静态资源
+│   │   │   └── README.md                                   # 静态资源说明
+│   │   │
+│   │   ├── components/                                     # 组件
+│   │   │   ├── Login.vue                                   # 登录组件
+│   │   │   └── Home.vue                                    # 主页组件
+│   │   │
+│   │   ├── views/                                          # 页面组件
+│   │   │   └── README.md                                   # 页面组件说明
+│   │   │
+│   │   ├── router/                                         # 路由配置
+│   │   │   └── README.md                                   # 路由配置说明
+│   │   │
+│   │   ├── store/                                          # 状态管理
+│   │   │   └── README.md                                   # 状态管理说明
+│   │   │
+│   │   ├── composables/                                    # 组合式函数
+│   │   │   └── README.md                                   # 组合式函数说明
+│   │   │
+│   │   ├── utils/                                          # 工具函数
+│   │   │   ├── http.ts                                     # HTTP 请求封装
+│   │   │   ├── datetime.ts                                 # 日期工具
+│   │   │   └── common.ts                                   # 通用工具
+│   │   │
+│   │   ├── types/                                          # TypeScript 类型
+│   │   │   └── index.ts                                    # 类型定义
+│   │   │
+│   │   ├── constants/                                      # 常量定义
+│   │   │   ├── status.ts                                   # 状态码常量
+│   │   │   ├── regex.ts                                    # 正则表达式常量
+│   │   │   ├── api.ts                                      # API 常量
+│   │   │   └── index.ts                                    # 常量统一导出
+│   │   │
+│   │   ├── directives/                                     # 自定义指令
+│   │   │   └── README.md                                   # 自定义指令说明
+│   │   │
+│   │   ├── plugins/                                        # 插件
+│   │   │   └── README.md                                   # 插件说明
+│   │   │
+│   │   ├── env.d.ts                                        # Vite 类型声明
+│   │   ├── main.ts                                         # 登录页入口
+│   │   └── home.ts                                         # 主页入口
+│   │
+│   ├── assets/style.css                                    # 页面样式
+│   ├── views/
+│   │   └── home.html                                       # 主页 HTML
+│   │
+│   ├── .gitignore
+│   ├── index.html                                          # 登录页 HTML
+│   ├── vite.config.ts                                      # Vite 配置
+│   ├── tsconfig.json                                       # TypeScript 配置
+│   ├── tsconfig.node.json
+│   ├── package.json                                        # NPM 配置
+│   ├── package-lock.json
+│   └── .env.example                                        # 环境变量示例
+│
+├── .gitignore                                              # Git 忽略文件
+├── .env.example                                            # 环境变量示例
+├── README.md                                               # 项目说明
+├── QUICKSTART.md                                           # 快速开始指南
+├── DEVELOPMENT_GUIDE.md                                    # 开发指南
+└── STRUCTURE.md                                            # 规划目录草案
 ```
 
 ## 核心功能
@@ -167,4 +318,4 @@ const token = storage.get<string>('token');
 
 - [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) - 完整的开发文档和任务清单
 - [QUICKSTART.md](./QUICKSTART.md) - 快速开始指南
-- [MIGRATION_REPORT.md](./MIGRATION_REPORT.md) - 框架移植报告
+- [STRUCTURE.md](./STRUCTURE.md) - 规划目录草案（不代表当前文件）
