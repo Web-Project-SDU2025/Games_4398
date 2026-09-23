@@ -14,7 +14,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    // TODO: 注入UserRepository
+    // TODO: [数据库连接] 注入UserRepository，用于从数据库查询用户信息
+    // 步骤：
+    // 1. 先创建 User 实体类（entity/User.java）
+    // 2. 创建 UserRepository 接口（repository/UserRepository.java）
+    // 3. 取消下面代码的注释，注入 UserRepository
+    //
     // private final UserRepository userRepository;
     //
     // public UserDetailsServiceImpl(UserRepository userRepository) {
@@ -23,7 +28,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // TODO: 从数据库加载用户
+        // TODO: [数据库连接] 从数据库加载用户信息并返回 UserDetails
+        // 步骤：
+        // 1. 使用 userRepository.findByUsername(username) 从数据库查询用户
+        // 2. 如果用户不存在，抛出 UsernameNotFoundException
+        // 3. 获取用户的角色信息（user.getRole().getCode()）
+        // 4. 调用 UserDetailsImpl.build(user, roleName) 构建 UserDetails 对象
+        // 5. 返回 UserDetails 对象给 Spring Security 进行认证
+        //
+        // 实现代码示例：
         // User user = userRepository.findByUsername(username)
         //     .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
         //
