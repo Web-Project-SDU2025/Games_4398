@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-基于 Spring Boot + Vue 3 + TypeScript 的游戏管理系统，包含完整的前后端分离架构。
+本项目是基于 Java 21 + Spring Boot + HTML 5 + CSS 3 + TypeScript (+ Vue 3) 的游戏管理系统，包含完整的前后端分离架构。
 
 详细的开发指南请查看：[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
 
@@ -10,7 +10,7 @@
 
 后端：Java 21 + Spring Boot 3.2.0 + Spring Data JPA + MySQL 8.0+ + JWT 认证
 
-前端：Vue 3 + TypeScript + Vite + HTML5 + CSS3
+前端：HTML 5 + CSS 3 + TypeScript (+ Vue 3)
 
 ## 项目结构
 
