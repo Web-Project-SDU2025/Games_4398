@@ -3,6 +3,7 @@
 .env
 .env.*
 !.env.example
+.claude/
 
 # Spring Boot 本地配置
 application-local.properties
