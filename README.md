@@ -4,7 +4,7 @@
 
 基于 Spring Boot + Vue 3 + TypeScript 的游戏管理系统，包含完整的前后端分离架构。
 
-详细的开发指南请查看：[开发指南.md](./开发指南.md)
+详细的开发指南请查看：[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
 
 ## 技术栈
 
@@ -62,7 +62,7 @@
 
 ## 快速开始
 
-详细步骤请查看：[开发指南.md](./开发指南.md) 或 [QUICKSTART.md](./QUICKSTART.md)
+详细步骤请查看：[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) 或 [QUICKSTART.md](./QUICKSTART.md)
 
 ### 后端启动
 
@@ -165,6 +165,6 @@ const token = storage.get<string>('token');
 
 ## 项目文档
 
-- [开发指南.md](./开发指南.md) - 完整的开发文档和任务清单
+- [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) - 完整的开发文档和任务清单
 - [QUICKSTART.md](./QUICKSTART.md) - 快速开始指南
 - [MIGRATION_REPORT.md](./MIGRATION_REPORT.md) - 框架移植报告

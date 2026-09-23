@@ -25,7 +25,7 @@
 7. ✅ **DictionaryData.java** - 字典数据实体
 8. ✅ **OperationLog.java** - 操作日志实体
 
-详细说明请查看：[entity/README.md](entity/README.md)
+详细说明请查看：[entity/README.md](src/main/java/com/game/system/entity/README.md)
 
 ---
 
@@ -48,7 +48,7 @@ Repository 接口用于数据库操作，继承 `JpaRepository`。
 7. ✅ **DictionaryDataRepository.java** - 字典数据数据访问接口
 8. ✅ **OperationLogRepository.java** - 操作日志数据访问接口
 
-详细说明请查看：[repository/README.md](repository/README.md)
+详细说明请查看：[repository/README.md](src/main/java/com/game/system/repository/README.md)
 
 ---
 
@@ -111,7 +111,7 @@ Repository 接口用于数据库操作，继承 `JpaRepository`。
 - [ ] 实现从清单中移除游戏
 - [ ] 实现更新游戏时长
 
-详细说明请查看：[service/README.md](service/README.md)
+详细说明请查看：[service/README.md](src/main/java/com/game/system/service/README.md)
 
 ---
 
@@ -223,10 +223,12 @@ Repository 接口用于数据库操作，继承 `JpaRepository`。
 
 ## 📚 相关文档
 
-- [entity/README.md](entity/README.md) - 实体类详细说明
-- [repository/README.md](repository/README.md) - Repository 详细说明
-- [service/README.md](service/README.md) - Service 详细说明
-- [开发指南.md](../../../../开发指南.md) - 完整开发指南
+- [entity/README.md](src/main/java/com/game/system/entity/README.md) - 实体类详细说明
+- [repository/README.md](src/main/java/com/game/system/repository/README.md) - Repository 详细说明
+- [service/README.md](src/main/java/com/game/system/service/README.md) - Service 详细说明
+- [DATABASE_CONFIGURATION.md](DATABASE_CONFIGURATION.md) - 数据库配置说明
+- [QUICKSTART.md](../QUICKSTART.md) - 快速开始指南
+- [DEVELOPMENT_GUIDE.md](../DEVELOPMENT_GUIDE.md) - 完整开发指南
 
 ---
 

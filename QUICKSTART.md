@@ -165,7 +165,7 @@ npm run build
 
 ## 下一步
 
-查看详细的开发文档：[开发指南.md](./开发指南.md)
+查看详细的开发文档：[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
 
 ---
 

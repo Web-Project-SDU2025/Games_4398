@@ -15,8 +15,8 @@
 1. ✅ `entity/README.md` - 实体类开发指南（需要创建 8 个实体类）
 2. ✅ `repository/README.md` - Repository 接口开发指南（需要创建 8 个 Repository）
 3. ✅ `service/README.md` - Service 业务逻辑层开发指南（需要创建 6 个 Service）
-4. ✅ `数据库连接TODO清单.md` - 完整的数据库连接开发清单
-5. ✅ `数据库配置说明.md` - 数据库配置说明（已存在）
+4. ✅ `DATABASE_TODO_LIST.md` - 完整的数据库连接开发清单
+5. ✅ `DATABASE_CONFIGURATION.md` - 数据库配置说明（已存在）
 
 ### 3. 添加 TODO 注释的文件
 
@@ -87,8 +87,9 @@ backend/
 │   │   └── README.md                    # Service 开发指南 ✅
 │   ├── payload/                         # 数据传输对象（已完成）
 │   └── util/                            # 工具类（已完成）
-├── 数据库连接TODO清单.md                 # 完整的开发清单 ✅
-└── 数据库配置说明.md                     # 数据库配置说明（已存在）
+├── DATABASE_TODO_LIST.md                # 完整的开发清单 ✅
+├── DATABASE_TODO_COMPLETION_REPORT.md   # 本文档
+└── DATABASE_CONFIGURATION.md            # 数据库配置说明
 ```
 
 ---
@@ -163,15 +164,15 @@ backend/
 ## 📚 参考文档
 
 ### 核心文档
-1. **数据库连接TODO清单.md** - 完整的开发任务清单和进度追踪
+1. **DATABASE_TODO_LIST.md** - 完整的开发任务清单和进度追踪
 2. **entity/README.md** - 实体类开发指南，包含所有实体类的字段说明
 3. **repository/README.md** - Repository 接口开发指南，包含查询方法命名规范
 4. **service/README.md** - Service 业务逻辑层开发指南
 
 ### 配置文档
-5. **数据库配置说明.md** - 数据库连接配置说明
-6. **开发指南.md** - 项目整体开发指南
-7. **QUICKSTART.md** - 快速开始指南
+5. **DATABASE_CONFIGURATION.md** - 数据库连接配置说明
+6. **../DEVELOPMENT_GUIDE.md** - 项目整体开发指南
+7. **../QUICKSTART.md** - 快速开始指南
 
 ---
 
@@ -218,11 +219,11 @@ source backend/init.sql
 1. ✅ **4 个文件添加了详细的 TODO 注释**
 2. ✅ **3 个新的 Controller 文件创建完成**（带完整 TODO）
 3. ✅ **3 个 README 开发指南创建完成**（Entity、Repository、Service）
-4. ✅ **1 个完整的开发清单创建完成**（数据库连接TODO清单.md）
+4. ✅ **1 个完整的开发清单创建完成**（DATABASE_TODO_LIST.md）
 5. ✅ **共计 52 个 TODO 注释**，涵盖所有需要连接数据库的地方
 
 现在你可以：
-- 查看 `数据库连接TODO清单.md` 了解完整的开发任务
+- 查看 `DATABASE_TODO_LIST.md` 了解完整的开发任务
 - 查看各个 `README.md` 了解每一层的开发规范
 - 按照 TODO 注释一步步实现数据库连接功能
 
