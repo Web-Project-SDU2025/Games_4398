@@ -12,6 +12,203 @@
 - `web-vue` 存放当前 Vue 前端代码。我们使用普通 JavaScript 编写新增页面，项目中仍保留部分示例工程的 TypeScript 代码。
 - `database` 存放建表 SQL、角色和菜单的初始化数据，以及历史迁移说明。
 
+## 项目结构
+
+下面展开当前项目的源码、配置和静态资源。目录树不包含 Git 内部文件、IDE 配置、依赖、构建产物、日志和本地数据备份；`application-local.properties` 仅在本机保存，不随仓库提交。
+
+```text
+4398/
+├── .gitignore
+├── README.md
+├── database/                                      数据库结构与迁移说明
+│   ├── README.md
+│   ├── schema.sql                                当前表结构，不含账户数据
+│   ├── seed.sql                                  角色和菜单初始化数据
+│   ├── migrate_game.sql                          历史游戏业务迁移脚本
+│   ├── merge_user.sql                            历史账户合并脚本
+│   └── finish_user_merge.sql                     账户合并后的旧表清理脚本
+├── java-server/
+│   └── java-server/                              后端工程，以 pom.xml 为入口
+│       ├── .gitattributes
+│       ├── .gitignore
+│       ├── .mvn/
+│       │   └── wrapper/
+│       │       └── maven-wrapper.properties
+│       ├── mvnw.cmd                              Windows Maven 启动脚本
+│       ├── pom.xml                               依赖、JDK 版本和打包配置
+│       └── src/
+│           ├── main/
+│           │   ├── java/
+│           │   │   └── cn/
+│           │   │       └── edu/
+│           │   │           └── sdu/
+│           │   │               └── java/
+│           │   │                   └── server/
+│           │   │                       ├── JavaServerApplication.java       后端启动入口
+│           │   │                       ├── SystemApplicationListener.java   启动后加载系统数据
+│           │   │                       ├── configs/                         认证与权限配置
+│           │   │                       │   ├── ApplicationConfiguration.java
+│           │   │                       │   ├── JwtAuthenticationFilter.java
+│           │   │                       │   └── SecurityConfiguration.java
+│           │   │                       ├── controllers/                     接收前端请求
+│           │   │                       │   ├── AuthController.java
+│           │   │                       │   ├── BaseController.java
+│           │   │                       │   ├── GameController.java
+│           │   │                       │   ├── GameUserController.java
+│           │   │                       │   └── StatisticsController.java
+│           │   │                       ├── models/                          数据库实体
+│           │   │                       │   ├── DictionaryInfo.java
+│           │   │                       │   ├── EUserType.java
+│           │   │                       │   ├── Game.java
+│           │   │                       │   ├── GameRecord.java
+│           │   │                       │   ├── MenuInfo.java
+│           │   │                       │   ├── ModifyLog.java
+│           │   │                       │   ├── RequestLog.java
+│           │   │                       │   ├── StatisticsDay.java
+│           │   │                       │   ├── SystemInfo.java
+│           │   │                       │   ├── User.java
+│           │   │                       │   └── UserType.java
+│           │   │                       ├── payload/                         请求与返回数据结构
+│           │   │                       │   ├── request/
+│           │   │                       │   │   ├── DataRequest.java
+│           │   │                       │   │   └── LoginRequest.java
+│           │   │                       │   └── response/
+│           │   │                       │       ├── DataResponse.java
+│           │   │                       │       ├── JwtResponse.java
+│           │   │                       │       ├── MyTreeNode.java
+│           │   │                       │       ├── OptionItem.java
+│           │   │                       │       └── OptionItemList.java
+│           │   │                       ├── repositorys/                     数据库读写接口
+│           │   │                       │   ├── DictionaryInfoRepository.java
+│           │   │                       │   ├── GameRecordRepository.java
+│           │   │                       │   ├── GameRepository.java
+│           │   │                       │   ├── MenuInfoRepository.java
+│           │   │                       │   ├── ModifyLogRepository.java
+│           │   │                       │   ├── StatisticsDayRepository.java
+│           │   │                       │   ├── SystemInfoRepository.java
+│           │   │                       │   ├── UserRepository.java
+│           │   │                       │   └── UserTypeRepository.java
+│           │   │                       ├── services/                        业务处理
+│           │   │                       │   ├── AuthenticationService.java
+│           │   │                       │   ├── AuthService.java
+│           │   │                       │   ├── BaseService.java
+│           │   │                       │   ├── GameService.java
+│           │   │                       │   ├── GameUserService.java
+│           │   │                       │   ├── JwtService.java
+│           │   │                       │   ├── StatisticsService.java
+│           │   │                       │   ├── SystemService.java
+│           │   │                       │   ├── UserDetailsImpl.java
+│           │   │                       │   └── UserDetailsServiceImpl.java
+│           │   │                       ├── uml/
+│           │   │                       │   └── game.puml                    实体关系图
+│           │   │                       └── util/                            公共工具
+│           │   │                           ├── ComDataUtil.java
+│           │   │                           ├── CommonMethod.java
+│           │   │                           ├── DateTimeTool.java
+│           │   │                           └── LoginControlUtil.java
+│           │   └── resources/
+│           │       ├── application.yml                       后端公开配置
+│           │       ├── application-local.properties           本机密码与密钥，不提交
+│           │       ├── application-local.properties.example   本机配置模板
+│           │       ├── loggback.xml                           日志配置
+│           │       └── font/
+│           │           └── SourceHanSansSC-Regular.ttf
+│           └── test/
+│               └── java/
+│                   └── cn/
+│                       └── edu/
+│                           └── sdu/
+│                               └── java/
+│                                   └── server/
+│                                       ├── AuthenticationTests.java
+│                                       ├── GameMigrationTests.java
+│                                       ├── JavaServerApplicationTests.java
+│                                       └── UserMergeTests.java
+└── web-vue/                                      Vue 前端工程
+    ├── .gitignore
+    ├── .npmrc
+    ├── README.md
+    ├── index.html                                网页入口
+    ├── package.json                              依赖和运行命令
+    ├── package-lock.json                         依赖版本记录
+    ├── tsconfig.json
+    ├── vite.config.ts                            本地代理和构建路径
+    ├── public/                                   静态图片和网站图标
+    │   ├── 66668888.jpg
+    │   ├── alarm.png
+    │   ├── backgroud.png
+    │   ├── certifiy.png
+    │   ├── dayOrder.png
+    │   ├── en.png
+    │   ├── favicon.ico
+    │   ├── favicon.png
+    │   ├── favicon.svg
+    │   ├── hi.png
+    │   ├── littleT.png
+    │   ├── loginName.png
+    │   ├── loginOut.png
+    │   ├── logo.png
+    │   ├── password.png
+    │   ├── question.png
+    │   ├── refresh.png
+    │   ├── sdu.png
+    │   ├── serch.png
+    │   ├── system_info.png
+    │   ├── tuichu.png
+    │   ├── user.png
+    │   └── wx.png
+    └── src/
+        ├── main.ts                               Vue 启动入口
+        ├── App.vue                               根组件
+        ├── Login.vue                             验证码注册与登录页面
+        ├── env.d.ts
+        ├── components.d.ts
+        ├── assets/
+        │   └── vue.svg
+        ├── components/
+        │   └── Navi.vue                          顶部导航、左侧菜单和页面显示区域
+        ├── composables/
+        │   ├── dark.ts
+        │   └── index.ts
+        ├── models/
+        │   └── general.ts                        公共数据类型
+        ├── router/
+        │   └── index.js                          页面地址与组件的对应关系
+        ├── services/                             前端请求函数
+        │   ├── gameServ.js                       游戏、游戏库、收藏和记录
+        │   ├── gameUserServ.js                   账户管理与个人资料
+        │   ├── genServ.ts                        通用请求、认证请求头和文件请求
+        │   ├── infoServ.js                       修改密码
+        │   ├── mainServ.js                       菜单与主页统计
+        │   ├── systemServ.ts                     菜单与字典管理
+        │   └── userServ.js                       登录、注册和验证码
+        ├── stores/
+        │   ├── app.js                            登录信息和菜单状态
+        │   └── index.ts                          Pinia 初始化
+        ├── styles/
+        │   ├── game.css                          游戏和账户页面的公共样式
+        │   ├── index.scss                        全局样式
+        │   └── element/
+        │       ├── dark.scss
+        │       └── index.scss
+        ├── tools/
+        │   ├── comMethod.ts                      日期、对话框等工具
+        │   └── messageBox.ts                     提示和确认框
+        └── views/                                功能页面
+            ├── MainPage.vue                      主界面与图表
+            ├── account/
+            │   ├── GameUserManage.vue             用户管理
+            │   └── GameUserProfile.vue            个人资料
+            ├── game/
+            │   ├── GameList.vue                   游戏列表、游戏库和收藏共用页面
+            │   └── GameRecords.vue                游玩记录
+            ├── info/
+            │   └── Password.vue                   修改密码
+            └── system/
+                ├── DictionaryManage.vue           字典管理
+                └── MenuManage.vue                 菜单管理
+```
+
 ## 本地配置
 
 运行前，请先安装 JDK 21 和 Node.js，并确认电脑能够连接 MySQL 数据库。
