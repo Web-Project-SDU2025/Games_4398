@@ -1,0 +1,90 @@
+.game-page {
+  padding: 20px;
+  background: white;
+  min-height: 100%;
+  box-sizing: border-box;
+  color: #222;
+}
+.game-page h2 {
+  margin: 0 0 20px;
+  font-size: 22px;
+}
+.game-toolbar,
+.game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.game-page button {
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #222;
+  cursor: pointer;
+}
+.game-page button:hover {
+  background: #e6f3ef;
+  border-color: #268267;
+}
+.game-page button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.game-page input,
+.game-page select,
+.game-page textarea {
+  box-sizing: border-box;
+  height: auto;
+  padding: 8px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  font: inherit;
+}
+.game-page label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-table-wrap {
+  overflow-x: auto;
+}
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+}
+.game-table th,
+.game-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+.game-table th {
+  background: #f4f5f5;
+}
+.game-page dialog {
+  width: 440px;
+  max-width: calc(100vw - 48px);
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 20px;
+}
+.game-page dialog::backdrop {
+  background: #0006;
+}
+.game-form {
+  display: grid;
+  gap: 14px;
+  width: 440px;
+  max-width: 100%;
+}
+.game-form label {
+  display: grid;
+  gap: 6px;
+}
+.game-form textarea {
+  min-height: 70px;
+  resize: vertical;
+}

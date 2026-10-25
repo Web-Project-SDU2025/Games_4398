@@ -1,0 +1,11 @@
+@startuml
+class User
+class UserType
+class Game
+class GameRecord
+User "*" -- "1" UserType
+User "*" -- "*" Game : 游戏库
+User "*" -- "*" Game : 收藏
+GameRecord "*" -- "1" User
+GameRecord "*" -- "1" Game
+@enduml

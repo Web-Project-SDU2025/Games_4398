@@ -1,0 +1,43 @@
+
+security:
+  jwt:
+    secret-key: ${JWT_SECRET}
+    expiration-time: 86400000
+server:
+  port: 22222
+spring:
+  config:
+    import: optional:classpath:application-local.properties
+  application:
+    name: java-server
+  datasource:
+    # 第 02 组使用课程分配的在线数据库。
+    url: jdbc:mysql://202.194.14.120:3306/java_1_02?allowPublicKeyRetrieval=true&useSSL=false
+    username: java_1_02
+    password: ${DB_PASSWORD}
+#    url: jdbc:mysql://202.194.14.120:3306/java_db?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_server
+#    password: ${DB_PASSWORD}
+#    url: jdbc:mysql://202.194.14.120:3306/java_1_01?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_1_01
+#    password: ${DB_PASSWORD}
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 2
+  jpa:
+#    hibernate.ddl-auto: update
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+  jmx:
+    enabled: false
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+attach:
+  folder: /teach-2025/
+logging:
+  config: classpath:loggback.xml
