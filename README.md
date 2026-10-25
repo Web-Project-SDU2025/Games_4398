@@ -1,10 +1,6 @@
 # 4398 游戏管理网站
 
-4398 是一个使用 Spring Boot、Vue 和 MySQL 开发的游戏管理网站，目前仍在开发中。
-
-游戏用户可以通过验证码注册和登录，修改个人资料，将游戏加入自己的游戏库或收藏，并查看、添加和删除游玩记录。管理员还可以维护账户、游戏信息、菜单和字典。系统通过角色区分管理员和游戏用户，两类账户共用 `User` 实体。
-
-项目沿用了示例工程的主界面和 ECharts 图表。我们已经调整了业务名称和数据结构，登录注册页也已改为简单表单，其余界面还没有统一设计。
+4398 是一个使用 Spring Boot、Vue 和 MySQL 开发的游戏管理网站。用户可以通过验证码注册和登录，修改个人资料，将游戏加入自己的游戏库或收藏，并查看、添加和删除游玩记录。管理员还可以维护账户、游戏信息、菜单和字典。
 
 ## 目录
 
@@ -14,13 +10,11 @@
 
 ## 项目结构
 
-下面展开当前项目的源码、配置和静态资源。目录树不包含 Git 内部文件、IDE 配置、依赖、构建产物、日志和本地数据备份；`application-local.properties` 仅在本机保存，不随仓库提交。
-
 ```text
 4398/
 ├── .gitignore
 ├── README.md
-├── database/                                      数据库结构与迁移说明
+├── database/                                     数据库结构与迁移说明
 │   ├── README.md
 │   ├── schema.sql                                当前表结构，不含账户数据
 │   ├── seed.sql                                  角色和菜单初始化数据
@@ -107,7 +101,7 @@
 │           │   │                           ├── DateTimeTool.java
 │           │   │                           └── LoginControlUtil.java
 │           │   └── resources/
-│           │       ├── application.yml                       后端公开配置
+│           │       ├── application.yml                        后端公开配置
 │           │       ├── application-local.properties           本机密码与密钥，不提交
 │           │       ├── application-local.properties.example   本机配置模板
 │           │       ├── loggback.xml                           日志配置
@@ -197,16 +191,16 @@
         └── views/                                功能页面
             ├── MainPage.vue                      主界面与图表
             ├── account/
-            │   ├── GameUserManage.vue             用户管理
-            │   └── GameUserProfile.vue            个人资料
+            │   ├── GameUserManage.vue            用户管理
+            │   └── GameUserProfile.vue           个人资料
             ├── game/
-            │   ├── GameList.vue                   游戏列表、游戏库和收藏共用页面
-            │   └── GameRecords.vue                游玩记录
+            │   ├── GameList.vue                  游戏列表、游戏库和收藏共用页面
+            │   └── GameRecords.vue               游玩记录
             ├── info/
-            │   └── Password.vue                   修改密码
+            │   └── Password.vue                  修改密码
             └── system/
-                ├── DictionaryManage.vue           字典管理
-                └── MenuManage.vue                 菜单管理
+                ├── DictionaryManage.vue          字典管理
+                └── MenuManage.vue                菜单管理
 ```
 
 ## 本地配置
