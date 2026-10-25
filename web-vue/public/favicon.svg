@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>4398 game controller</title>
+  <rect width="64" height="64" rx="14" fill="#930e14" />
+  <path d="M23 20h18c7 0 11 5 13 13l3 12c1 5-5 8-8 4l-7-8H22l-7 8c-3 4-9 1-8-4l3-12c2-8 6-13 13-13Z" fill="#fff" />
+  <path d="M23 27v12m-6-6h12" fill="none" stroke="#930e14" stroke-width="5" stroke-linecap="round" />
+  <circle cx="43" cy="28" r="3.5" fill="#1b8067" />
+  <circle cx="49" cy="36" r="3.5" fill="#e4a72c" />
+</svg>
