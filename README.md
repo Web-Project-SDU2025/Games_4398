@@ -11,7 +11,6 @@
 - `java-server/java-server` 存放当前后端代码，后端使用 JDK 21。
 - `web-vue` 存放当前 Vue 前端代码。我们使用普通 JavaScript 编写新增页面，项目中仍保留部分示例工程的 TypeScript 代码。
 - `database` 存放建表 SQL、角色和菜单的初始化数据，以及历史迁移说明。
-- `test` 保留旧版前后端原型，供开发时参考。运行当前项目时不需要启动这个目录中的程序。
 
 ## 本地配置
 
