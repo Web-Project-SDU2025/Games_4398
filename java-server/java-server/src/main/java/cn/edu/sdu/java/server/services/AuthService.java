@@ -33,6 +33,11 @@ public class AuthService {
         this.gameUserService = gameUserService;
     }
 
+    /**
+     * 检查验证码和账号密码，登录成功后生成 JWT 登录令牌。
+     * @param loginRequest 包含账号、密码和验证码
+     * @return 登录结果，成功时包含 JWT 和账户基本信息
+     */
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(
                 loginRequest.getValidateCodeId(), loginRequest.getValidateCode());
@@ -63,10 +68,20 @@ public class AuthService {
                 details.getPerName(), role));
     }
 
+    /**
+     * 生成一张新的图形验证码并保存验证码内容。
+     * @param request 当前接口不需要业务参数
+     * @return 验证码编号和图片数据
+     */
     public DataResponse getValidateCode(DataRequest request) {
         return CommonMethod.getReturnData(LoginControlUtil.getInstance().getValidateCodeDataMap());
     }
 
+    /**
+     * 检查请求中的验证码是否正确。
+     * @param request data 中包含 validateCodeId 和 validateCode
+     * @return 验证成功或失败的响应
+     */
     public DataResponse testValidateInfo(DataRequest request) {
         Integer codeId = request.getInteger("validateCodeId");
         String code = request.getString("validateCode");

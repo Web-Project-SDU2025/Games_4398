@@ -26,6 +26,11 @@ public class GameUserService {
         this.encoder = encoder;
     }
 
+    /**
+     * 将账户对象整理成前端需要的资料对象。
+     * @param user 要转换的账户
+     * @return 包含账号、昵称、联系方式和角色的 Map
+     */
     public Map<String, Object> getAccountInfo(User user) {
         Map<String, Object> info = new HashMap<>();
         info.put("userId", user.getUserId());
@@ -57,12 +62,21 @@ public class GameUserService {
         return CommonMethod.getReturnData(accounts);
     }
 
+    /**
+     * 查询当前登录账户的个人资料。
+     * @return 当前账户资料
+     */
     public DataResponse getMyProfile() {
         Integer userId = CommonMethod.getUserId();
         User user = userRepository.findById(userId).orElseThrow();
         return CommonMethod.getReturnData(getAccountInfo(user));
     }
 
+    /**
+     * 创建一个新的管理员或游戏用户账户，并保存密码哈希。
+     * @param request data 中包含账号、密码、昵称、邮箱、签名和角色
+     * @return 创建成功或失败的响应
+     */
     @Transactional
     public DataResponse createAccount(DataRequest request) {
         String username = request.getString("username");
@@ -99,6 +113,11 @@ public class GameUserService {
     }
 
     // 保存账户资料，普通用户只能修改自己的资料。
+    /**
+     * 保存账户的个人资料，管理员可以指定 userId 修改其他账户。
+     * @param request data 中包含 userId、昵称、邮箱、电话和签名
+     * @return 保存成功或失败的响应
+     */
     @Transactional
     public DataResponse saveProfile(DataRequest request) {
         Integer userId = CommonMethod.getUserId();
@@ -116,6 +135,11 @@ public class GameUserService {
     }
 
     // 删除游戏用户，管理员账号和当前账号不能在这里删除。
+    /**
+     * 删除一个游戏用户账户，并清理账户关联的游戏库、收藏和游戏记录。
+     * @param request data 中包含 userId
+     * @return 删除成功或失败的响应
+     */
     @Transactional
     public DataResponse deleteAccount(DataRequest request) {
         Integer userId = request.getInteger("userId");

@@ -31,15 +31,30 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         return authService.authenticateUser(loginRequest);
     }
+    /**
+     * 获取一张新的图形验证码。
+     * @param dataRequest 请求参数，当前接口不需要业务参数
+     * @return 包含验证码编号和图片数据的响应
+     */
     @PostMapping("/getValidateCode")
     public DataResponse getValidateCode(@Valid @RequestBody DataRequest dataRequest) {
         return authService.getValidateCode(dataRequest);
     }
 
+    /**
+     * 单独检查验证码是否正确。
+     * @param dataRequest data 中包含 validateCodeId 和 validateCode
+     * @return 验证成功或失败的响应
+     */
     @PostMapping("/testValidateInfo")
     public DataResponse testValidateInfo(@Valid @RequestBody DataRequest dataRequest) {
         return authService.testValidateInfo(dataRequest);
     }
+    /**
+     * 注册一个游戏用户。
+     * @param dataRequest data 中包含账号、密码、昵称、邮箱和验证码
+     * @return 注册成功或失败的响应
+     */
     @PostMapping("/registerUser")
     public DataResponse registerUser(@Valid @RequestBody DataRequest dataRequest) {
         return authService.registerUser(dataRequest);

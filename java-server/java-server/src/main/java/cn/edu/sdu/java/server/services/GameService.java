@@ -23,10 +23,19 @@ public class GameService {
         this.recordRepository = recordRepository;
     }
 
+    /**
+     * 查询当前登录账户。
+     * @return 当前登录账户
+     */
     public User currentUser() {
         return userRepository.findById(CommonMethod.getUserId()).orElseThrow();
     }
 
+    /**
+     * 将游戏对象整理成前端需要的资料对象。
+     * @param game 要转换的游戏
+     * @return 包含游戏基本资料的 Map
+     */
     public Map<String, Object> gameInfo(Game game) {
         Map<String, Object> info = new HashMap<>();
         info.put("gameId", game.getGameId());
@@ -39,6 +48,11 @@ public class GameService {
     }
 
     // 查询游戏列表、当前账户的游戏库或收藏。
+    /**
+     * 根据模式查询全部游戏、当前用户的游戏库或收藏。
+     * @param request data 中可包含 mode 和 search
+     * @return 游戏列表
+     */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
         String mode = request.getString("mode");
@@ -66,6 +80,11 @@ public class GameService {
     }
 
     // 保存游戏资料，保留原有游戏编号，防止重复创建。
+    /**
+     * 新增或修改游戏资料。
+     * @param request data 中包含 gameId、游戏编号、名称、分类、介绍和入口路径
+     * @return 保存成功或失败的响应
+     */
     @Transactional
     public DataResponse save(DataRequest request) {
         Integer gameId = request.getInteger("gameId");
@@ -96,6 +115,11 @@ public class GameService {
     }
 
     // 删除没有被游戏库、收藏或游戏记录引用的游戏。
+    /**
+     * 删除游戏，游戏仍被使用时不允许删除。
+     * @param request data 中包含 gameId
+     * @return 删除成功或失败的响应
+     */
     @Transactional
     public DataResponse delete(DataRequest request) {
         Game game = gameRepository.findById(request.getInteger("gameId")).orElseThrow();
@@ -111,6 +135,11 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
+    /**
+     * 修改当前用户的游戏库或收藏。
+     * @param request data 中包含 gameId、mode 和 added
+     * @return 操作成功或失败的响应
+     */
     @Transactional
     public DataResponse changeCollection(DataRequest request) {
         String mode = request.getString("mode");
@@ -134,6 +163,11 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
+    /**
+     * 将游戏记录对象整理成前端需要的资料对象。
+     * @param record 要转换的游戏记录
+     * @return 包含账号、游戏、分数和时长的 Map
+     */
     public Map<String, Object> recordInfo(GameRecord record) {
         Map<String, Object> info = gameInfo(record.getGame());
         info.put("recordId", record.getRecordId());
@@ -145,6 +179,10 @@ public class GameService {
     }
 
     // 管理员可以查看全部记录，游戏用户只查看自己的记录。
+    /**
+     * 查询当前用户可以查看的游戏记录。
+     * @return 游戏记录列表
+     */
     @Transactional(readOnly = true)
     public DataResponse records() {
         List<GameRecord> records;
@@ -160,6 +198,11 @@ public class GameService {
         return CommonMethod.getReturnData(results);
     }
 
+    /**
+     * 保存当前用户的一次游玩记录。
+     * @param request data 中包含 gameId、score 和 durationSeconds
+     * @return 保存成功或失败的响应
+     */
     @Transactional
     public DataResponse saveRecord(DataRequest request) {
         Integer score = request.getInteger("score");
@@ -182,6 +225,11 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
+    /**
+     * 删除一条游戏记录，普通用户不能删除其他用户的记录。
+     * @param request data 中包含 recordId
+     * @return 删除成功或失败的响应
+     */
     @Transactional
     public DataResponse deleteRecord(DataRequest request) {
         GameRecord record = recordRepository.findById(request.getInteger("recordId")).orElseThrow();

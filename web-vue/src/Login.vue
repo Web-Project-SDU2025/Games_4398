@@ -2,7 +2,7 @@
   <main class="auth-page">
     <section class="auth-panel" aria-labelledby="site-title">
       <!-- 登录页面上部区域 -->
-      <h1 id="site-title">4398游戏管理</h1>
+      <h1 id="site-title">4398游戏平台</h1>
       <div class="auth-tabs" role="tablist" aria-label="账户操作">
         <button
           id="login-tab"
@@ -15,6 +15,7 @@
         >
           登录
         </button>
+
         <button
           id="register-tab"
           type="button"
