@@ -7,18 +7,13 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
-    ElAside: typeof import('element-plus/es')['ElAside']
-    ElContainer: typeof import('element-plus/es')['ElContainer']
-    ElHeader: typeof import('element-plus/es')['ElHeader']
-    ElMain: typeof import('element-plus/es')['ElMain']
-    ElMenu: typeof import('element-plus/es')['ElMenu']
-    ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
-    ElMenuItemGroup: typeof import('element-plus/es')['ElMenuItemGroup']
-    ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
-    ElSubMenu: typeof import('element-plus/es')['ElSubMenu']
+    AccountSwitcher: typeof import('./components/AccountSwitcher.vue')['default']
+    DashboardActivity: typeof import('./components/DashboardActivity.vue')['default']
     ElTree: typeof import('element-plus/es')['ElTree']
     Navi: typeof import('./components/Navi.vue')['default']
+    Octorange: typeof import('./components/Octorange.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SupportChat: typeof import('./components/SupportChat.vue')['default']
   }
 }

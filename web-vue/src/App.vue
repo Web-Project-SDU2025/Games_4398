@@ -9,6 +9,6 @@ body,
   height: 100%;
 }
 </style>
-<script lang="ts" setup>
+<script setup>
 import Navi from "./components/Navi.vue";
 </script>

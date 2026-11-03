@@ -39,6 +39,16 @@ public class AuthService {
      * @return 登录结果，成功时包含 JWT 和账户基本信息
      */
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
+        return authenticate(loginRequest, false);
+    }
+
+    /** 管理员入口仍验证密码和验证码，只有数据库中的管理员可以进入 */
+    public ResponseEntity<?> authenticateAdmin(LoginRequest loginRequest) {
+        return authenticate(loginRequest, true);
+    }
+
+    /** 共用登录检查，管理员入口额外检查数据库角色，不提升普通账户权限 */
+    private ResponseEntity<?> authenticate(LoginRequest loginRequest, boolean adminOnly) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(
                 loginRequest.getValidateCodeId(), loginRequest.getValidateCode());
         if (!valid) {
@@ -55,6 +65,10 @@ public class AuthService {
         }
         UserDetailsImpl details = (UserDetailsImpl) authentication.getPrincipal();
         User user = userRepository.findById(details.getId()).orElseThrow();
+        if (adminOnly && !"ROLE_ADMIN".equals(user.getUserType().getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(CommonMethod.getReturnMessageError("此入口只允许管理员账号登录"));
+        }
         user.setLastLoginTime(DateTimeTool.parseDateTime(new Date()));
         Integer count = user.getLoginCount();
         if (count == null) {
@@ -62,12 +76,16 @@ public class AuthService {
         }
         user.setLoginCount(count + 1);
         userRepository.save(user);
-        String token = jwtService.generateToken(details);
-        String role = user.getUserType().getName();
-        return ResponseEntity.ok(new JwtResponse(token, details.getId(), details.getUsername(),
-                details.getPerName(), role));
+        return ResponseEntity.ok(createSession(user));
     }
 
+    /** 根据数据库账户签发登录信息，本地检查切号与普通登录共用同一格式 */
+    public JwtResponse createSession(User user) {
+        UserDetailsImpl details = UserDetailsImpl.build(user);
+        String token = jwtService.generateToken(details);
+        return new JwtResponse(token, user.getUserId(), user.getUserName(),
+                user.getName(), user.getUserType().getName());
+    }
     /**
      * 生成一张新的图形验证码并保存验证码内容。
      * @param request 当前接口不需要业务参数

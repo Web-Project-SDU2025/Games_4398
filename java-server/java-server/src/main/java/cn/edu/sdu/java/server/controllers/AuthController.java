@@ -31,6 +31,11 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         return authService.authenticateUser(loginRequest);
     }
+    /** 管理员登录时额外验证角色，普通用户不能通过更换页面取得管理员权限 */
+    @PostMapping("/adminLogin")
+    public ResponseEntity<?> adminLogin(@Valid @RequestBody LoginRequest loginRequest) {
+        return authService.authenticateAdmin(loginRequest);
+    }
     /**
      * 获取一张新的图形验证码。
      * @param dataRequest 请求参数，当前接口不需要业务参数

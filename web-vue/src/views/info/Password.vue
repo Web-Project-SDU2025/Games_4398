@@ -1,220 +1,114 @@
 <template>
   <!-- 最外层区域表单 -->
-  <div class="base_form">
+  <section class="base_form password-page">
     <!-- 区域顶部标题 -->
-    <div class="base_header">
-      <div class="blue_column"></div>
-      <div class="base_title">修改密码</div>
-    </div>
+    <div class="base_header"><h2 class="base_title">修改密码</h2></div>
     <!-- 页面提示 -->
-    <div class="base_prompt">
-      新密码最长为20位。
-    </div>
+    <p class="base_prompt">新密码最长为{{ passwordLimit }}位。</p>
     <!-- 表单内容 -->
-    <div class="oldPassword flex-row">
-      <div class="oldPass">旧密码</div>
-      <div>
-        <input class="inputWidth" v-model="oldPassword" type="password" />
+    <form
+      class="motion-results"
+      :aria-busy="saving"
+      @submit.prevent="submitPassword"
+    >
+      <label for="old-password"
+        >旧密码<input
+          id="old-password"
+          v-model="oldPassword"
+          type="password"
+          autocomplete="current-password"
+          required
+      /></label>
+      <label for="new-password"
+        >新密码<input
+          id="new-password"
+          v-model="newPassword"
+          type="password"
+          autocomplete="new-password"
+          :maxlength="passwordLimit"
+          required
+      /></label>
+      <label for="repeat-password"
+        >再次输入新密码<input
+          id="repeat-password"
+          v-model="checkPassword"
+          type="password"
+          autocomplete="new-password"
+          :maxlength="passwordLimit"
+          required
+      /></label>
+      <div class="password-actions">
+        <button class="commButton" type="submit" :disabled="saving">
+          保存密码</button
+        ><button
+          class="commButton"
+          type="button"
+          :disabled="saving"
+          @click="reset"
+        >
+          重置
+        </button>
       </div>
-    </div>
-
-    <div class="newPassword flex-row">
-      <div class="newPass">请输入新密码</div>
-      <div>
-        <input class="inputWidth" v-model="newPassword" type="password" maxlength="20" />
-      </div>
-    </div>
-    <div class="alarm">*密码长度最大为20位</div>
-
-    <div class="reconfirmP flex-row">
-      <div class="rPass">再次输入新密码</div>
-      <div>
-        <input class="inputWidth" v-model="checkPassword" type="password" maxlength="20" />
-      </div>
-    </div>
-    <div class="alarm">*密码长度最大为20位</div>
-    <div class="main8 flex-row justify-between">
-      <div class="group8 flex-col" @click="submitPassword()">
-        <span class="word20">修改</span>
-      </div>
-      <div class="group9 flex-col">
-        <span class="info8">重置</span>
-      </div>
-    </div>
-  </div>
+      <p v-reveal="notice" role="status">{{ notice }}</p>
+    </form>
+  </section>
 </template>
 <script>
 import { updatePassword } from "~/services/infoServ";
-import { message } from "~/tools/messageBox";
+import * as account from "../../logic/account.js";
+
+/** 返回修改密码表单的数据 */
+function passwordState() {
+  return {
+    oldPassword: "",
+    newPassword: "",
+    checkPassword: "",
+    saving: false,
+    notice: "",
+    passwordLimit: account.CHANGE_PASSWORD_LIMIT,
+  };
+}
+/** 清空表单中填写的密码 */
+function reset() {
+  this.oldPassword = "";
+  this.newPassword = "";
+  this.checkPassword = "";
+  this.notice = "";
+}
+// 提交密码，保留原有的非空、确认和最大长度检查
+async function submitPassword() {
+  if (this.saving) {
+    return;
+  }
+  const error = account.checkPasswordChange(
+    this.oldPassword,
+    this.newPassword,
+    this.checkPassword
+  );
+  if (error !== "") {
+    this.notice = error;
+    return;
+  }
+  this.saving = true;
+  try {
+    const result = await updatePassword({
+      oldPassword: this.oldPassword,
+      newPassword: this.newPassword,
+    });
+    if (result.code === 0) {
+      this.reset();
+      this.notice = "密码已修改";
+    } else {
+      this.notice = result.msg;
+    }
+  } catch (error) {
+    this.notice = "修改失败，请检查网络后重试";
+  } finally {
+    this.saving = false;
+  }
+}
 export default {
-  data: function () {
-    return {
-      oldPassword: "",
-      newPassword: "",
-      checkPassword: "",
-    };
-  },
-  methods: {
-    // 提交密码
-    submitPassword: async function () {
-      let msg = "";
-      if (this.oldPassword === undefined || this.oldPassword === "") {
-        msg = "旧密码为空不能修改";
-      } else if (this.newPassword === undefined || this.newPassword === "") {
-        msg = "新密码为空不能修改";
-      } else if (this.oldPassword === this.newPassword) {
-        msg = "新密码和旧密码相同，不能修改";
-      } else if (this.checkPassword !== this.newPassword) {
-        msg = "新密码和确认密码不相同，不能修改";
-      } else if (this.newPassword.length > 20) {
-        msg = "密码长度最大为20位";
-      }
-      if (msg !== "") {
-        message(this, msg);
-      } else {
-        try {
-          const response = await updatePassword({
-            oldPassword: this.oldPassword,
-            newPassword: this.newPassword,
-          });
-          if (response.code == 0) {
-            message(this, "提交成功");
-          } else {
-            message(this, response.msg);
-          }
-        } catch (error) {
-          message(this, "修改失败，请检查网络后重试");
-        }
-      }
-    },
-  },
+  data: passwordState,
+  methods: { submitPassword: submitPassword, reset: reset },
 };
 </script>
-<style>
-.alarm {
-  margin-left: 594px;
-  margin-top: 8px;
-  font-family: PingFangTC-Regular;
-  font-size: 12px;
-  color: #930e14;
-  letter-spacing: 0;
-  font-weight: 400;
-}
-.newPassword {
-  margin-left: 485px;
-  margin-top: 34px;
-}
-.reconfirmP {
-  margin-left: 470px;
-  margin-top: 9px;
-}
-
-.inputWidth {
-  width: 478px;
-}
-input {
-  height: 42px;
-  line-height: 42px;
-  border-radius: 0px;
-}
-.rPass {
-  width: 120px;
-  height: 42px;
-  font-size: 14px;
-  font-family: PingFangTC-Regular, PingFangTC;
-  font-weight: 400;
-  color: #202020;
-  line-height: 42px;
-  text-align: center;
-  margin-right: 6px;
-}
-
-.newPass {
-  width: 100px;
-  height: 42px;
-  font-size: 14px;
-  font-family: PingFangTC-Regular, PingFangTC;
-  font-weight: 400;
-  color: #202020;
-  line-height: 42px;
-  text-align: center;
-  margin-right: 12px;
-}
-.oldPass {
-  text-align: center;
-  width: 42px;
-  height: 42px;
-  font-size: 14px;
-  font-family: PingFangTC-Regular, PingFangTC;
-  font-weight: 400;
-  color: #202020;
-  line-height: 42px;
-  margin-right: 12px;
-}
-.oldPassword {
-  margin-left: 542px;
-  margin-top: 125px;
-}
-
-.main8 {
-  width: 640px;
-  height: 42px;
-  margin: 42px 0 0 457px;
-  border: none;
-}
-
-.group8 {
-  background-color: rgba(147, 14, 20, 1);
-  border-radius: 4px;
-  height: 42px;
-  width: 311px;
-  cursor: pointer;
-}
-
-.word20 {
-  width: 28px;
-  height: 14px;
-  overflow-wrap: break-word;
-  color: rgba(255, 255, 255, 1);
-  font-size: 14px;
-  font-family: STHeitiSC-Medium;
-  text-align: left;
-  white-space: nowrap;
-  line-height: 14px;
-  display: block;
-  margin: 15px 0 0 140px;
-}
-
-.group9 {
-  background-color: rgba(226, 227, 228, 1);
-  border-radius: 4px;
-  height: 42px;
-  width: 311px;
-}
-
-.info8 {
-  width: 28px;
-  height: 14px;
-  overflow-wrap: break-word;
-  color: rgba(131, 131, 131, 1);
-  font-size: 14px;
-  font-family: SourceHanSansCN-Regular;
-  text-align: left;
-  white-space: nowrap;
-  line-height: 14px;
-  display: block;
-  margin: 15px 0 0 140px;
-}
-.flex-col {
-  display: flex;
-  flex-direction: column;
-}
-.flex-row {
-  display: flex;
-  flex-direction: row;
-}
-.justify-between {
-  display: flex;
-  justify-content: space-between;
-}
-</style>

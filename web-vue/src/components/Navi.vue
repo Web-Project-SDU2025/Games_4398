@@ -1,513 +1,372 @@
 <template>
-  <div style="height: 100%">
-    <!-- 当登录成功后显示此DIV -->
-    <div style="height: 100%" v-if="
-      userInfo.username &&
-      userInfo.username.length > 0 &&
-      systemConfig.showLeftMeun
-    ">
-      <el-container style="height: 100%">
-        <!-- 主页面的头部区域 -->
-        <el-header height="40" class="topHeader">
-          <div class="outer1 flex-col">
-            <div class="block1 justify-between">
-              <div class="flex-row">
-                <div class="section1 flex-col">4398</div>
-                <div class="section2 flex-col"></div>
-                <div class="box1 flex-col">4398游戏管理</div>
-              </div>
-              <div class="flex-row">
-                <img class="icon1" referrerpolicy="no-referrer"
-                  src="https://lanhu.oss-cn-beijing.aliyuncs.com/SketchPngcaa325ea059ecab33bd0e7b025f2ac5dda130ce8e86127c93834c53cb5716514" />
-                <div class="section3 flex-col justify-between">
-                  <span class="word1">您好～</span>
-                  <span class="info">{{ userInfo.perName }}({{ userInfo.username }})
-                    {{ currentTime }}</span>
-                </div>
-                <div class="section4 flex-col"></div>
-
-                <div class="section5">
-                  <div class="shuxinImage"></div>
-                  <div class="shuaxin">刷新</div>
-                </div>
-
-                <div class="section6" @click="logout()">
-                  <div class="tuichuImage"></div>
-                  <div class="shuaxin">退出</div>
-                </div>
-              </div>
-            </div>
+  <div class="platform-shell" :class="{ 'desktop-shell': loggedIn }">
+    <!-- 主页面的头部区域 -->
+    <header class="platform-header">
+      <div class="platform-header-inner">
+        <button
+          v-if="loggedIn"
+          class="workspace-menu-toggle"
+          type="button"
+          aria-label="展开或收起功能菜单"
+          title="功能菜单"
+          aria-controls="workspace-navigation"
+          :aria-expanded="menuExpanded"
+          @click="toggleMenu"
+        >
+          <span class="i-ep-menu" aria-hidden="true"></span>
+        </button>
+        <RouterLink class="platform-brand" :to="homePath">
+          <img src="/favicon.svg" alt="" width="32" height="32" />
+          <span><strong>4398</strong><small>游戏平台</small></span>
+        </RouterLink>
+        <TransitionGroup
+          v-if="loggedIn"
+          name="tab"
+          tag="nav"
+          class="workspace-tabs"
+          aria-label="已打开的页面"
+        >
+          <div
+            v-for="tab in tabs"
+            :key="tab.path"
+            class="workspace-tab"
+            :class="{ 'is-current': $route.path === tab.path }"
+          >
+            <RouterLink :to="tab.path" :aria-current="currentPage(tab.path)">{{
+              tab.title
+            }}</RouterLink>
+            <button
+              v-if="tab.path !== '/MainPage'"
+              type="button"
+              :aria-label="'关闭' + tab.title"
+              :title="'关闭' + tab.title"
+              @click="closeTab(tab.path)"
+            >
+              <span class="i-ep-close" aria-hidden="true"></span>
+            </button>
           </div>
-
-          <el-menu background-color="rgb(147,14,20)" text-color="rgb(255,255,255)" active-text-color="rgb(255,255,255)"
-            mode="horizontal" router>
-            <template v-for="(v, i) in systemConfig.naviList" :key="i">
-              <el-menu-item :index="'/' + v.name" @click="getSecondList(v.id)">{{ v.title }}</el-menu-item>
-            </template>
-          </el-menu>
-        </el-header>
-        <!-- 主页面的中心区域 -->
-        <el-container>
-          <!-- 中心区域的菜单区域 -->
-          <el-aside style="width: 230px; height: 100%">
-            <el-scrollbar class="scrollar" v-if="showLeftList">
-              <el-menu background-color="rgb(44,48,57)" text-color="rgb(255,255,255)"
-                active-text-color="rgb(255,255,255)" router :default-openeds="['0']">
-                <template v-for="(v, i) in systemConfig.leftList" :key="i">
-                  <template v-if="v.sList.length > 0">
-                    <el-sub-menu :index="i.toString()">
-                      <template v-slot:title>
-                        <i class="el-icon-location"></i>
-                        <span>{{ v.title }}</span>
-                      </template>
-                      <el-menu-item-group v-for="(item, j) in v.sList" :key="j">
-                        <el-menu-item :index="'/' + item.name" @click="routerName(item.name)">{{ item.title
-                          }}</el-menu-item>
-                      </el-menu-item-group>
-                    </el-sub-menu>
-                  </template>
-                  <template v-else>
-                    <el-menu-item :index="'/' + v.name" @click="routerName(v.name)">
-                      <i class="el-icon-menu"></i>
-                      <span>{{ v.title }}</span>
-                    </el-menu-item>
-                  </template>
-                </template>
-              </el-menu>
-            </el-scrollbar>
-
-            <el-scrollbar class="scrollar" v-if="!showLeftList">
-              <el-menu background-color="rgb(44,48,57)" text-color="rgb(255,255,255)"
-                active-text-color="rgb(255,255,255)" router :default-openeds="['0']">
-                <template v-for="(v, i) in leList" :key="i">
-                  <template v-if="v.sList.length > 0">
-                    <el-sub-menu :index="i.toString()">
-                      <template v-slot:title>
-                        <i class="el-icon-location"></i>
-                        <span>{{ v.title }}</span>
-                      </template>
-                      <el-menu-item-group v-for="(item, j) in v.sList" :key="j">
-                        <el-menu-item :index="'/' + item.name" @click="routerName(item.name)">{{ item.title
-                          }}</el-menu-item>
-                      </el-menu-item-group>
-                    </el-sub-menu>
-                  </template>
-                  <template v-else>
-                    <el-menu-item :index="'/' + v.name" @click="routerName(v.name)">
-                      <i class="el-icon-menu"></i>
-                      <span>{{ v.title }}</span>
-                    </el-menu-item>
-                  </template>
-                </template>
-              </el-menu>
-            </el-scrollbar>
-          </el-aside>
-          <!--   router-view 控制显示VUE页面，VUE会根据路由路径不同.vue文件的内容，我们设计的所有vue文件内容都在这里渲染 -->
-          <el-main>
-            <router-view />
-          </el-main>
-        </el-container>
-      </el-container>
+        </TransitionGroup>
+        <AccountSwitcher
+          v-if="loggedIn"
+          :user-info="userInfo"
+          @logout="logout"
+          @notice="showSwitchNotice"
+        />
+        <div class="platform-account" v-else>
+          <span>简体中文</span
+          ><span class="platform-online">4398 PLATFORM</span>
+        </div>
+      </div>
+    </header>
+    <!-- 当登录成功后显示主页面 -->
+    <div class="platform-workspace" v-if="loggedIn">
+      <!-- 中心区域的菜单区域 -->
+      <aside
+        id="workspace-navigation"
+        class="platform-sidebar"
+        :class="{ 'is-expanded': menuExpanded }"
+        aria-label="功能菜单"
+      >
+        <div class="workspace-menu-title">功能菜单</div>
+        <details
+          v-for="group in systemConfig.naviList"
+          :key="group.id"
+          class="sidebar-group"
+          :aria-label="group.title"
+          :open="groupOpen(group.id)"
+          @toggle="syncGroup(group.id, $event)"
+        >
+          <summary>{{ group.title }}</summary>
+          <template v-for="item in group.sList" :key="item.id">
+            <RouterLink
+              v-if="item.name && item.name !== 'GameUserManage'"
+              :to="'/' + item.name"
+              @click="closeMenu"
+              ><span
+                :class="menuIcon(item.name)"
+                class="sidebar-icon"
+                aria-hidden="true"
+              ></span
+              ><span>{{ menuTitle(item) }}</span></RouterLink
+            >
+            <template v-else-if="!item.name"
+              ><RouterLink
+                v-for="child in item.sList"
+                :key="child.id"
+                :to="'/' + child.name"
+                @click="closeMenu"
+                ><span
+                  :class="menuIcon(child.name)"
+                  class="sidebar-icon"
+                  aria-hidden="true"
+                ></span
+                >{{ child.title }}</RouterLink
+              ></template
+            >
+          </template>
+        </details>
+        <nav class="sidebar-shortcuts" aria-label="更多功能">
+          <RouterLink to="/AiSupport" @click="closeMenu"
+            ><span class="i-ep-chat-dot-round" aria-hidden="true"></span>AI
+            客服</RouterLink
+          >
+          <RouterLink v-if="isAdmin" to="/AccountManage" @click="closeMenu"
+            ><span class="i-ep-setting" aria-hidden="true"></span
+            >账户管理</RouterLink
+          >
+        </nav>
+      </aside>
+      <!-- router-view 根据页面地址显示对应功能 -->
+      <main class="platform-main" id="main-content">
+        <div
+          class="workspace-page"
+          :class="{ 'workspace-support': $route.path === '/AiSupport' }"
+        >
+          <!-- 只缓存列表，返回标签时保留内容，密码和账户表单仍会重新创建 -->
+          <router-view v-slot="page">
+            <Transition name="page" appear>
+              <KeepAlive
+                :key="userInfo.username"
+                :include="cachedPages"
+                :max="cacheLimit"
+              >
+                <component :is="page.Component" :key="page.route.path" />
+              </KeepAlive>
+            </Transition>
+          </router-view>
+        </div>
+      </main>
     </div>
-    <!--  当登录前显示此DIV router-view 控制显示VUE页面，VUE会根据路由路径不同.vue文件的内容， 初始路由路径为/，显示Login.vue内容 -->
-    <div style="height: 100%" v-else>
-      <router-view />
-    </div>
+    <!-- 当登录前显示登录注册页面 -->
+    <router-view v-else v-slot="page">
+      <Transition name="page" mode="out-in" appear>
+        <component :is="page.Component" :key="page.route.path" />
+      </Transition>
+    </router-view>
+    <Octorange v-if="loggedIn" :key="userInfo.id" :user-id="userInfo.id" />
+    <footer v-if="loggedIn" class="workspace-status">
+      <span>4398 游戏平台 · 第02组</span
+      ><span>{{ roleName }}：{{ displayName }}</span
+      ><span v-reveal="switchNotice" role="status">{{ switchNotice }}</span
+      ><time>{{ clock }}</time>
+    </footer>
+    <footer v-else class="platform-footer">
+      <div>
+        <strong>4398</strong><span>游戏平台</span
+        ><span>游戏库 · 收藏 · 游玩记录</span>
+      </div>
+    </footer>
   </div>
 </template>
 
-<script lang="ts">
-// 引入使用的组件、函数和数据接口
-import { mapState } from "pinia";
-import { defineComponent } from "vue";
-import { useAppStore } from "~/stores/app";
-import router from "~/router";
-import { type MenuInfo } from "~/models/general";
-import { formatTime } from "~/tools/comMethod";
-// vue3中新增了 defineComponent ，它并没有实现任何的逻辑，只是把接收的 Object 直接返回，它的存在就是完全为了服务 TypeScript 而存在的。
-// 我都知道普通的组件就是一个普通的对象，既然是一个普通的对象，那自然就不会获得自动的提示，
-export default defineComponent({
-  // templte中使用的数据
-  data: () => ({
-    isCollapse: false,
-    leList: [] as MenuInfo[],
-    funId: "",
-    showLeftList: true,
-    timer: null as any,
-    currentTime: formatTime(new Date()),
-  }),
-  //生命周期函数  mounted() 在实例挂载之后调用， 设置定期刷新控制台时间
-  mounted() {
-    if (this.timer) {
-      clearInterval(this.timer);
-    } else {
-      this.timer = setInterval(() => {
-        this.currentTime = formatTime(new Date());
-      }, 1000);
-    }
-    const store = useAppStore();
+<script>
+import { useAppStore } from "../stores/app";
+import * as navigation from "../logic/navigation.js";
+import * as account from "../logic/account.js";
+import AccountSwitcher from "./AccountSwitcher.vue";
+import Octorange from "./Octorange.vue";
+
+const CACHED_PAGES = ["GameList", "GameRecords"];
+const PAGE_CACHE_LIMIT = 6;
+const MENU_ICONS = {
+  MainPage: "i-ep-house",
+  GameCatalog: "i-ep-grid",
+  GameLibrary: "i-ep-folder",
+  GameFavorites: "i-ep-star",
+  GameRecords: "i-ep-document",
+  GameUserProfile: "i-ep-user",
+  Password: "i-ep-lock",
+  MenuManage: "i-ep-menu",
+  DictionaryManage: "i-ep-collection",
+};
+
+/** 返回标签页、菜单展开状态和时钟数据 */
+function workspaceState() {
+  return {
+    tabs: navigation.createHomeTabs(),
+    closedGroups: [],
+    clock: "",
+    clockTimer: null,
+    cachedPages: CACHED_PAGES,
+    cacheLimit: PAGE_CACHE_LIMIT,
+    switchNotice: "",
+    menuExpanded: false,
+  };
+}
+
+/** 返回当前账户的登录信息 */
+function readUserInfo() {
+  return useAppStore().userInfo;
+}
+/** 返回当前账户的菜单 */
+function readSystemConfig() {
+  return useAppStore().systemConfig;
+}
+/** 判断当前账户是否已经登录 */
+function readLoggedIn() {
+  return Boolean(this.userInfo.loggedIn && this.userInfo.token);
+}
+/** 返回账户昵称，没有昵称时显示账号 */
+function readDisplayName() {
+  return account.getDisplayName(this.userInfo);
+}
+/** 返回账户角色的中文名称 */
+function readRoleName() {
+  return account.getRoleName(this.userInfo.role);
+}
+/** 返回品牌链接的目标页面 */
+function readHomePath() {
+  if (this.loggedIn) {
+    return "/MainPage";
+  }
+  return "/Login";
+}
+/** 首页保留原路由地址，菜单文字统一显示为首页 */
+function menuTitle(item) {
+  return navigation.getMenuTitle(item);
+}
+/** 根据页面名称返回菜单图标，未知页面显示通用文档图标 */
+function menuIcon(name) {
+  if (MENU_ICONS[name]) {
+    return MENU_ICONS[name];
+  }
+  return "i-ep-document";
+}
+/** 切换小屏功能菜单，展开状态同时提供给辅助阅读工具 */
+function toggleMenu() {
+  this.menuExpanded = !this.menuExpanded;
+}
+/** 选择页面后收起小屏菜单，让内容区恢复完整高度 */
+function closeMenu() {
+  this.menuExpanded = false;
+}
+/** 页面加载后恢复菜单，失败时清除过期的登录信息 */
+async function restoreNavigation() {
+  this.updateClock();
+  this.clockTimer = window.setInterval(
+    this.updateClock,
+    navigation.CLOCK_INTERVAL
+  );
+  if (!this.loggedIn) {
+    // 未登录访问范围由路由守卫处理，保留用户选择的管理员登录入口
+    return;
+  }
+  try {
+    await useAppStore().setNavi();
+    this.rememberPage(this.$route.path);
     if (
-      store.userInfo.username &&
-      store.userInfo.username.length > 0 &&
-      store.systemConfig.showLeftMeun
+      this.$route.path === "/Login" ||
+      this.$route.path === "/AdminLogin" ||
+      this.$route.path === "/"
     ) {
-      router.push({ path: "/MainPage" });
-    } else {
-      router.push({ path: "/Login" });
+      await this.$router.replace("/MainPage");
     }
-  },
-  // 生命周期函数  unmounted() 在实例销毁之后调用，清除定期刷新控制台时间
-  unmounted() {
-    clearInterval(this.timer);
-  },
-  // 计算属性 用于计算属性，计算属性的结果会被缓存，除非依赖的响应式属性变化才会重新计算 当用户信息和菜单更新后页面会重新显然，显示主界面
+  } catch (error) {
+    await this.logout();
+  }
+}
+/** 离开框架时停止时钟，防止重复创建定时器 */
+function stopClock() {
+  window.clearInterval(this.clockTimer);
+}
+/** 使用北京时间更新底部状态栏 */
+function updateClock() {
+  const now = new Date();
+  this.clock = navigation.formatClock(now);
+}
+/** 路由变化时添加标签页，同一页面只添加一次 */
+function rememberPage(path) {
+  if (
+    !this.loggedIn ||
+    path === "/Login" ||
+    path === "/AdminLogin" ||
+    path === "/"
+  ) {
+    return;
+  }
+  const name = path.substring(1);
+  let title = navigation.findMenuTitle(this.systemConfig.naviList, name);
+  if (title === "") {
+    title = this.$route.name || name;
+  }
+  navigation.rememberTab(this.tabs, path, title);
+}
+/** 关闭指定标签，关闭当前页时打开左边的页面 */
+function closeTab(path) {
+  const currentPath = this.$route.path;
+  const nextPath = navigation.removeTab(this.tabs, path, currentPath);
+  if (nextPath !== currentPath) {
+    this.$router.push(nextPath);
+  }
+}
+/** 返回当前页面的无障碍标记，其他页面不设置该标记 */
+function currentPage(path) {
+  if (this.$route.path === path) {
+    return "page";
+  }
+  return undefined;
+}
+/** 判断左侧分组是否应该展开 */
+function groupOpen(id) {
+  return !this.closedGroups.includes(id);
+}
+/** 记录用户折叠的分组，避免页面刷新状态时自动展开 */
+function syncGroup(id, event) {
+  navigation.updateGroup(this.closedGroups, id, event.target.open);
+}
+/** 将切号结果显示在状态栏，工作区不再重复读取切号选项 */
+function showSwitchNotice(message) {
+  this.switchNotice = message;
+}
+/** 登录身份变化时清空标签，列表缓存也由账户名称区分 */
+function accountChanged() {
+  this.tabs = navigation.createHomeTabs();
+  this.closedGroups = [];
+  this.switchNotice = "";
+  this.closeMenu();
+}
+/** 将当前身份用于界面入口显示，接口仍由后端检查 */
+function readIsAdmin() {
+  return this.userInfo.role === "ROLE_ADMIN";
+}
+/** 清除登录状态并返回登录页面 */
+async function logout() {
+  useAppStore().logout();
+  this.tabs = navigation.createHomeTabs();
+  this.closedGroups = [];
+  await this.$router.replace("/Login");
+}
+export default {
+  components: { AccountSwitcher: AccountSwitcher, Octorange: Octorange },
+  data: workspaceState,
   computed: {
-    ...mapState(useAppStore, ["systemConfig"]),
-    ...mapState(useAppStore, ["userInfo"]),
+    userInfo: readUserInfo,
+    systemConfig: readSystemConfig,
+    loggedIn: readLoggedIn,
+    displayName: readDisplayName,
+    roleName: readRoleName,
+    homePath: readHomePath,
+    isAdmin: readIsAdmin,
+  },
+  mounted: restoreNavigation,
+  beforeUnmount: stopClock,
+  watch: {
+    "$route.path": { handler: rememberPage, immediate: true },
+    "userInfo.username": accountChanged,
   },
   methods: {
-    // 退出登录
-    logout() {
-      const store = useAppStore();
-      store.logout();
-      router.push({ path: "/Login" });
-    },
-    // 获取二级菜单
-    getSecondList(id: number) {
-      const store = useAppStore();
-      store.setLeftList(id);
-      router.push({ path: "/MainPage" });
-    },
-    // 路由跳转 如果路由名为ProjectHtml或者ProjectVideo则打开新的窗口 其他的路由跳转到对应的页面
-    routerName(name: string) {
-      if (name == null || name == undefined || name == "") {
-        return;
-      }
-      if (name == "ProjectHtml") {
-        this.openProjectHtml();
-        return;
-      }
-      if (name == "ProjectVideo") {
-        this.openProjectVideo();
-        return;
-      }
-      router.push({ path: "/" + name });
-    },
-    // 打开新窗口 显示projectDoc.html内容，这个文件在public目录下,同学要修改该页面的内容，作为项目详细介绍的页面，用于检查作业的老师直接打开该页面即可看到作业的详细介绍
-    openProjectHtml() {
-      window.open("projectDoc.html");
-    },
-    // 打开新窗口 显示projectVideo.html内容，这个文件在public目录下,同学要录制项目特色视频，作为项目特色介绍视频包房，用于检查作业的老师直接打开该页面查看项目特色
-    openProjectVideo() {
-      window.open("projectVideo.html");
-    },
+    logout: logout,
+    menuTitle: menuTitle,
+    menuIcon: menuIcon,
+    toggleMenu: toggleMenu,
+    closeMenu: closeMenu,
+    updateClock: updateClock,
+    closeTab: closeTab,
+    currentPage: currentPage,
+    groupOpen: groupOpen,
+    syncGroup: syncGroup,
+    rememberPage: rememberPage,
+    showSwitchNotice: showSwitchNotice,
   },
-});
+};
 </script>
-<!-- 这个是系统主页面的样式，同学可以根据自己的喜好修改 -->
-<style lang="scss" scoped>
-.el-menu-item.is-active {
-  background-color: rgb(105, 74, 74) !important;
-}
-
-.el-menu--horizontal>.el-menu-item {
-  height: 44px;
-  line-height: 44px;
-  font-family: SourceHanSansCN-Regular;
-  font-size: 16px;
-  color: #ffffff;
-  letter-spacing: 0;
-  font-weight: 400;
-}
-
-.el-menu--horizontal>.el-menu-item.is-active {
-  background-color: rgb(197, 24, 32) !important;
-}
-
-.topHeader {
-  padding: 0px;
-}
-
-.m-header {
-  height: 60px !important;
-  background-color: rgb(255, 255, 255);
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-
-.header {
-  display: flex;
-  flex-direction: column;
-}
-
-.right {
-  cursor: pointer;
-  display: flex;
-  flex-direction: row;
-}
-
-.scrollar {
-  height: 100%;
-  overflow-x: hidden;
-  background-color: rgb(44, 48, 57);
-}
-
-.pername {
-  margin-top: 15px;
-  font-size: 20px;
-  color: gray;
-  font-weight: bold;
-}
-
-.titile {
-  font-size: 29px;
-  color: #0067ff;
-  letter-spacing: 0;
-  font-weight: bold;
-  background-color: #ffffff;
-  width: 180px;
-  height: 40px;
-  margin-top: 10px;
-  margin-left: 40px;
-}
-
-.right-header {
-  font-family: PingFangSC-Regular;
-  font-size: 14px;
-  color: #47474a;
-  letter-spacing: 0;
-  font-weight: 400;
-  margin-top: 20px;
-  margin-right: 30px;
-}
-
-.shuxian {
-  margin-top: 5px;
-  margin-bottom: 5px;
-  height: 50px;
-  width: 1px;
-  background: #cfd2d7;
-  margin-right: 30px;
-}
-
-.tuichu {
-  font-family: PingFangSC-Regular;
-  font-size: 14px;
-  color: #47474a;
-  letter-spacing: 0;
-  font-weight: 400;
-  margin-top: 20px;
-  margin-right: 30px;
-}
-
-.icon_tuichu {
-  margin-top: 23px;
-  margin-right: 10px;
-  background: url("/loginOut.png");
-  width: 14px;
-  height: 14px;
-}
-
-.image {
-  width: 30px;
-  margin-top: 15px;
-  margin-right: 20px;
-  height: 30px;
-}
-
-.search {
-  margin-top: 23px;
-  margin-right: 30px;
-  background: url("/serch.png");
-  width: 18px;
-  height: 18px;
-}
-
-.question {
-  margin-top: 23px;
-  margin-right: 30px;
-  background: url("/question.png");
-  width: 18px;
-  height: 18px;
-}
-
-.alarm {
-  margin-top: 23px;
-  margin-right: 80px;
-  background: url("/alarm.png");
-  width: 18px;
-  height: 18px;
-}
-
-.leftIcon {
-  cursor: pointer;
-  margin-top: 23px;
-  margin-left: 18px;
-  background: url("/leftright.png");
-  width: 18px;
-  height: 18px;
-}
-
-.outer1 {
-  background-color: rgba(255, 255, 255, 1);
-  height: 70px;
-  width: 100%;
-}
-
-.block1 {
-  width: 95%;
-  height: 44px;
-  margin: 13px 0 0 35px;
-}
-
-.section1 {
-  width: 135px;
-  height: 40px;
-  font-size: 28px;
-  color: #930e14;
-  margin-top: 2px;
-}
-
-.section2 {
-  background-color: rgba(147, 14, 20, 1);
-  width: 1px;
-  height: 35px;
-  margin: 5px 0 0 26px;
-}
-
-.txt1 {
-  width: 216px;
-  height: 29px;
-  overflow-wrap: break-word;
-  color: rgba(147, 14, 20, 1);
-  font-size: 24px;
-  font-family: jiangxizhuokai;
-  text-align: right;
-  white-space: nowrap;
-  line-height: 29px;
-  display: block;
-  margin: 8px 0 0 19px;
-}
-
-.icon1 {
-  width: 44px;
-  height: 44px;
-}
-
-.section3 {
-  width: 140px;
-  height: 33px;
-  margin: 7px 0 0 14px;
-  background-color: rgba(255, 255, 255, 1);
-}
-
-.word1 {
-  width: 36px;
-  height: 12px;
-  overflow-wrap: break-word;
-  color: #2d2d2d;
-  font-size: 12px;
-  font-family: SourceHanSansCN-Regular;
-  text-align: right;
-  white-space: nowrap;
-  line-height: 12px;
-  display: block;
-}
-
-.info {
-  width: 140px;
-  height: 14px;
-  font-size: 12px;
-  overflow-wrap: break-word;
-  font-family: SourceHanSansCN-Regular, SourceHanSansCN;
-  font-weight: 400;
-  color: #2d2d2d;
-  white-space: nowrap;
-  line-height: 21px;
-}
-
-.section4 {
-  background-color: rgba(229, 227, 227, 1);
-  width: 1px;
-  height: 33px;
-  margin: 7px 0 0 25px;
-}
-
-.section5 {
-  width: 20px;
-  height: 33px;
-  margin: 9px 0 0 35px;
-  cursor: pointer;
-}
-
-.section6 {
-  width: 20px;
-  height: 32px;
-  margin: 9px 0 0 25px;
-  cursor: pointer;
-}
-
-.info2 {
-  width: 20px;
-  height: 10px;
-  overflow-wrap: break-word;
-  color: rgba(45, 45, 45, 1);
-  font-size: 10px;
-  font-family: SourceHanSansCN-Regular;
-  text-align: right;
-  white-space: nowrap;
-  line-height: 10px;
-  margin-top: 8px;
-  display: block;
-}
-
-.flex-col {
-  display: flex;
-  flex-direction: column;
-}
-
-.flex-row {
-  display: flex;
-  flex-direction: row;
-}
-
-.justify-between {
-  display: flex;
-  justify-content: space-between;
-}
-
-.shuaxin {
-  width: 20px;
-  height: 10px;
-  overflow-wrap: break-word;
-  color: rgba(45, 45, 45, 1);
-  font-size: 10px;
-  text-align: right;
-  white-space: nowrap;
-  line-height: 10px;
-  margin-top: 8px;
-}
-
-.shuxinImage {
-  width: 16px;
-  height: 14px;
-  background: url("/refresh.png");
-  margin-left: 3px;
-}
-
-.tuichuImage {
-  width: 14px;
-  height: 14px;
-  background: url("/tuichu.png");
-  margin-left: 5px;
-}
-
-.box1 {
-  width: 235px;
-  height: 24px;
-  font-size: 22px;
-  color: #930e14;
-  margin: 12px 0 0 19px;
-}
-</style>

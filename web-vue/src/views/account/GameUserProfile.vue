@@ -1,7 +1,11 @@
 <template>
   <section class="game-page">
     <h2>个人资料</h2>
-    <form class="game-form" @submit.prevent="save">
+    <form
+      class="game-form motion-results"
+      @submit.prevent="save"
+      :aria-busy="loaded && loading"
+    >
       <label>账号<input :value="form.username" readonly /></label>
       <label>昵称<input v-model="form.name" maxlength="50" required /></label>
       <label
@@ -12,31 +16,41 @@
         >个人签名<textarea v-model="form.signature" maxlength="200"></textarea>
       </label>
       <button type="submit">保存</button>
-      <p role="status">{{ notice }}</p>
+      <p v-reveal="notice" role="status">{{ notice }}</p>
     </form>
   </section>
 </template>
 <script>
 import { getProfile, saveProfile } from "../../services/gameUserServ";
 export default {
-  data: function () {
-    return { form: {}, notice: "" };
+  // 创建当前页面独立的数据，避免多个页面共用表单
+  data: function data() {
+    return { form: {}, notice: "", loading: false, loaded: false };
   },
-  created: async function () {
+  // 页面打开时加载初始资料
+  created: async function created() {
+    this.loading = true;
     try {
       const result = await getProfile();
       if (result.code === 0) {
         this.form = result.data;
+        this.loaded = true;
       } else {
         this.notice = result.msg;
       }
     } catch (error) {
       this.notice = "加载失败";
+    } finally {
+      this.loading = false;
     }
   },
   methods: {
-    // 保存当前账户的个人资料。
-    save: async function () {
+    // 保存当前账户的个人资料
+    save: async function save() {
+      if (this.loading) {
+        return;
+      }
+      this.loading = true;
       try {
         const result = await saveProfile(this.form);
         if (result.code === 0) {
@@ -46,6 +60,8 @@ export default {
         }
       } catch (error) {
         this.notice = "保存失败";
+      } finally {
+        this.loading = false;
       }
     },
   },

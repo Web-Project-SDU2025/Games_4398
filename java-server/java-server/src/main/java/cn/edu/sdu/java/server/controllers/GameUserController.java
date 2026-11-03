@@ -58,7 +58,7 @@ public class GameUserController {
     }
 
     /**
-     * 删除一个游戏用户账户，只允许管理员调用。
+     * 删除账号，只允许管理员调用，系统 admin 受后端保护
      * @param request data 中包含 userId
      * @return 删除成功或失败的响应
      */
@@ -66,5 +66,11 @@ public class GameUserController {
     @PreAuthorize("hasRole('ADMIN')")
     public DataResponse delete(@RequestBody DataRequest request) {
         return service.deleteAccount(request);
+    }
+    /** 管理员专用的账户资料和角色保存接口，普通资料接口不接受角色修改 */
+    @PostMapping("/adminSave")
+    @PreAuthorize("hasRole('ADMIN')")
+    public DataResponse adminSave(@RequestBody DataRequest request) {
+        return service.saveAccount(request);
     }
 }

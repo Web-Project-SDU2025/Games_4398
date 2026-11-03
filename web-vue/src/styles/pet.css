@@ -1,0 +1,258 @@
+.pet-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+.pet-obscured {
+  visibility: hidden;
+}
+.pet-character {
+  position: fixed;
+  width: 160px;
+  height: 120px;
+  pointer-events: none;
+}
+.pet-toggle {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  touch-action: none;
+  pointer-events: auto;
+  cursor: grab;
+}
+.pet-toggle:active {
+  cursor: grabbing;
+}
+.pet-toggle img,
+.pet-avatar img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0;
+}
+.pet-toggle img.active,
+.pet-avatar img.active {
+  opacity: 1;
+}
+.pet-hide,
+.pet-restore,
+.pet-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-header);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.pet-hide {
+  position: absolute;
+  top: 0;
+  right: 0;
+  pointer-events: auto;
+  min-width: 28px;
+  min-height: 28px;
+}
+.pet-restore {
+  position: fixed;
+  right: 16px;
+  bottom: 48px;
+  width: 44px;
+  height: 44px;
+  pointer-events: auto;
+}
+.pet-hide span,
+.pet-restore span,
+.pet-panel button > span {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+.pet-toggle:focus-visible,
+.pet-root button:focus-visible,
+.pet-panel a:focus-visible,
+.pet-panel input:focus-visible,
+.pet-panel textarea:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.pet-greeting {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: max-content;
+  max-width: min(220px, calc(100vw - 32px));
+  padding: 10px 14px;
+  margin: 0 0 4px;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-header);
+  color: var(--color-ink);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.pet-panel {
+  position: fixed;
+  inset: auto 16px 48px auto;
+  box-sizing: border-box;
+  width: min(380px, calc(100vw - 24px));
+  max-height: calc(100dvh - 80px);
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 12px 32px var(--color-overlay);
+  overflow: hidden;
+  pointer-events: auto;
+}
+.pet-panel:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+.pet-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-header);
+}
+.pet-panel-heading > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pet-panel-heading > .pet-avatar {
+  position: relative;
+  flex: 0 0 40px;
+  height: 34px;
+}
+.pet-panel-heading strong,
+.pet-panel-heading small {
+  display: block;
+}
+.pet-panel-heading strong {
+  font-size: 16px;
+}
+.pet-panel-heading small {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.support-compact {
+  padding: 12px 12px 0;
+  height: min(420px, calc(100dvh - 240px));
+  flex: 0 1 auto;
+  max-width: none;
+  margin: 0;
+}
+.support-compact .support-scroll {
+  min-height: 0;
+}
+.support-compact .support-thread {
+  padding: 0;
+}
+.support-compact .support-welcome {
+  padding: 12px 0;
+}
+.support-compact .support-welcome h1 {
+  font-size: 20px;
+}
+.support-compact .support-welcome p,
+.support-compact .support-message {
+  font-size: 14px;
+}
+.support-compact .support-suggestions {
+  gap: 6px;
+  margin-top: 12px;
+}
+.support-compact .support-suggestions button {
+  padding: 6px 10px;
+  min-height: 36px;
+  font-size: 13px;
+}
+.support-compact .support-composer {
+  padding: 8px;
+}
+.support-compact .support-composer textarea {
+  min-height: 52px;
+  max-height: 100px;
+  font-size: 14px;
+  height: 52px;
+}
+.support-compact .support-message {
+  margin-bottom: 12px;
+}
+.support-compact .support-notice {
+  margin: 0;
+  font-size: 12px;
+}
+.support-compact .support-markdown h1 {
+  font-size: 18px;
+}
+.support-compact .support-markdown h2,
+.support-compact .support-markdown h3 {
+  font-size: 16px;
+}
+.pet-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--color-rule);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.pet-panel-footer label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pet-panel-footer a {
+  color: var(--color-accent);
+}
+.pet-notice {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--color-error);
+  font-size: 12px;
+}
+@media (max-width: 639px) {
+  .pet-character {
+    width: 104px;
+    height: 78px;
+  }
+  .pet-panel {
+    right: 12px;
+  }
+}
+@media (max-height: 500px) {
+  .pet-panel {
+    bottom: 12px;
+    max-height: calc(100dvh - 24px);
+  }
+  .support-compact {
+    height: calc(100dvh - 140px);
+  }
+  .support-compact .support-composer textarea {
+    height: 28px;
+    min-height: 28px;
+    resize: none;
+  }
+}

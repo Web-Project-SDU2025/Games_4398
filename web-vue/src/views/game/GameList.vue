@@ -1,5 +1,5 @@
 <template>
-  <section class="game-page">
+  <section class="game-page catalog-page">
     <h2>{{ title }}</h2>
     <form class="game-toolbar" @submit.prevent="query">
       <label>游戏编号或名称 <input v-model="search" /></label>
@@ -12,54 +12,80 @@
         添加游戏
       </button>
     </form>
-    <p role="status">{{ notice }}</p>
-    <div class="game-table-wrap" :aria-busy="loading">
-      <table class="game-table">
-        <thead>
-          <tr>
-            <th>游戏编号</th>
-            <th>游戏名称</th>
-            <th>分类</th>
-            <th>介绍</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="game in games" :key="game.gameId">
-            <td>{{ game.num }}</td>
-            <td>{{ game.name }}</td>
-            <td>{{ game.category }}</td>
-            <td>{{ game.description }}</td>
-            <td class="game-actions">
-              <button
-                v-if="!game.owned"
-                @click="setCollection(game, 'library', true)"
-              >
-                加入游戏库
-              </button>
-              <button v-else @click="setCollection(game, 'library', false)">
-                移出游戏库
-              </button>
-              <button
-                v-if="!game.favorite"
-                @click="setCollection(game, 'favorites', true)"
-              >
-                收藏
-              </button>
-              <button v-else @click="setCollection(game, 'favorites', false)">
-                取消收藏
-              </button>
-              <template v-if="admin && mode === 'catalog'">
-                <button @click="editGame(game)">编辑</button
-                ><button @click="removeGame(game)">删除</button>
-              </template>
-            </td>
-          </tr>
-          <tr v-if="!loading && games.length === 0">
-            <td colspan="5">暂无游戏</td>
-          </tr>
-        </tbody>
-      </table>
+    <p v-reveal="notice" role="status">{{ notice }}</p>
+    <div class="motion-results" :aria-busy="loaded && loading">
+      <div v-if="!loaded" class="catalog-empty" role="status">
+        {{ notice || "正在加载游戏列表" }}
+      </div>
+      <div v-else-if="games.length === 0" class="catalog-empty">
+        <img
+          src="/images/game-collection.png"
+          alt="电脑上的游戏库"
+          width="772"
+          height="528"
+        />
+        <h3>这里还没有游戏</h3>
+        <RouterLink
+          v-if="mode !== 'catalog'"
+          class="platform-secondary-button"
+          to="/GameCatalog"
+          >浏览游戏列表</RouterLink
+        >
+        <button v-else-if="admin" type="button" @click="editGame(null)">
+          添加第一个游戏
+        </button>
+      </div>
+      <div v-else class="game-table-wrap">
+        <table class="game-table">
+          <thead>
+            <tr>
+              <th>游戏编号</th>
+              <th>游戏名称</th>
+              <th>分类</th>
+              <th>介绍</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="game in games" :key="game.gameId">
+              <td>{{ game.num }}</td>
+              <td>
+                <span class="catalog-game-name"
+                  ><img src="/favicon.svg" alt="" width="40" height="40" />{{
+                    game.name
+                  }}</span
+                >
+              </td>
+              <td>{{ game.category }}</td>
+              <td>{{ game.description }}</td>
+              <td class="game-actions">
+                <button
+                  v-if="!game.owned"
+                  @click="setCollection(game, 'library', true)"
+                >
+                  加入游戏库
+                </button>
+                <button v-else @click="setCollection(game, 'library', false)">
+                  移出游戏库
+                </button>
+                <button
+                  v-if="!game.favorite"
+                  @click="setCollection(game, 'favorites', true)"
+                >
+                  收藏
+                </button>
+                <button v-else @click="setCollection(game, 'favorites', false)">
+                  取消收藏
+                </button>
+                <template v-if="admin && mode === 'catalog'">
+                  <button @click="editGame(game)">编辑</button
+                  ><button @click="removeGame(game)">删除</button>
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <!-- 对话框显示 -->
     <dialog ref="editor">
@@ -94,39 +120,53 @@ import {
   changeCollection,
 } from "../../services/gameServ";
 import { useAppStore } from "../../stores/app";
+import { createGameForm } from "../../logic/forms.js";
+import { messageConform } from "../../tools/messageBox.js";
 
 export default {
+  name: "GameList",
   props: { mode: String, title: String },
-  // 双向绑定数据。
-  data: function () {
+  // 双向绑定数据
+  data: function gameListState() {
     return {
       search: "",
       games: [],
       loading: false,
+      loaded: false,
+      loadedRevision: -1,
       notice: "",
       editorNotice: "",
       form: {},
     };
   },
   computed: {
-    admin: function () {
+    // 管理员可以维护游戏资料
+    admin: function isAdmin() {
       return useAppStore().userInfo.role === "ROLE_ADMIN";
     },
   },
-  watch: { mode: "query" },
-  // 初始加载游戏列表。
-  created: function () {
-    this.query();
+  // 已加载且没有数据修改时直接显示缓存，不因切换标签再次刷新
+  activated: function loadGames() {
+    const revision = useAppStore().gameRevision;
+    if (!this.loaded || this.loadedRevision !== revision) {
+      return this.query();
+    }
   },
   methods: {
-    // 查询当前游戏列表。
-    query: async function () {
+    // 查询当前游戏列表
+    query: async function query() {
+      if (this.loading) {
+        return;
+      }
       this.loading = true;
       this.notice = "";
+      const revision = useAppStore().gameRevision;
       try {
         const result = await getGames(this.mode, this.search);
         if (result.code === 0) {
           this.games = result.data;
+          this.loaded = true;
+          this.loadedRevision = revision;
         } else {
           this.notice = result.msg;
         }
@@ -136,32 +176,18 @@ export default {
         this.loading = false;
       }
     },
-    // 编辑游戏时复制表单，取消后不会改变列表内容。
-    editGame: function (game) {
+    // 编辑游戏时复制表单，取消后不会改变列表内容
+    editGame: function editGame(game) {
       this.editorNotice = "";
-      this.form = {
-        num: "",
-        name: "",
-        category: "",
-        description: "",
-        gamePath: "",
-      };
-      if (game) {
-        this.form.gameId = game.gameId;
-        this.form.num = game.num;
-        this.form.name = game.name;
-        this.form.category = game.category;
-        this.form.description = game.description;
-        this.form.gamePath = game.gamePath;
-      }
+      this.form = createGameForm(game);
       this.$refs.editor.showModal();
     },
-    // 关闭对话框。
-    close: function () {
+    // 关闭对话框
+    close: function close() {
       this.$refs.editor.close();
     },
-    // 保存游戏，失败时保留填写的内容。
-    confirmGame: async function () {
+    // 保存游戏，失败时保留填写的内容
+    confirmGame: async function confirmGame() {
       try {
         const result = await saveGame(this.form);
         if (result.code !== 0) {
@@ -174,9 +200,12 @@ export default {
         this.editorNotice = "保存失败";
       }
     },
-    // 删除游戏。
-    removeGame: async function (game) {
-      if (!window.confirm("确认删除游戏“" + game.name + "”？")) {
+    // 删除游戏
+    removeGame: async function removeGame(game) {
+      const confirmed = await messageConform(
+        "确认删除游戏“" + game.name + "”？"
+      );
+      if (!confirmed) {
         return;
       }
       try {
@@ -190,7 +219,8 @@ export default {
         this.notice = "删除失败";
       }
     },
-    setCollection: async function (game, mode, added) {
+    // 按指定方式加入或移出游戏库、收藏列表
+    setCollection: async function setCollection(game, mode, added) {
       try {
         const result = await changeCollection(game.gameId, mode, added);
         if (result.code !== 0) {

@@ -41,3 +41,8 @@ attach:
   folder: /teach-2025/
 logging:
   config: classpath:loggback.xml
+app:
+  ai:
+    api-key: ${DASHSCOPE_API_KEY:}
+  # 本地配置文件可开启检查切号，服务器默认关闭
+  local-account-switch: ${LOCAL_ACCOUNT_SWITCH:false}

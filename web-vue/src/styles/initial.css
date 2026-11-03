@@ -1,0 +1,9 @@
+@import "../../../tokens.css";
+
+/* 脚本加载前先显示深色底，整页刷新时不会短暂出现浏览器默认白底 */
+html,
+body {
+  margin: 0;
+  background: var(--color-header);
+  color: var(--color-ink);
+}

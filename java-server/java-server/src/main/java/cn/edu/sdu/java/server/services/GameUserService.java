@@ -134,9 +134,9 @@ public class GameUserService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    // 删除游戏用户，管理员账号和当前账号不能在这里删除。
+    // 删除账号时保护系统 admin 和当前账号
     /**
-     * 删除一个游戏用户账户，并清理账户关联的游戏库、收藏和游戏记录。
+     * 删除账号，并清理账户关联的游戏库、收藏和游戏记录
      * @param request data 中包含 userId
      * @return 删除成功或失败的响应
      */
@@ -147,8 +147,8 @@ public class GameUserService {
             return CommonMethod.getReturnMessageError("不能删除当前账号");
         }
         User user = userRepository.findById(userId).orElseThrow();
-        if ("ROLE_ADMIN".equals(user.getUserType().getName())) {
-            return CommonMethod.getReturnMessageError("不能删除管理员账号");
+        if ("admin".equalsIgnoreCase(user.getUserName())) {
+            return CommonMethod.getReturnMessageError("系统管理员 admin 不可删除");
         }
         user.getGames().clear();
         user.getFavorites().clear();
@@ -157,6 +157,35 @@ public class GameUserService {
         gameRecordRepository.flush();
         userRepository.delete(user);
         userRepository.flush();
+        return CommonMethod.getReturnMessageOK();
+    }
+
+    /** 管理员保存账户资料与角色，受保护账号和当前账号不能被降级 */
+    @Transactional
+    public DataResponse saveAccount(DataRequest request) {
+        Integer id = request.getInteger("userId");
+        if (id == null) {
+            return CommonMethod.getReturnMessageError("请选择要修改的账号");
+        }
+        Optional<User> found = userRepository.findById(id);
+        if (found.isEmpty()) {
+            return CommonMethod.getReturnMessageError("账号不存在");
+        }
+        String role = request.getString("role");
+        if (!"ROLE_ADMIN".equals(role) && !"ROLE_GAME_USER".equals(role)) {
+            return CommonMethod.getReturnMessageError("请选择有效的账户身份");
+        }
+        User user = found.get();
+        if (("admin".equalsIgnoreCase(user.getUserName()) || id.equals(CommonMethod.getUserId()))
+                && !"ROLE_ADMIN".equals(role)) {
+            return CommonMethod.getReturnMessageError("不能取消系统 admin 或当前账号的管理员身份");
+        }
+        user.setName(request.getString("name"));
+        user.setEmail(request.getString("email"));
+        user.setPhone(request.getString("phone"));
+        user.setSignature(request.getString("signature"));
+        user.setUserType(userTypeRepository.findByName(role));
+        userRepository.save(user);
         return CommonMethod.getReturnMessageOK();
     }
 }

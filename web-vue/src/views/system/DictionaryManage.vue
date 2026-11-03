@@ -1,146 +1,177 @@
 <template>
-  <div class="base_form">
-    <div class="base_header">
-      <div class="blue_column"></div>
-      <div class="base_title">字典管理</div>
-    </div>
+  <section class="system-page">
+    <div class="base_form">
+      <div class="base_header">
+        <div class="base_title">字典管理</div>
+      </div>
 
-    <div class="base_query_oneLine">
-      <div class="query_left">
-        <button style="margin-left: 5px" class="commButton" @click="addItemFirst">
-          添加数据项名
-        </button>
-        <button class="commButton" style="margin-left: 5px" @click="addItem">
-          添加数据项
-        </button>
-        <button class="commButton" style="margin-left: 5px" @click="editItem">
-          修改
-        </button>
-        <button class="commButton" style="margin-left: 5px" @click="deleteItem">
-          删除
-        </button>
+      <div class="base_query_oneLine">
+        <div class="query_left">
+          <button class="commButton" @click="addItemFirst">添加数据项名</button>
+          <button class="commButton" @click="addItem">添加数据项</button>
+          <button class="commButton" @click="editItem">修改</button>
+          <button class="commButton" @click="deleteItem">删除</button>
+        </div>
+      </div>
+      <div class="motion-results" :aria-busy="loaded && loading">
+        <el-tree
+          :data="nodes"
+          :props="defaultProps"
+          accordion
+          @node-click="onNodeClick"
+        ></el-tree>
       </div>
     </div>
-    <div style="margin-top: 5px" v-if="nodes !== null">
-      <el-tree :data="nodes" :props="defaultProps" accordion @node-click="onNodeClick"></el-tree>
-    </div>
-  </div>
-  <dialog id="favDialog" onclose="close()" style="
-      position: absolute;
-      top: 300px;
-      left: 300px;
-      width: 300px;
-      height: 210px;
-    ">
-    <div class="base_title">{{ dialogTitle }}</div>
-    <div class="dialog-div" style="margin-top: 5px">
-      <table class="dialog-content">
-        <tr>
-          <td colspan="1" style="text-align: right">字典名</td>
-          <td colspan="1">
-            {{ editedNode.parentTitle }}
-          </td>
-        </tr>
-        <tr>
-          <td colspan="1" style="text-align: right">数据值</td>
-          <td colspan="1">
-            <input v-model="editedNode.value" class="commInput" />
-          </td>
-        </tr>
-        <tr>
-          <td colspan="1" style="text-align: right">数据标题</td>
-          <td colspan="1">
-            <input v-model="editedNode.title" class="commInput" />
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <button class="commButton" @click="close()" style="margin-right: 30px; margin-left: 80px">
-              取消
-            </button>
-            <button class="commButton" @click="confirm()">确认</button>
-          </td>
-        </tr>
-      </table>
-    </div>
-  </dialog>
+    <dialog id="dictionary-editor" ref="editor">
+      <div class="base_title">{{ dialogTitle }}</div>
+      <div class="dialog-div">
+        <table class="dialog-content">
+          <tr>
+            <td colspan="1">字典名</td>
+            <td colspan="1">
+              {{ editedNode.parentTitle }}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="1">数据值</td>
+            <td colspan="1">
+              <input v-model="editedNode.value" class="commInput" />
+            </td>
+          </tr>
+          <tr>
+            <td colspan="1">数据标题</td>
+            <td colspan="1">
+              <input v-model="editedNode.title" class="commInput" />
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2">
+              <button class="commButton" @click="close()">取消</button>
+              <button class="commButton" @click="confirm()">确认</button>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </dialog>
+  </section>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-import { type TreeNode } from "~/models/general";
-import { getDialog } from "~/tools/comMethod";
+<script>
 import {
   getDictionaryTreeNodeList,
   dictionarySave,
   dictionaryDelete,
 } from "~/services/systemServ";
 import { message, messageConform } from "~/tools/messageBox";
-export default defineComponent({
-  data: () => ({
-    nodes: [] as TreeNode[],
-    editedNode: {} as TreeNode,
-    currentNode: {} as TreeNode,
-    deleteId: -1,
-    dialogTitle: "",
-    defaultProps: {
-      id: "id",
-      children: "children",
-      label: "label",
-    },
-  }),
-  async created() {
-    this.nodes = await getDictionaryTreeNodeList();
+import { createNodeForm } from "../../logic/forms.js";
+export default {
+  // 创建当前树形页面的状态
+  data: function treeState() {
+    return {
+      nodes: [],
+      editedNode: {},
+      currentNode: {},
+      dialogTitle: "",
+      loading: false,
+      loaded: false,
+      defaultProps: {
+        id: "id",
+        children: "children",
+        label: "label",
+      },
+    };
+  },
+  // 进入页面时加载树形数据
+  created: function created() {
+    this.query();
   },
   methods: {
-    onNodeClick(node: TreeNode) {
+    // 读取失败时保留当前树，并让用户知道请求未完成
+    query: async function query() {
+      if (this.loading) {
+        return;
+      }
+      this.loading = true;
+      try {
+        this.nodes = await getDictionaryTreeNodeList();
+        this.loaded = true;
+      } catch (error) {
+        message(this, "字典读取失败，请稍后重试");
+      } finally {
+        this.loading = false;
+      }
+    },
+    // 记录当前选中的树节点，供后续编辑使用
+    onNodeClick: function onNodeClick(node) {
       this.currentNode = node;
     },
-    addItemFirst() {
-      this.editedNode = {} as TreeNode;
-      this.editedNode.pid = null;
-      this.editedNode.parentTitle = "";
+    // 准备一级节点的表单并打开对话框
+    addItemFirst: function addItemFirst() {
+      this.editedNode = createNodeForm(null);
       this.dialogTitle = "添加字典名对话框";
-      getDialog("favDialog").show();
+      this.$refs.editor.showModal();
     },
-    addItem() {
-      this.editedNode = {} as TreeNode;
+    // 准备所选节点下的子节点表单
+    addItem: function addItem() {
+      if (!this.currentNode.id) {
+        message(this, "请先选择字典名");
+        return;
+      }
+      this.editedNode = createNodeForm(null);
       this.editedNode.pid = this.currentNode.id;
       this.editedNode.parentTitle = this.currentNode.title;
       this.dialogTitle = "添加字典项对话框";
-      getDialog("favDialog").show();
+      this.$refs.editor.showModal();
     },
-    editItem() {
-      this.editedNode = this.currentNode;
-      this.dialogTitle = "修改菜单对话框";
-      getDialog("favDialog").show();
+    // 复制选中节点，编辑内容不会直接改变树形列表
+    editItem: function editItem() {
+      if (!this.currentNode.id) {
+        message(this, "请先选择数据项");
+        return;
+      }
+      this.editedNode = createNodeForm(this.currentNode);
+      this.dialogTitle = "修改字典项对话框";
+      this.$refs.editor.showModal();
     },
-    close() {
-      getDialog("favDialog").close();
+    // 关闭当前页面的对话框
+    close: function close() {
+      this.$refs.editor.close();
     },
-    async confirm() {
-      this.close();
-      const res = await dictionarySave(this.editedNode);
-      if (res.code == 0) {
-        message(this, "保存成功");
-        this.nodes = await getDictionaryTreeNodeList();
-      } else {
-        message(this, res.msg);
+    // 保存节点并重新加载树形列表
+    confirm: async function confirm() {
+      try {
+        const result = await dictionarySave(this.editedNode);
+        if (result.code !== 0) {
+          message(this, result.msg);
+          return;
+        }
+        this.close();
+        await this.query();
+      } catch (error) {
+        message(this, "保存失败，已保留表单内容");
       }
     },
-    async deleteItem() {
+    // 确认后删除节点，取消时直接结束操作
+    deleteItem: async function deleteItem() {
+      if (!this.currentNode.id) {
+        message(this, "请先选择数据项");
+        return;
+      }
       const result = await messageConform("确认删除吗?");
       if (!result) {
         return;
       }
-      const res = await dictionaryDelete(this.currentNode.id);
-      if (res.code == 0) {
-        message(this, "删除成功");
-        this.nodes = await getDictionaryTreeNodeList();
-      } else {
-        message(this, res.msg);
+      try {
+        const result = await dictionaryDelete(this.currentNode.id);
+        if (result.code !== 0) {
+          message(this, result.msg);
+          return;
+        }
+        await this.query();
+      } catch (error) {
+        message(this, "删除失败，请稍后重试");
       }
     },
   },
-});
+};
 </script>

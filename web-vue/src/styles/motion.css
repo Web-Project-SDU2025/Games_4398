@@ -1,0 +1,300 @@
+/* 页面只淡化内容，导航和背景留在原位，避免切换时整个窗口闪动 */
+.page-enter-active,
+.page-leave-active,
+.panel-enter-active,
+.panel-leave-active {
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.tab-enter-active,
+.tab-leave-active {
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.tab-enter-from,
+.tab-leave-to {
+  opacity: 0;
+}
+.tab-leave-active {
+  position: absolute;
+  pointer-events: none;
+}
+.tab-move {
+  transition: transform var(--dur-panel) var(--ease-out);
+}
+.workspace-tabs {
+  position: relative;
+}
+.page-enter-from,
+.page-leave-to,
+.panel-enter-from,
+.panel-leave-to {
+  opacity: 0;
+}
+.admin-content {
+  position: relative;
+  min-height: 320px;
+}
+.admin-content > .panel-leave-active {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.page-leave-active {
+  pointer-events: none;
+}
+.workspace-page {
+  position: relative;
+}
+.workspace-page > .page-leave-active {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+}
+.workspace-page > .system-page,
+.workspace-page > .game-page,
+.workspace-page > .base_form {
+  min-height: 100%;
+}
+
+/* 刷新保留原内容，只改变透明度，等待状态结束后平滑恢复 */
+.motion-results {
+  opacity: 1;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.motion-results[aria-busy="true"] {
+  opacity: 0.6;
+}
+body button,
+.workspace-tab,
+.sidebar-group a,
+.dashboard-stat,
+.dashboard-account-links a,
+.auth-tabs button,
+body input,
+body textarea,
+body select {
+  transition: opacity var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),
+    border-color var(--dur-short) var(--ease-out),
+    transform var(--dur-press) var(--ease-out);
+}
+body button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* 原生对话框在关闭后暂留顶层，遮罩和内容可以一起淡出 */
+body dialog {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity var(--dur-dialog) var(--ease-out),
+    transform var(--dur-dialog) var(--ease-out),
+    display var(--dur-dialog) allow-discrete,
+    overlay var(--dur-dialog) allow-discrete;
+}
+body dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+body dialog::backdrop {
+  opacity: 0;
+  transition: opacity var(--dur-dialog) var(--ease-out),
+    display var(--dur-dialog) allow-discrete,
+    overlay var(--dur-dialog) allow-discrete;
+}
+body dialog[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  body dialog[open] {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  body dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* 原生折叠菜单仍负责键盘操作，只在浏览器支持时补上展开和收起 */
+@supports selector(details::details-content) {
+  .sidebar-group {
+    interpolate-size: allow-keywords;
+  }
+  .sidebar-group::details-content {
+    height: 0;
+    opacity: 0;
+    overflow: clip;
+    transition: height var(--dur-panel) var(--ease-out),
+      opacity var(--dur-panel) var(--ease-out),
+      content-visibility var(--dur-panel) allow-discrete;
+  }
+  .sidebar-group[open]::details-content {
+    height: auto;
+    opacity: 1;
+  }
+}
+
+/* 可定制的原生选择框保留选项和键盘行为，旧浏览器继续使用系统菜单 */
+@supports (appearance: base-select) {
+  body select,
+  body select::picker(select) {
+    appearance: base-select;
+  }
+  body select::picker(select) {
+    opacity: 0;
+    transform: translateY(-4px);
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-control);
+    background: var(--color-paper-3);
+    color: var(--color-ink);
+    padding: var(--space-xs);
+    max-height: 280px;
+    overflow: auto;
+    transition: opacity var(--dur-panel) var(--ease-out),
+      transform var(--dur-panel) var(--ease-out),
+      display var(--dur-panel) allow-discrete,
+      overlay var(--dur-panel) allow-discrete;
+  }
+  body select:open::picker(select) {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  body select option {
+    padding: var(--space-sm);
+    min-height: 32px;
+    white-space: nowrap;
+  }
+  @starting-style {
+    body select:open::picker(select) {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+/* 删除确认复用已有组件，统一弹窗颜色和开合速度 */
+.el-message-box {
+  background: var(--color-paper-2);
+  border-color: var(--color-rule);
+  --el-text-color-primary: var(--color-ink);
+  --el-text-color-regular: var(--color-muted);
+  --el-bg-color: var(--color-paper-2);
+}
+.fade-in-linear-enter-active,
+.fade-in-linear-leave-active,
+.msgbox-fade-enter-active,
+.msgbox-fade-leave-active {
+  transition-duration: var(--dur-dialog) !important;
+  animation-duration: var(--dur-dialog) !important;
+}
+.el-message-box .el-button {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  border-color: var(--color-rule);
+}
+
+/* 减少动态效果时不移动内容，保留短淡化以说明状态变化 */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active,
+  .panel-enter-active,
+  .panel-leave-active,
+  .tab-enter-active,
+  .tab-leave-active,
+  .motion-results,
+  body dialog,
+  body dialog::backdrop,
+  body select::picker(select) {
+    transition-duration: var(--dur-reduced);
+  }
+  body button,
+  .workspace-tab,
+  .sidebar-group a,
+  .dashboard-stat,
+  body input,
+  body textarea,
+  body select {
+    transition-property: opacity, background-color, color, border-color;
+  }
+  body button:not(:disabled):active,
+  body dialog,
+  body dialog[open],
+  body select::picker(select),
+  body select:open::picker(select) {
+    transform: none;
+  }
+  body dialog,
+  body dialog::backdrop,
+  body select::picker(select) {
+    transition-property: opacity, display, overlay;
+  }
+  .sidebar-group::details-content {
+    transition: opacity var(--dur-reduced) var(--ease-out);
+  }
+  .tab-move {
+    transition: none;
+  }
+  @starting-style {
+    body dialog[open],
+    body select:open::picker(select) {
+      transform: none;
+    }
+  }
+}
+.pet-toggle img,
+.pet-avatar img {
+  transition: opacity var(--dur-panel) var(--ease-out);
+}
+.pet-panel {
+  opacity: 0;
+  transform: translateY(8px);
+  transform-origin: bottom right;
+  transition: opacity var(--dur-panel) var(--ease-out),
+    transform var(--dur-panel) var(--ease-out),
+    display var(--dur-panel) allow-discrete,
+    overlay var(--dur-panel) allow-discrete;
+}
+.pet-panel:popover-open {
+  opacity: 1;
+  transform: translateY(0);
+}
+@starting-style {
+  .pet-panel:popover-open {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.pet-greeting-enter-active,
+.pet-greeting-leave-active {
+  transition: opacity var(--dur-panel) var(--ease-out);
+}
+.pet-greeting-enter-from,
+.pet-greeting-leave-to {
+  opacity: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pet-hide:hover,
+  .pet-restore:hover,
+  .pet-panel button:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    background: var(--color-paper-3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet-panel,
+  .pet-panel:popover-open {
+    transform: none;
+    transition-duration: var(--dur-reduced);
+  }
+  .pet-toggle img,
+  .pet-avatar img,
+  .pet-greeting-enter-active,
+  .pet-greeting-leave-active {
+    transition-duration: var(--dur-reduced);
+  }
+  @starting-style {
+    .pet-panel:popover-open {
+      transform: none;
+    }
+  }
+}

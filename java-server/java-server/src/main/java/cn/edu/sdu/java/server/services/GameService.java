@@ -171,6 +171,7 @@ public class GameService {
     public Map<String, Object> recordInfo(GameRecord record) {
         Map<String, Object> info = gameInfo(record.getGame());
         info.put("recordId", record.getRecordId());
+        info.put("userId", record.getUser().getUserId());
         info.put("username", record.getUser().getUserName());
         info.put("score", record.getScore());
         info.put("durationSeconds", record.getDurationSeconds());

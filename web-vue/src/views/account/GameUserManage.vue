@@ -2,16 +2,16 @@
   <!-- 账户表单区域 -->
   <section class="game-page">
     <!-- 页面标题 -->
-    <h2>用户管理</h2>
+    <h2>账户管理</h2>
     <!-- 查询区域 -->
     <form class="game-toolbar" @submit.prevent="query">
       <label>账号或昵称<input v-model="search" /></label
       ><button type="submit">查询</button>
       <button type="button" @click="edit(null)">添加账户</button>
     </form>
-    <p role="status">{{ notice }}</p>
+    <p v-reveal="notice" role="status">{{ notice }}</p>
     <!-- 账户数据表格区域 -->
-    <div class="game-table-wrap">
+    <div class="game-table-wrap motion-results" :aria-busy="loaded && loading">
       <table class="game-table">
         <thead>
           <tr>
@@ -33,7 +33,10 @@
             <td class="game-actions">
               <button @click="edit(account)">编辑</button
               ><button
-                v-if="account.role !== 'ROLE_ADMIN'"
+                v-if="
+                  account.username !== 'admin' &&
+                  account.userId !== currentUserId
+                "
                 @click="remove(account)"
               >
                 删除
@@ -64,8 +67,13 @@
             required
         /></label>
         <label>昵称<input v-model="form.name" maxlength="50" required /></label>
-        <label v-if="!editing"
-          >角色<select v-model="form.role">
+        <label
+          >角色<select
+            v-model="form.role"
+            :disabled="
+              form.username === 'admin' || form.userId === currentUserId
+            "
+          >
             <option value="ROLE_GAME_USER">游戏用户</option>
             <option value="ROLE_ADMIN">管理员</option>
           </select></label
@@ -93,11 +101,16 @@
 import {
   getAccounts,
   createAccount,
-  saveProfile,
+  saveAccount,
   deleteAccount,
 } from "../../services/gameUserServ";
+import { createAccountForm } from "../../logic/forms.js";
+import { getRoleName } from "../../logic/account.js";
+import { messageConform } from "../../tools/messageBox.js";
+import { useAppStore } from "../../stores/app.js";
 export default {
-  data: function () {
+  // 创建当前页面独立的数据，避免多个页面共用表单
+  data: function data() {
     return {
       search: "",
       accounts: [],
@@ -105,67 +118,61 @@ export default {
       editing: false,
       notice: "",
       editorNotice: "",
+      loading: false,
+      loaded: false,
     };
   },
-  created: function () {
+  // 页面打开时加载初始资料
+  created: function created() {
     this.query();
   },
-  methods: {
-    roleName: function (role) {
-      if (role === "ROLE_ADMIN") {
-        return "管理员";
-      }
-      return "游戏用户";
+  computed: {
+    // 当前账户不能删除自己，避免正在使用的会话失去主体
+    currentUserId: function currentUserId() {
+      return useAppStore().userInfo.id;
     },
-    // 查询账户。
-    query: async function () {
+  },
+  methods: {
+    // 把账户角色转成中文名称
+    roleName: function roleName(role) {
+      return getRoleName(role);
+    },
+    // 查询账户
+    query: async function query() {
+      if (this.loading) {
+        return;
+      }
+      this.loading = true;
       try {
         const result = await getAccounts(this.search);
         if (result.code === 0) {
           this.accounts = result.data;
+          this.loaded = true;
         } else {
           this.notice = result.msg;
         }
       } catch (error) {
         this.notice = "加载失败";
+      } finally {
+        this.loading = false;
       }
     },
-    // 编辑账户，使用独立表单保存输入。
-    edit: function (account) {
+    // 编辑账户，使用独立表单保存输入
+    edit: function edit(account) {
       this.editing = false;
       this.editorNotice = "";
-      this.form = {
-        username: "",
-        password: "",
-        name: "",
-        email: "",
-        phone: "",
-        signature: "",
-        role: "ROLE_GAME_USER",
-      };
+      this.form = createAccountForm(account);
       if (account) {
         this.editing = true;
-        const fields = [
-          "userId",
-          "username",
-          "name",
-          "email",
-          "phone",
-          "signature",
-          "role",
-        ];
-        for (const field of fields) {
-          this.form[field] = account[field];
-        }
       }
       this.$refs.editor.showModal();
     },
-    // 保存账户。
-    save: async function () {
+    // 保存账户
+    save: async function save() {
       try {
         let result;
         if (this.editing) {
-          result = await saveProfile(this.form);
+          result = await saveAccount(this.form);
         } else {
           result = await createAccount(this.form);
         }
@@ -179,12 +186,16 @@ export default {
         this.editorNotice = "保存失败";
       }
     },
-    close: function () {
+    // 关闭当前页面的对话框
+    close: function close() {
       this.$refs.editor.close();
     },
-    // 删除游戏用户。
-    remove: async function (account) {
-      if (!window.confirm("确认删除账号“" + account.username + "”？")) {
+    // 删除游戏用户
+    remove: async function remove(account) {
+      const confirmed = await messageConform(
+        "确认删除账号“" + account.username + "”？"
+      );
+      if (!confirmed) {
         return;
       }
       try {

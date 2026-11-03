@@ -1,42 +1,41 @@
-# element-plus-vite-starter
+# 4398 前端
 
-> A starter kit for Element Plus with Vite
+前端使用 Vue 3 和普通 JavaScript，表格与表单使用原生控件，树形组件和确认弹窗复用 Element Plus
 
-- Preview: <https://vite-starter.element-plus.org>
-
-This is an example of on-demand element-plus with [unplugin-vue-components](https://github.com/antfu/unplugin-vue-components).
-
-> If you want to import all, it may be so simple that no examples are needed. Just follow [quickstart | Docs](https://element-plus.org/zh-CN/guide/quickstart.html) and import them.
-
-If you just want an on-demand import example `manually`, you can check [unplugin-element-plus/examples/vite](https://github.com/element-plus/unplugin-element-plus/tree/main/examples/vite).
-
-## Project setup
+## 安装依赖
 
 ```bash
 npm install
 ```
 
-### Compiles and hot-reloads for development
+## 本地开发
+
+先启动端口为 `22222` 的后端，再运行前端。开发页面使用端口 `3000`
 
 ```bash
 npm run dev
 ```
 
-### Compiles and minifies for production
+## 检查和打包
 
 ```bash
+npm run lint
+npm test
 npm run build
 ```
 
-## Usage
+`lint` 检查基础写法、函数说明和注释结尾，测试使用内存数据。构建结果进入后端的 `src/main/resources/public`，重新打包 JAR 后生效
 
-```bash
-git clone https://github.com/element-plus/element-plus-vite-starter
-cd element-plus-vite-starter
-npm i
-npm run dev
-```
+## 文件职责
 
-### Custom theme
+- `src/logic` 保存账号检查、表单复制、菜单和客服资料处理
+- `src/services` 负责后端请求，写入成功后标记相关缓存过期
+- `src/components` 保存工作区、账号切换、共用聊天窗口和 Octorange 宠物
+- `src/views` 负责页面布局、绑定与事件，`src/styles` 按页面和控件用途维护样式
+- 公共颜色和间距放在项目根目录的 `tokens.css`
 
-See `src/styles/element/index.scss`.
+页面切换只使用 Vue 过渡，不要再叠加第二套 CSS 入场动画。已加载的列表在数据变化后才重新读取，手动查询、异常提示和失败重试仍保留
+
+AI 客服与宠物通过 `src/services/aiServ.js` 调用 Java 后端的百炼接口。密钥只配置在后端；前端保留按账号区分的历史，支持停止等待与失败重试，不使用本地固定问答
+
+两处聊天共用 `src/tools/markdown.js` 渲染 Markdown 回复，使用 `marked` 解析、`DOMPurify` 清理内容。用户问题保持纯文本，复制回复保留原来的 Markdown，表格和代码块在各自区域内滚动
