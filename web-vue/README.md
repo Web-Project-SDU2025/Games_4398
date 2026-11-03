@@ -1,6 +1,6 @@
 # 4398 前端
 
-前端使用 Vue 3 和普通 JavaScript，表格与表单使用原生控件，树形组件和确认弹窗复用 Element Plus
+前端主要使用 Vue 3 和 JavaScript，表格与表单使用原生控件，树形组件和确认弹窗复用 Element Plus
 
 ## 安装依赖
 
