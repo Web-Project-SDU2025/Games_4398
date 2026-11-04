@@ -43,7 +43,6 @@ cga！接入了 AI 客服功能（基于百炼应用）。
 - [项目结构与文件职责](docs/project-structure.md)
 - [数据库说明](database/README.md)
 - [前端说明](web-vue/README.md)
-- [界面设计与参考来源](design.md)
 
 ## 开发与维护
 
