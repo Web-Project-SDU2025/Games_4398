@@ -2,13 +2,14 @@
 
 [返回项目说明](../README.md)
 
-后端工程位于 `java-server/java-server`，前端工程位于 `web-vue`。目录树列出源码、配置和文档，中文说明从同一列开始。
+后端工程位于 `java-server/java-server`，前端工程位于 `web-vue`。
 
 ```text
 4398/
 ├── .gitignore
 ├── README.md
 ├── docs/
+│   ├── images/                                                                项目界面截图
 │   └── project-structure.md                                                   项目结构与文件职责
 ├── design.md                                                                  界面设计与参考来源
 ├── tokens.css                                                                 公共颜色、间距和动效参数
@@ -228,11 +229,3 @@
                 ├── DictionaryManage.vue                                       字典管理
                 └── MenuManage.vue                                             菜单管理
 ```
-
-## 本机文件与构建产物
-
-`database/backups/` 保存历史迁移前的完整备份，`web-db.sql` 保存完整数据库导出。Git 忽略这些数据文件。
-
-启动程序将日志写入根目录 `logs/`。前端依赖安装在 `web-vue/node_modules/`，Vite 将网页构建到后端 `src/main/resources/public/`，Maven 将编译和打包结果写入后端 `target/`。这些目录由工具生成。
-
-后端 `runtime/ai-usage.json` 保存每日 AI 用量，旁边的锁文件协调共享文件写入。Git 忽略 `runtime/`，运行时保留该目录以延续当天计数。
