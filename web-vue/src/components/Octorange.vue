@@ -139,8 +139,12 @@ import SupportChat from "./SupportChat.vue";
 import * as pet from "../logic/pet.js";
 import * as support from "../logic/support.js";
 
+// 键盘每次移动宠物的距离，单位为像素
 const KEYBOARD_DISTANCE = 20;
+// 提示气泡的预留宽度，单位为像素
 const GREETING_WIDTH = 220;
+// 宠物靠近顶栏时气泡改向下显示的距离，单位为像素
+const GREETING_TOP_CLEARANCE = 80;
 
 // 宠物只负责浮窗和位置，真实问答使用和客服页面相同的聊天组件
 function petState() {
@@ -177,20 +181,23 @@ function positionStyle() {
   return { left: this.left + "px", top: this.top + "px" };
 }
 
-// 宠物贴近屏幕边缘时调整气泡方向，避免游戏提示伸出窗口
+// 按宠物到窗口边缘的距离选择气泡方向，贴边时向内显示
 function greetingStyle() {
   const available =
     window.innerWidth - this.left - GREETING_WIDTH - pet.PET_MARGIN;
   let offset = Math.min(0, available);
   offset = Math.max(pet.PET_MARGIN - this.left, offset);
   const header = document.querySelector(".platform-header");
-  if (header && this.top < header.getBoundingClientRect().bottom + 80) {
+  if (
+    header &&
+    this.top < header.getBoundingClientRect().bottom + GREETING_TOP_CLEARANCE
+  ) {
     return { left: offset + "px", right: "auto", top: "100%", bottom: "auto" };
   }
   return { left: offset + "px", right: "auto" };
 }
 
-// 等待真实回答时优先显示思考状态，鼠标移开也不会打断它
+// 回答期间优先显示思考状态，结束后按悬停状态选择图片
 function imageState() {
   if (this.thinking) {
     return "thinking";
@@ -201,14 +208,14 @@ function imageState() {
   return "idle";
 }
 
-// 监听尺寸和业务弹窗，避免宠物遮挡正在编辑的内容
+// 监听尺寸和业务弹窗，编辑弹窗打开时暂时隐藏宠物
 function mountPet() {
   this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   this.$nextTick(this.restorePosition);
   window.addEventListener("resize", this.restorePosition);
   this.layoutObserver = new ResizeObserver(this.restorePosition);
   const fixedAreas = document.querySelectorAll(
-    ".platform-header, .workspace-status, .platform-main"
+    ".platform-header, .workspace-status, .platform-main",
   );
   for (const area of fixedAreas) {
     this.layoutObserver.observe(area);
@@ -222,12 +229,12 @@ function mountPet() {
   this.checkModal();
   this.greetingTimer = window.setInterval(
     this.showGreeting,
-    pet.GREETING_INTERVAL
+    pet.GREETING_INTERVAL,
   );
   this.showGreeting();
 }
 
-// 清理定时器和全局监听，切号后不会重复出现宠物
+// 卸载时清理定时器和全局监听，切号后由新组件重新初始化
 function disposePet() {
   window.removeEventListener("resize", this.restorePosition);
   window.clearInterval(this.greetingTimer);
@@ -263,11 +270,11 @@ function restorePosition() {
   const availableHeight = window.innerHeight - rectangle.height;
   this.applyPosition(
     availableWidth * this.settings.horizontal,
-    availableHeight * this.settings.vertical
+    availableHeight * this.settings.vertical,
   );
 }
 
-// 所有定位入口共用边界检查，键盘、拖动和重置不会把宠物放到屏幕外
+// 所有定位入口共用可见范围检查，贴边和缩小窗口时修正坐标
 function applyPosition(left, top) {
   if (!this.$refs.pet) {
     return;
@@ -283,7 +290,7 @@ function applyPosition(left, top) {
   if (status) {
     viewportBottom = Math.min(
       viewportBottom,
-      status.getBoundingClientRect().top
+      status.getBoundingClientRect().top,
     );
   }
   // 顶部菜单和底部状态栏属于固定控件，拖动范围要扣除它们占用的空间
@@ -293,12 +300,12 @@ function applyPosition(left, top) {
     rectangle.width,
     rectangle.height,
     window.innerWidth,
-    viewportBottom
+    viewportBottom,
   );
   this.left = position.left;
   const maximumTop = Math.max(
     pet.PET_MARGIN,
-    viewportBottom - rectangle.height - pet.PET_MARGIN
+    viewportBottom - rectangle.height - pet.PET_MARGIN,
   );
   this.top = Math.min(maximumTop, Math.max(minimumTop, position.top));
   const composer = document.querySelector(".support-main .support-composer");
@@ -313,7 +320,7 @@ function applyPosition(left, top) {
     if (overlapsHorizontally && overlapsVertically) {
       this.top = Math.max(
         minimumTop,
-        composerBox.top - rectangle.height - pet.PET_MARGIN
+        composerBox.top - rectangle.height - pet.PET_MARGIN,
       );
     }
   }
@@ -346,7 +353,7 @@ function startDrag(event) {
   event.currentTarget.setPointerCapture(event.pointerId);
 }
 
-// 超过少量距离才算拖动，避免轻点时误判为移动
+// 指针移动达到阈值后进入拖动状态，短距离轻点仍视为点击
 function moveDrag(event) {
   if (!this.drag || event.pointerId !== this.drag.id) {
     return;
@@ -441,7 +448,7 @@ function leavePet() {
   this.hovered = false;
 }
 
-// 子组件通知网络状态，宠物不自行制造假回答
+// 子组件通知等待状态，宠物据此切换思考图片
 function setThinking(pending) {
   this.thinking = pending;
 }
@@ -466,7 +473,7 @@ function showGreeting() {
   this.hideTimer = window.setTimeout(this.hideGreeting, pet.GREETING_DURATION);
 }
 
-// 每条提示短暂显示后退出，不长期挡住页面内容
+// 清空当前提示，下一轮定时器再选择新的提示文字
 function hideGreeting() {
   this.greeting = "";
 }
@@ -497,7 +504,7 @@ function showPet() {
 // 恢复默认位置，提供容易找到的非拖动入口
 function resetPosition() {
   this.settings.horizontal = 1;
-  this.settings.vertical = 0.85;
+  this.settings.vertical = pet.DEFAULT_VERTICAL_POSITION;
   this.restorePosition();
   this.savePreferences();
 }

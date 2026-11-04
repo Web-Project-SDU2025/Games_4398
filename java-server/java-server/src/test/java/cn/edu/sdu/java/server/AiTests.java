@@ -3,6 +3,7 @@ package cn.edu.sdu.java.server;
 import cn.edu.sdu.java.server.controllers.AiController;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.services.AiService;
+import cn.edu.sdu.java.server.services.AiRequestGuard;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -14,13 +15,27 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.nio.file.Path;
+import java.time.Clock;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.web.MockHttpServletRequest;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /** 使用网络替身检查百炼协议、失败分支和账号隔离，不访问数据库 */
 class AiTests {
+    @TempDir
+    Path temporaryDirectory;
     private final ObjectMapper mapper = spy(new ObjectMapper());
     private final HttpClient client = mock(HttpClient.class);
+
+    /** 每项测试使用独立用量文件，固定上限覆盖正常调用与限流分支 */
+    private AiService service(String apiKey) {
+        Path quotaFile = temporaryDirectory.resolve("usage-" + UUID.randomUUID() + ".json");
+        AiRequestGuard guard = new AiRequestGuard(new ObjectMapper(), quotaFile, Clock.systemUTC(),
+                4, 8, 20, 60, 40, 500);
+        return new AiService(apiKey, mapper, client, guard);
+    }
 
     /** 为下一次调用准备确定的云端响应 */
     private void respond(int status, String body) throws Exception {
@@ -31,7 +46,7 @@ class AiTests {
                 ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenReturn(response);
     }
 
-    /** 检查交给 JSON 编码器的请求参数，避免为测试额外编写网络数据订阅器 */
+    /** 检查 JSON 编码器收到的请求参数，按调用顺序核对字段 */
     private JsonNode requestBody(int index, int count) throws Exception {
         ArgumentCaptor<Object> bodies = ArgumentCaptor.forClass(Object.class);
         verify(mapper, times(count)).writeValueAsString(bodies.capture());
@@ -39,10 +54,10 @@ class AiTests {
         return mapper.valueToTree(values.get(index));
     }
 
-    /** 验证错误提示，同时避免为测试写匿名回调 */
+    /** 执行预期失败的请求，按错误文字核对拒绝分支 */
     private void expectError(AiService service, Integer userId, String id, String message, String expected) {
         try {
-            service.chat(userId, id, message);
+            service.chat(userId, id, message, "127.0.0.1");
             fail("此请求应当被拒绝");
         } catch (IllegalArgumentException error) {
             assertTrue(error.getMessage().contains(expected));
@@ -53,8 +68,8 @@ class AiTests {
     @Test
     void usesReferenceApplicationAndGameInstructions() throws Exception {
         respond(200, "{\"output\":{\"text\":\"五子连线获胜\",\"session_id\":\"cloud-session\"}}");
-        AiService service = new AiService("test-key", mapper, client);
-        Map<String, Object> result = service.chat(1, UUID.randomUUID().toString(), "五子棋规则");
+        AiService service = service("test-key");
+        Map<String, Object> result = service.chat(1, UUID.randomUUID().toString(), "五子棋规则", "127.0.0.1");
         assertEquals("五子连线获胜", result.get("reply"));
         assertFalse(result.containsKey("sessionId"));
         ArgumentCaptor<HttpRequest> requests = ArgumentCaptor.forClass(HttpRequest.class);
@@ -74,11 +89,11 @@ class AiTests {
     @Test
     void cloudSessionsBelongToTheirAuthenticatedAccount() throws Exception {
         respond(200, "{\"output\":{\"text\":\"游戏回答\",\"session_id\":\"private-session\"}}");
-        AiService service = new AiService("test-key", mapper, client);
+        AiService service = service("test-key");
         String id = UUID.randomUUID().toString();
-        service.chat(1, id, "五子棋规则");
-        service.chat(1, id, "继续说明");
-        service.chat(2, id, "五子棋规则");
+        service.chat(1, id, "五子棋规则", "127.0.0.1");
+        service.chat(1, id, "继续说明", "127.0.0.1");
+        service.chat(2, id, "五子棋规则", "127.0.0.1");
         ArgumentCaptor<HttpRequest> requests = ArgumentCaptor.forClass(HttpRequest.class);
         verify(client, times(3)).send(requests.capture(), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
         JsonNode second = requestBody(1, 3);
@@ -89,14 +104,14 @@ class AiTests {
         assertFalse(thirdInput.has("session_id"));
     }
 
-    /** 未配置和输入无效时不调用模型，也不把密钥放入状态信息 */
+    /** 验证配置缺失和无效输入的拒绝结果，并检查状态字段 */
     @Test
     void rejectsInvalidInputBeforeSending() {
-        AiService missing = new AiService("", mapper, client);
+        AiService missing = service("");
         String id = UUID.randomUUID().toString();
         assertEquals(false, missing.status().get("configured"));
         expectError(missing, 1, id, "游戏", "密钥");
-        AiService service = new AiService("test-key", mapper, client);
+        AiService service = service("test-key");
         expectError(service, null, id, "游戏", "登录");
         expectError(service, 1, id, " ", "问题");
         expectError(service, 1, id, "游".repeat(AiService.QUESTION_LIMIT + 1), "问题");
@@ -108,20 +123,20 @@ class AiTests {
     /** 鉴权错误和繁忙只返回简短提示，下一次请求仍能正常执行 */
     @Test
     void upstreamErrorsReleaseAccountAndHideRawResponse() throws Exception {
-        AiService service = new AiService("test-key", mapper, client);
+        AiService service = service("test-key");
         String id = UUID.randomUUID().toString();
         respond(401, "{\"message\":\"private cloud details\"}");
         expectError(service, 1, id, "游戏", "鉴权");
         respond(429, "{}");
         expectError(service, 1, id, "游戏", "较忙");
         respond(200, "{\"output\":{\"text\":\"恢复回答\"}}");
-        assertEquals("恢复回答", service.chat(1, id, "游戏").get("reply"));
+        assertEquals("恢复回答", service.chat(1, id, "游戏", "127.0.0.1").get("reply"));
     }
 
-    /** 网络超时和空回答不会成为成功消息，发生异常后可以重新提问 */
+    /** 网络超时和空回答返回失败提示，随后请求可以重新提问 */
     @Test
     void timeoutAndMalformedAnswersRemainRetryable() throws Exception {
-        AiService service = new AiService("test-key", mapper, client);
+        AiService service = service("test-key");
         String id = UUID.randomUUID().toString();
         when(client.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
                 .thenThrow(new java.net.http.HttpTimeoutException("internal timeout"));
@@ -137,16 +152,16 @@ class AiTests {
     @Test
     void rateLimitAppliesAcrossConversations() throws Exception {
         respond(200, "{\"output\":{\"text\":\"游戏回答\"}}");
-        AiService service = new AiService("test-key", mapper, client);
+        AiService service = service("test-key");
         for (int count = 0; count < 8; count = count + 1) {
-            service.chat(1, UUID.randomUUID().toString(), "游戏");
+            service.chat(1, UUID.randomUUID().toString(), "游戏", "127.0.0.1");
         }
         expectError(service, 1, UUID.randomUUID().toString(), "游戏", "频繁");
-        assertEquals("游戏回答", service.chat(2, UUID.randomUUID().toString(), "游戏").get("reply"));
+        assertEquals("游戏回答", service.chat(2, UUID.randomUUID().toString(), "游戏", "127.0.0.1").get("reply"));
         verify(client, times(9)).send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
     }
 
-    /** 接口拒绝数字或空对象，不把错误输入直接转换成模型问题 */
+    /** 数字字段和空对象在接口校验阶段返回格式提示 */
     @Test
     void controllerRejectsWrongBodyTypes() {
         AiService service = mock(AiService.class);
@@ -154,9 +169,9 @@ class AiTests {
         DataRequest request = new DataRequest();
         request.add("message", 123);
         request.add("conversationId", UUID.randomUUID().toString());
-        assertEquals(1, controller.chat(request).getCode());
+        assertEquals(1, controller.chat(request, new MockHttpServletRequest()).getCode());
         request.setData(null);
-        assertEquals(1, controller.chat(request).getCode());
+        assertEquals(1, controller.chat(request, new MockHttpServletRequest()).getCode());
         verifyNoInteractions(service);
     }
 }

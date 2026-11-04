@@ -7,13 +7,23 @@
       :aria-busy="loaded && loading"
     >
       <label>账号<input :value="form.username" readonly /></label>
-      <label>昵称<input v-model="form.name" maxlength="50" required /></label>
       <label
-        >邮箱<input v-model="form.email" type="email" maxlength="60"
+        >昵称<input v-model="form.name" :maxlength="limits.NAME_LIMIT" required
       /></label>
-      <label>电话<input v-model="form.phone" maxlength="20" /></label>
       <label
-        >个人签名<textarea v-model="form.signature" maxlength="200"></textarea>
+        >邮箱<input
+          v-model="form.email"
+          type="email"
+          :maxlength="limits.EMAIL_LIMIT"
+      /></label>
+      <label
+        >电话<input v-model="form.phone" :maxlength="limits.PHONE_LIMIT"
+      /></label>
+      <label
+        >个人签名<textarea
+          v-model="form.signature"
+          :maxlength="limits.SIGNATURE_LIMIT"
+        ></textarea>
       </label>
       <button type="submit">保存</button>
       <p v-reveal="notice" role="status">{{ notice }}</p>
@@ -22,10 +32,17 @@
 </template>
 <script>
 import { getProfile, saveProfile } from "../../services/gameUserServ";
+import * as limits from "../../logic/limits.js";
 export default {
-  // 创建当前页面独立的数据，避免多个页面共用表单
+  // 创建独立资料表单，加载结果只填入当前页面
   data: function data() {
-    return { form: {}, notice: "", loading: false, loaded: false };
+    return {
+      form: {},
+      notice: "",
+      loading: false,
+      loaded: false,
+      limits: limits,
+    };
   },
   // 页面打开时加载初始资料
   created: async function created() {

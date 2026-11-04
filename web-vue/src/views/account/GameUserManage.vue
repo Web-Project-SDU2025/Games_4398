@@ -56,17 +56,22 @@
           >账号<input
             v-model="form.username"
             :readonly="editing"
-            maxlength="20"
+            :maxlength="limits.USERNAME_LIMIT"
             required
         /></label>
         <label v-if="!editing"
           >初始密码<input
             v-model="form.password"
             type="password"
-            maxlength="60"
+            :maxlength="limits.REGISTER_PASSWORD_LIMIT"
             required
         /></label>
-        <label>昵称<input v-model="form.name" maxlength="50" required /></label>
+        <label
+          >昵称<input
+            v-model="form.name"
+            :maxlength="limits.NAME_LIMIT"
+            required
+        /></label>
         <label
           >角色<select
             v-model="form.role"
@@ -79,13 +84,18 @@
           </select></label
         >
         <label
-          >邮箱<input v-model="form.email" type="email" maxlength="60"
+          >邮箱<input
+            v-model="form.email"
+            type="email"
+            :maxlength="limits.EMAIL_LIMIT"
         /></label>
-        <label>电话<input v-model="form.phone" maxlength="20" /></label>
+        <label
+          >电话<input v-model="form.phone" :maxlength="limits.PHONE_LIMIT"
+        /></label>
         <label
           >个人签名<textarea
             v-model="form.signature"
-            maxlength="200"
+            :maxlength="limits.SIGNATURE_LIMIT"
           ></textarea>
         </label>
         <div class="game-actions">
@@ -108,10 +118,12 @@ import { createAccountForm } from "../../logic/forms.js";
 import { getRoleName } from "../../logic/account.js";
 import { messageConform } from "../../tools/messageBox.js";
 import { useAppStore } from "../../stores/app.js";
+import * as limits from "../../logic/limits.js";
 export default {
-  // 创建当前页面独立的数据，避免多个页面共用表单
+  // 创建当前页面的独立表单，重新进入页面时从空状态开始
   data: function data() {
     return {
+      limits: limits,
       search: "",
       accounts: [],
       form: {},
@@ -127,7 +139,7 @@ export default {
     this.query();
   },
   computed: {
-    // 当前账户不能删除自己，避免正在使用的会话失去主体
+    // 返回当前账户编号，删除按钮据此保留当前登录账户
     currentUserId: function currentUserId() {
       return useAppStore().userInfo.id;
     },
@@ -193,7 +205,7 @@ export default {
     // 删除游戏用户
     remove: async function remove(account) {
       const confirmed = await messageConform(
-        "确认删除账号“" + account.username + "”？"
+        "确认删除账号“" + account.username + "”？",
       );
       if (!confirmed) {
         return;

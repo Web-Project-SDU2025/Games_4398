@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 
+/** 处理验证码、登录和注册，角色与密码由后端校验 */
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -25,6 +26,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final GameUserService gameUserService;
 
+    /** 保存认证依赖，登录成功后统一签发会话资料 */
     public AuthService(UserRepository userRepository, AuthenticationManager authenticationManager,
                        JwtService jwtService, GameUserService gameUserService) {
         this.userRepository = userRepository;
@@ -34,21 +36,11 @@ public class AuthService {
     }
 
     /**
-     * 检查验证码和账号密码，登录成功后生成 JWT 登录令牌。
+     * 检查验证码和账号密码，登录成功后生成 JWT 登录令牌
      * @param loginRequest 包含账号、密码和验证码
      * @return 登录结果，成功时包含 JWT 和账户基本信息
      */
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
-        return authenticate(loginRequest, false);
-    }
-
-    /** 管理员入口仍验证密码和验证码，只有数据库中的管理员可以进入 */
-    public ResponseEntity<?> authenticateAdmin(LoginRequest loginRequest) {
-        return authenticate(loginRequest, true);
-    }
-
-    /** 共用登录检查，管理员入口额外检查数据库角色，不提升普通账户权限 */
-    private ResponseEntity<?> authenticate(LoginRequest loginRequest, boolean adminOnly) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(
                 loginRequest.getValidateCodeId(), loginRequest.getValidateCode());
         if (!valid) {
@@ -65,10 +57,6 @@ public class AuthService {
         }
         UserDetailsImpl details = (UserDetailsImpl) authentication.getPrincipal();
         User user = userRepository.findById(details.getId()).orElseThrow();
-        if (adminOnly && !"ROLE_ADMIN".equals(user.getUserType().getName())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(CommonMethod.getReturnMessageError("此入口只允许管理员账号登录"));
-        }
         user.setLastLoginTime(DateTimeTool.parseDateTime(new Date()));
         Integer count = user.getLoginCount();
         if (count == null) {
@@ -87,7 +75,7 @@ public class AuthService {
                 user.getName(), user.getUserType().getName());
     }
     /**
-     * 生成一张新的图形验证码并保存验证码内容。
+     * 生成一张新的图形验证码并保存验证码内容
      * @param request 当前接口不需要业务参数
      * @return 验证码编号和图片数据
      */
@@ -96,7 +84,7 @@ public class AuthService {
     }
 
     /**
-     * 检查请求中的验证码是否正确。
+     * 检查请求中的验证码是否正确
      * @param request data 中包含 validateCodeId 和 validateCode
      * @return 验证成功或失败的响应
      */
@@ -114,8 +102,8 @@ public class AuthService {
     }
 
     /*
-     * 注册游戏用户，在同一条用户记录中保存账号和资料。
-     * 公开注册只创建游戏用户，管理员不能通过注册页面自行获得。
+     * 注册时在同一条记录中保存账号和资料
+     * 注册角色固定为游戏用户，管理员角色由账户管理入口维护
      */
     public DataResponse registerUser(DataRequest request) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(

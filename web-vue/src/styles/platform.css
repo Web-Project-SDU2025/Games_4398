@@ -5,6 +5,11 @@ body {
   margin: 0;
   overflow-x: clip;
 }
+html,
+body,
+#app {
+  height: 100%;
+}
 body {
   background: var(--color-paper);
   color: var(--color-ink);
@@ -72,6 +77,28 @@ h3 {
   --el-fill-color-light: var(--color-paper-3);
   --el-color-primary: var(--color-accent);
 }
+/* 登录框架使用统一背景，内容较短时由主体补齐高度，长表单随页面滚动 */
+.auth-shell {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-workspace-background);
+}
+.auth-shell .platform-header {
+  background: var(--color-workspace-background);
+}
+.auth-shell .platform-header-inner {
+  width: 100%;
+  box-sizing: border-box;
+  /* 顶栏右侧为固定的动画开关预留位置，小屏校标随布局换行 */
+  padding-right: calc(var(--space-md) * 2 + 44px);
+}
+.platform-university {
+  display: block;
+  width: 176px;
+  height: auto;
+  max-width: 100%;
+  margin-left: auto;
+}
 .platform-header {
   background: var(--color-header);
   color: var(--color-ink);
@@ -112,9 +139,6 @@ h3 {
   font-size: var(--text-small);
   min-width: 0;
 }
-.platform-online {
-  display: none;
-}
 .sidebar-group {
   min-width: 0;
 }
@@ -134,41 +158,14 @@ h3 {
 .platform-main {
   min-width: 0;
 }
-.platform-footer {
-  background: var(--color-header);
-  color: var(--color-muted);
-  margin-top: var(--space-xl);
-}
-.platform-footer > div {
-  max-width: 1232px;
-  margin: auto;
-  padding: var(--space-lg);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-  font-size: var(--text-small);
-}
-.platform-footer strong {
-  font-family: var(--font-display);
-  font-size: 24px;
-  color: var(--color-ink);
-}
-.platform-footer span:last-child {
-  margin-left: auto;
-}
 .platform-secondary-button {
   border-radius: var(--radius-control);
   padding: 11px 22px;
   border: 1px solid var(--color-accent);
-  background: var(--color-accent-dark);
-  color: var(--color-ink);
-  text-align: center;
-  display: inline-block;
-}
-.platform-secondary-button {
   background: var(--color-clear);
   color: var(--color-accent);
+  text-align: center;
+  display: inline-block;
 }
 .platform-main .game-page,
 .platform-main .base_form {
@@ -401,11 +398,6 @@ h3 {
   .platform-secondary-button:hover {
     background: var(--color-paper-3);
     color: var(--color-ink);
-  }
-}
-@media (min-width: 48rem) {
-  .platform-online {
-    display: inline;
   }
 }
 @media (min-width: 68rem) {

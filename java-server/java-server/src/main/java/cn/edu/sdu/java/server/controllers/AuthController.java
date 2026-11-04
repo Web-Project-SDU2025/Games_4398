@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    /** 保存认证业务服务，登录和注册结果由服务统一生成 */
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -31,13 +32,8 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         return authService.authenticateUser(loginRequest);
     }
-    /** 管理员登录时额外验证角色，普通用户不能通过更换页面取得管理员权限 */
-    @PostMapping("/adminLogin")
-    public ResponseEntity<?> adminLogin(@Valid @RequestBody LoginRequest loginRequest) {
-        return authService.authenticateAdmin(loginRequest);
-    }
     /**
-     * 获取一张新的图形验证码。
+     * 获取一张新的图形验证码
      * @param dataRequest 请求参数，当前接口不需要业务参数
      * @return 包含验证码编号和图片数据的响应
      */
@@ -47,7 +43,7 @@ public class AuthController {
     }
 
     /**
-     * 单独检查验证码是否正确。
+     * 单独检查验证码是否正确
      * @param dataRequest data 中包含 validateCodeId 和 validateCode
      * @return 验证成功或失败的响应
      */
@@ -56,7 +52,7 @@ public class AuthController {
         return authService.testValidateInfo(dataRequest);
     }
     /**
-     * 注册一个游戏用户。
+     * 注册一个游戏用户
      * @param dataRequest data 中包含账号、密码、昵称、邮箱和验证码
      * @return 注册成功或失败的响应
      */

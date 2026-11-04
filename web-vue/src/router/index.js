@@ -11,14 +11,6 @@ function loadGameList() {
 const routes = [
   { path: "/", redirect: "/Login" },
   {
-    path: "/AdminLogin",
-    // 管理员入口共用验证码和表单，只改变后端验证入口
-    component: function loadAdminLogin() {
-      return import("../Login.vue");
-    },
-    props: { adminOnly: true },
-  },
-  {
     path: "/Login",
     // 打开对应页面时再加载组件，减少启动时的等待
     component: function loadLogin() {
@@ -112,7 +104,7 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes: routes });
 // 前端拦截直接输入地址的访问，接口仍由后端独立检查权限
 async function checkAccess(to) {
-  if (to.path === "/Login" || to.path === "/AdminLogin") {
+  if (to.path === "/Login") {
     return true;
   }
   const store = useAppStore();

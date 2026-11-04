@@ -27,6 +27,7 @@ import java.util.*;
 @Slf4j
 public class BaseController {
     private final BaseService baseService;
+    /** 保存基础业务服务，接口结果由服务统一组织 */
     public BaseController(BaseService baseService) {
         this.baseService = baseService;
     }
@@ -45,6 +46,7 @@ public class BaseController {
         return baseService.getMenuList(dataRequest);
     }
 
+    /** 返回当前配置账号，接口地址保持原样 */
     @PostMapping("/getDataBaseUserName")
     public DataResponse getDataBaseUserName(@Valid @RequestBody DataRequest dataRequest) {
         return baseService.getDataBaseUserName();
@@ -189,6 +191,7 @@ public class BaseController {
         return baseService.uploadPhoto(barr, remoteFile);
     }
 
+    /** 返回账户头像，资源缺失时保留服务给出的状态 */
     @PostMapping("/getBlobByteData")
     public ResponseEntity<StreamingResponseBody> getBlobByteData(@Valid @RequestBody DataRequest dataRequest) {
         return baseService.getBlobByteData(dataRequest);
@@ -218,7 +221,7 @@ public class BaseController {
      *
      */
     //  修改密码
-    //账户页面提交旧密码和新密码，后端验证旧密码后保存新密码。
+    //账户页面提交旧密码和新密码，后端验证旧密码后保存新密码
     @PostMapping("/updatePassword")
     @PreAuthorize("hasRole('ADMIN') or hasRole('GAME_USER')")
     public DataResponse updatePassword(@Valid @RequestBody DataRequest dataRequest) {
@@ -259,11 +262,13 @@ public class BaseController {
         return baseService.getPhotoImageStr(dataRequest);
     }
 
+    /** 接收表单图片和附件参数，实际写入由服务处理 */
     @PostMapping(value = "/uploadPhotoWeb", consumes = {"multipart/form-data"})
     @PreAuthorize("hasRole('GAME_USER') or hasRole('ADMIN')")
     public DataResponse uploadPhotoWeb(@RequestParam Map<String,Object> pars, @RequestParam("file") MultipartFile file) {
         return baseService.uploadPhotoWeb(pars, file);
     }
+    /** 接收表单头像，账户缺失时沿用服务返回的提示 */
     @PostMapping(value = "/uploadPhotoBlobWeb", consumes = {"multipart/form-data"})
     @PreAuthorize("hasRole('GAME_USER') or hasRole('ADMIN')")
     public DataResponse uploadPhotoBlobWeb(@RequestParam Map<String,Object> pars, @RequestParam("file") MultipartFile file) {

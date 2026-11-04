@@ -1,4 +1,11 @@
-/* 页面只淡化内容，导航和背景留在原位，避免切换时整个窗口闪动 */
+/* 星点按远近设置循环时间，近处的大星点移动较快 */
+.auth-page {
+  --dur-auth-star-small: 150s;
+  --dur-auth-star-medium: 100s;
+  --dur-auth-star-large: 55s;
+}
+
+/* 页面内容执行淡化过渡，导航和背景保持原位 */
 .page-enter-active,
 .page-leave-active,
 .panel-enter-active,
@@ -73,7 +80,8 @@ body button,
 body input,
 body textarea,
 body select {
-  transition: opacity var(--dur-short) var(--ease-out),
+  transition:
+    opacity var(--dur-short) var(--ease-out),
     background-color var(--dur-short) var(--ease-out),
     color var(--dur-short) var(--ease-out),
     border-color var(--dur-short) var(--ease-out),
@@ -87,7 +95,8 @@ body button:not(:disabled):active {
 body dialog {
   opacity: 0;
   transform: translateY(6px) scale(0.98);
-  transition: opacity var(--dur-dialog) var(--ease-out),
+  transition:
+    opacity var(--dur-dialog) var(--ease-out),
     transform var(--dur-dialog) var(--ease-out),
     display var(--dur-dialog) allow-discrete,
     overlay var(--dur-dialog) allow-discrete;
@@ -98,7 +107,8 @@ body dialog[open] {
 }
 body dialog::backdrop {
   opacity: 0;
-  transition: opacity var(--dur-dialog) var(--ease-out),
+  transition:
+    opacity var(--dur-dialog) var(--ease-out),
     display var(--dur-dialog) allow-discrete,
     overlay var(--dur-dialog) allow-discrete;
 }
@@ -124,7 +134,8 @@ body dialog[open]::backdrop {
     height: 0;
     opacity: 0;
     overflow: clip;
-    transition: height var(--dur-panel) var(--ease-out),
+    transition:
+      height var(--dur-panel) var(--ease-out),
       opacity var(--dur-panel) var(--ease-out),
       content-visibility var(--dur-panel) allow-discrete;
   }
@@ -150,7 +161,8 @@ body dialog[open]::backdrop {
     padding: var(--space-xs);
     max-height: 280px;
     overflow: auto;
-    transition: opacity var(--dur-panel) var(--ease-out),
+    transition:
+      opacity var(--dur-panel) var(--ease-out),
       transform var(--dur-panel) var(--ease-out),
       display var(--dur-panel) allow-discrete,
       overlay var(--dur-panel) allow-discrete;
@@ -249,7 +261,8 @@ body dialog[open]::backdrop {
   opacity: 0;
   transform: translateY(8px);
   transform-origin: bottom right;
-  transition: opacity var(--dur-panel) var(--ease-out),
+  transition:
+    opacity var(--dur-panel) var(--ease-out),
     transform var(--dur-panel) var(--ease-out),
     display var(--dur-panel) allow-discrete,
     overlay var(--dur-panel) allow-discrete;
@@ -296,5 +309,61 @@ body dialog[open]::backdrop {
     .pet-panel:popover-open {
       transform: none;
     }
+  }
+}
+/* 登录背景采用长周期装饰动画，暂停时保留当前位置 */
+.auth-stars {
+  animation-name: auth-star-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.auth-stars-small {
+  animation-duration: var(--dur-auth-star-small);
+}
+.auth-stars-medium {
+  animation-duration: var(--dur-auth-star-medium);
+}
+.auth-stars-large {
+  animation-duration: var(--dur-auth-star-large);
+}
+.auth-page.is-motion-paused .auth-stars {
+  animation-play-state: paused;
+}
+@keyframes auth-star-fall {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100vh);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-stars {
+    animation: none;
+  }
+  .auth-motion-toggle {
+    display: none;
+  }
+}
+
+/* 尾迹在短时间内缩小并淡出，位置由鼠标采样确定 */
+.pointer-trail-pixel {
+  animation-name: pointer-pixel-fade;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes pointer-pixel-fade {
+  from {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+  .pointer-trail {
+    display: none;
   }
 }

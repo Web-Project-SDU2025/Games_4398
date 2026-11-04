@@ -29,6 +29,7 @@ npm run build
 ## 文件职责
 
 - `src/logic` 保存账号检查、表单复制、菜单和客服资料处理
+- `src/logic/limits.js` 集中维护表单字段上限，页面共用这些参数
 - `src/services` 负责后端请求，写入成功后标记相关缓存过期
 - `src/components` 保存工作区、账号切换、共用聊天窗口和 Octorange 宠物
 - `src/views` 负责页面布局、绑定与事件，`src/styles` 按页面和控件用途维护样式
@@ -39,3 +40,5 @@ npm run build
 AI 客服与宠物通过 `src/services/aiServ.js` 调用 Java 后端的百炼接口。密钥只配置在后端；前端保留按账号区分的历史，支持停止等待与失败重试，不使用本地固定问答
 
 两处聊天共用 `src/tools/markdown.js` 渲染 Markdown 回复，使用 `marked` 解析、`DOMPurify` 清理内容。用户问题保持纯文本，复制回复保留原来的 Markdown，表格和代码块在各自区域内滚动
+
+`src/services/genServ.js` 共用请求与写入后的缓存更新流程，`src/services/systemServ.js` 管理导航菜单、字典和修改密码请求。构建配置位于 `vite.config.js`，组件样式直接使用本地 CSS

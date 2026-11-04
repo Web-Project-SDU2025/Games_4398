@@ -13,11 +13,8 @@
       </button>
     </form>
     <p v-reveal="notice" role="status">{{ notice }}</p>
-    <div class="motion-results" :aria-busy="loaded && loading">
-      <div v-if="!loaded" class="catalog-empty" role="status">
-        {{ notice || "正在加载游戏列表" }}
-      </div>
-      <div v-else-if="games.length === 0" class="catalog-empty">
+    <div class="motion-results" :aria-busy="loading">
+      <div v-if="loaded && games.length === 0" class="catalog-empty">
         <img
           src="/images/game-collection.png"
           alt="电脑上的游戏库"
@@ -35,7 +32,7 @@
           添加第一个游戏
         </button>
       </div>
-      <div v-else class="game-table-wrap">
+      <div v-else-if="loaded" class="game-table-wrap">
         <table class="game-table">
           <thead>
             <tr>
@@ -92,16 +89,33 @@
       <form class="game-form" @submit.prevent="confirmGame">
         <h3>游戏资料</h3>
         <label
-          >游戏编号<input v-model="form.num" maxlength="20" required
+          >游戏编号<input
+            v-model="form.num"
+            :maxlength="limits.GAME_NUMBER_LIMIT"
+            required
         /></label>
         <label
-          >游戏名称<input v-model="form.name" maxlength="50" required
+          >游戏名称<input
+            v-model="form.name"
+            :maxlength="limits.NAME_LIMIT"
+            required
         /></label>
-        <label>分类<input v-model="form.category" maxlength="50" /></label>
         <label
-          >介绍<textarea v-model="form.description" maxlength="1000"></textarea>
+          >分类<input
+            v-model="form.category"
+            :maxlength="limits.GAME_CATEGORY_LIMIT"
+        /></label>
+        <label
+          >介绍<textarea
+            v-model="form.description"
+            :maxlength="limits.GAME_DESCRIPTION_LIMIT"
+          ></textarea>
         </label>
-        <label>入口路径<input v-model="form.gamePath" maxlength="255" /></label>
+        <label
+          >入口路径<input
+            v-model="form.gamePath"
+            :maxlength="limits.GAME_PATH_LIMIT"
+        /></label>
         <div class="game-actions">
           <button type="submit">保存</button
           ><button type="button" @click="close">取消</button>
@@ -122,6 +136,7 @@ import {
 import { useAppStore } from "../../stores/app";
 import { createGameForm } from "../../logic/forms.js";
 import { messageConform } from "../../tools/messageBox.js";
+import * as limits from "../../logic/limits.js";
 
 export default {
   name: "GameList",
@@ -129,6 +144,7 @@ export default {
   // 双向绑定数据
   data: function gameListState() {
     return {
+      limits: limits,
       search: "",
       games: [],
       loading: false,
@@ -176,7 +192,7 @@ export default {
         this.loading = false;
       }
     },
-    // 编辑游戏时复制表单，取消后不会改变列表内容
+    // 编辑时复制游戏字段，取消操作保留列表原值
     editGame: function editGame(game) {
       this.editorNotice = "";
       this.form = createGameForm(game);
@@ -203,7 +219,7 @@ export default {
     // 删除游戏
     removeGame: async function removeGame(game) {
       const confirmed = await messageConform(
-        "确认删除游戏“" + game.name + "”？"
+        "确认删除游戏“" + game.name + "”？",
       );
       if (!confirmed) {
         return;

@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
 import { userLoginReq, switchAccount } from "../services/userServ";
-import { getMenuList } from "../services/mainServ";
+import { getMenuList } from "../services/systemServ.js";
 import { getProfile } from "../services/gameUserServ.js";
 
-// 登录和切号使用同一种账户结构，避免遗漏身份或令牌字段
+// 登录和切号共用账户结构，按服务器结果填写身份与令牌
 function sessionInfo(result) {
   return {
     loggedIn: true,
@@ -40,7 +40,7 @@ export const useAppStore = defineStore("gameApp", {
     };
   },
   actions: {
-    // 读取后端当前身份，修正旧浏览器缓存；角色不能从菜单标题或下拉文字猜测
+    // 用后端当前身份更新缓存，切号后丢弃旧令牌对应的响应
     refreshIdentity: async function refreshIdentity() {
       const token = this.userInfo.token;
       const result = await getProfile();
@@ -68,14 +68,12 @@ export const useAppStore = defineStore("gameApp", {
       password,
       validateCodeId,
       validateCode,
-      adminOnly
     ) {
       const result = await userLoginReq(
         username,
         password,
         validateCodeId,
         validateCode,
-        adminOnly
       );
       this.userInfo = sessionInfo(result);
       this.gameRevision = 0;
@@ -89,7 +87,7 @@ export const useAppStore = defineStore("gameApp", {
       this.gameRevision = 0;
       this.recordRevision = 0;
     },
-    // 退出时同时清空菜单，避免不同账户共用权限信息
+    // 退出时清空身份、菜单和数据版本，下一账户重新初始化
     logout: function logout() {
       this.userInfo = emptyUserInfo();
       this.systemConfig = {

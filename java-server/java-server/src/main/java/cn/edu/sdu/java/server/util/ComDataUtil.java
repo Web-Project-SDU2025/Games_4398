@@ -1,111 +1,58 @@
 package cn.edu.sdu.java.server.util;
 
-
 import cn.edu.sdu.java.server.payload.response.OptionItem;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * ComDataUtil 内存缓冲存储数据示例程序
- * Map<String, List<OptionItem>> dictListMap 数据字典列表Map集合
- * Map<String, Map<String, String>> dictMapMap 数据字典值名映射Map对象集合;
- * Map<Integer, String> htmlMap html映射Map对象集合
- */
+/** 保存启动时的字典缓存与旧 HTML 接口内容，缓存由当前进程持有 */
 public class ComDataUtil {
-    private Map<String, List<OptionItem>> dictListMap = new HashMap<String, List<OptionItem>>();
-    private Map<String, Map<String, String>> dictMapMap = new HashMap<String, Map<String, String>>();
-    private Map<String,String> systemMap = new HashMap();
-    private Map<Integer, String> htmlMap = new HashMap();
-    private int htmlCount= 0;
+    private static final ComDataUtil INSTANCE = new ComDataUtil();
+    private Map<String, List<OptionItem>> dictListMap = new HashMap<>();
+    private Map<String, Map<String, String>> dictMapMap = new HashMap<>();
+    private Map<String, String> systemMap = new HashMap<>();
+    private final Map<Integer, String> htmlMap = new HashMap<>();
+    private int htmlCount;
 
-    private static ComDataUtil instance = new ComDataUtil();
-
-    public static ComDataUtil getInstance(){
-        return instance;
+    /** 返回当前进程共用的缓存对象 */
+    public static ComDataUtil getInstance() {
+        return INSTANCE;
     }
 
+    /** 返回字典选项缓存，启动服务负责填充空缓存 */
     public Map<String, List<OptionItem>> getDictListMap() {
         return dictListMap;
     }
 
-    public void setDictListMap(Map<String, List<OptionItem>> dictListMap) {
-        this.dictListMap = dictListMap;
+    /** 替换完整字典选项缓存，调用方提供独立映射 */
+    public void setDictListMap(Map<String, List<OptionItem>> values) {
+        dictListMap = values;
     }
 
+    /** 返回字典值到标题的映射，启动服务按类别填充 */
     public Map<String, Map<String, String>> getDictMapMap() {
         return dictMapMap;
     }
 
-    public void setDictMapMap(Map<String, Map<String, String>> dictMapMap) {
-        this.dictMapMap = dictMapMap;
-    }
-    public void setSystemMap(Map<String, String> systemMap) {
-        this.systemMap = systemMap;
+    /** 替换字典标题缓存，空表表示当前没有可用字典 */
+    public void setDictMapMap(Map<String, Map<String, String>> values) {
+        dictMapMap = values;
     }
 
-    public List<OptionItem> getDictionaryOptionItemList(String code) {
-        return dictListMap.get(code);
-    }
-    public String getDictionaryLabelByValue(String code,String value) {
-        if(value == null || value.length()==0)
-            return "";
-        Map<String, String> m = dictMapMap.get(code);
-        if(m == null)
-            return "";
-        String label = m.get(value);
-        if(label == null)
-            return "";
-        else
-            return label;
+    /** 保存启动时读取的系统配置，空表保留为空配置 */
+    public void setSystemMap(Map<String, String> values) {
+        systemMap = values;
     }
 
-    public synchronized int  addHtmlString(String html) {
-        htmlCount++;
-        htmlMap.put(htmlCount,html);
+    /** 生成 HTML 编号并保存内容，同步访问使编号与内容对应 */
+    public synchronized int addHtmlString(String html) {
+        htmlCount = htmlCount + 1;
+        htmlMap.put(htmlCount, html);
         return htmlCount;
     }
-    public synchronized String  getHtmlString(int htmlCount) {
-        return htmlMap.get(htmlCount);
-    }
 
-    public boolean teamCanApply(){
-        String str = systemMap.get("teamCanApply");
-        if(str !=null && str.equals("true")) {
-            return true;
-        }else {
-            return false;
-        }
-    }
-    public String getTeamNumPrefix(){
-        return systemMap.get("teamNumPrefix");
-    }
-    public boolean teamLock(){
-        String str = systemMap.get("teamLock");
-        if(str !=null && str.equals("true")) {
-            return true;
-        }else {
-            return false;
-        }
-    }
-    public boolean teamView(){
-        String str = systemMap.get("teamView");
-        if(str !=null && str.equals("true")) {
-            return true;
-        }else {
-            return false;
-        }
-    }
-    public Integer currentTaskId(){
-        String str = systemMap.get("currentTaskId");
-        if(str !=null && str.length() > 0) {
-            return Integer.parseInt(str);
-        }else {
-            return null;
-        }
-    }
-    public String currentPath(){
-        return systemMap.get("currentPath");
+    /** 按编号读取 HTML，内容缺失时返回空值 */
+    public synchronized String getHtmlString(int id) {
+        return htmlMap.get(id);
     }
 }

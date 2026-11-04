@@ -35,7 +35,7 @@ const HTML_OPTIONS = {
   ALLOW_ARIA_ATTR: false,
 };
 
-// 使用参考项目的解析器与清理库显示回复，只允许常用排版，不执行模型返回的 HTML
+// 先解析回复再按标签白名单清理，保留常用 Markdown 排版
 export function renderMarkdown(container, text) {
   const html = marked.parse(text, MARKDOWN_OPTIONS);
   container.innerHTML = DOMPurify.sanitize(html, HTML_OPTIONS);
@@ -43,7 +43,7 @@ export function renderMarkdown(container, text) {
   prepareScrollAreas(container);
 }
 
-// 链接只允许网页协议，新窗口打开时不向目标页面交出本站窗口
+// 按网页协议校验链接，新窗口使用独立浏览上下文
 function prepareLinks(container) {
   const links = container.querySelectorAll("a");
   for (const link of links) {
@@ -66,7 +66,7 @@ function prepareLinks(container) {
   }
 }
 
-// 宽表格和代码块在自己的区域横向滚动，避免把手机上的整个页面撑宽
+// 为宽表格和代码块提供独立滚动区域，键盘焦点可进入该区域
 function prepareScrollAreas(container) {
   const tables = container.querySelectorAll("table");
   for (const table of tables) {
@@ -86,7 +86,7 @@ function prepareScrollAreas(container) {
   }
 }
 
-// 首次显示或回复正文改变时才解析，输入框和时钟更新不会反复重建旧回复
+// 首次显示或正文改变时解析回复，其他状态更新复用已有内容
 function updateMarkdown(element, binding) {
   if (binding.value !== binding.oldValue) {
     renderMarkdown(element, binding.value);

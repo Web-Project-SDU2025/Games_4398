@@ -2,7 +2,23 @@ const fs = require("node:fs");
 const path = require("node:path");
 const parser = require("@babel/parser");
 
-const SOURCE_DIRECTORY = "src";
+// 检查业务源码、测试和工具，生成的类型声明由生成工具维护
+const SOURCE_DIRECTORIES = ["src", "tests", "scripts"];
+// 当前使用的前端构建配置文件
+const CONFIGURATION_FILE = "vite.config.js";
+// 禁用语法与对应提示，按语法树节点名称查询
+const FORBIDDEN_SYNTAX = {
+  ArrowFunctionExpression: "请使用有名称的普通函数",
+  ConditionalExpression: "请把三目运算符改为 if / else",
+  ObjectPattern: "请使用明确的属性读取，不使用解构",
+  ArrayPattern: "请使用明确的数组读取，不使用解构",
+  SpreadElement: "请使用普通循环，不使用展开运算符",
+  RestElement: "请写明参数，不使用剩余参数",
+  UpdateExpression: "请把自增自减改为普通赋值",
+  ObjectMethod: "请使用属性名和有名称的普通函数",
+  OptionalMemberExpression: "请用 if 检查对象后再读取属性",
+  OptionalCallExpression: "请用 if 检查函数后再调用",
+};
 const errors = [];
 
 // 收集手写的 JS 和 Vue 文件，类型声明由工具生成，不在检查范围内
@@ -12,7 +28,7 @@ function collectFiles(directory, files) {
     const filename = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       collectFiles(filename, files);
-    } else if (filename.endsWith(".js") || filename.endsWith(".vue")) {
+    } else if (/\.(js|mjs|cjs|vue)$/.test(filename)) {
       files.push(filename);
     }
   }
@@ -23,25 +39,13 @@ function report(filename, node, message) {
   errors.push(filename + ":" + node.loc.start.line + " " + message);
 }
 
-// 检查一个语法节点，使用语法树可以避免把字符串里的问号和加号误判为代码
+// 按语法节点检查表达式，字符串中的符号由解析器识别为文字
 function checkNode(node, parent, comments, source, filename) {
   if (!node || typeof node !== "object") {
     return;
   }
-  const forbidden = {
-    ArrowFunctionExpression: "请使用有名称的普通函数",
-    ConditionalExpression: "请把三目运算符改为 if / else",
-    ObjectPattern: "请使用明确的属性读取，不使用解构",
-    ArrayPattern: "请使用明确的数组读取，不使用解构",
-    SpreadElement: "请使用普通循环，不使用展开运算符",
-    RestElement: "请写明参数，不使用剩余参数",
-    UpdateExpression: "请把自增自减改为普通赋值",
-    ObjectMethod: "请使用属性名和有名称的普通函数",
-    OptionalMemberExpression: "请用 if 检查对象后再读取属性",
-    OptionalCallExpression: "请用 if 检查函数后再调用",
-  };
-  if (forbidden[node.type]) {
-    report(filename, node, forbidden[node.type]);
+  if (FORBIDDEN_SYNTAX[node.type]) {
+    report(filename, node, FORBIDDEN_SYNTAX[node.type]);
   }
   if (node.type === "AssignmentExpression" && node.operator !== "=") {
     report(filename, node, "请把复合赋值改为普通赋值");
@@ -63,6 +67,8 @@ function checkNode(node, parent, comments, source, filename) {
     if (parent && parent.type === "ObjectProperty") {
       declaration = parent.start;
     } else if (parent && parent.type === "ExportNamedDeclaration") {
+      declaration = parent.start;
+    } else if (parent && parent.type === "CallExpression") {
       declaration = parent.start;
     }
     let explained = false;
@@ -93,7 +99,7 @@ function checkNode(node, parent, comments, source, filename) {
   }
 }
 
-// Vue 只解析脚本；模板里的文字和样式不会作为 JavaScript 处理
+// 从 Vue 文件提取脚本，再按 JavaScript 语法检查
 function checkFile(filename) {
   let source = fs.readFileSync(filename, "utf8");
   if (filename.endsWith(".vue")) {
@@ -105,7 +111,7 @@ function checkFile(filename) {
     const contentEnd = source.indexOf("</script>", contentStart);
     source = source.substring(contentStart, contentEnd);
   }
-  const tree = parser.parse(source, { sourceType: "module" });
+  const tree = parser.parse(source, { sourceType: "unambiguous" });
   for (const comment of tree.comments) {
     if (/[。.]+\s*$/.test(comment.value)) {
       report(filename, comment, "注释最后一句末尾不加句号");
@@ -115,7 +121,10 @@ function checkFile(filename) {
 }
 
 const files = [];
-collectFiles(SOURCE_DIRECTORY, files);
+for (const directory of SOURCE_DIRECTORIES) {
+  collectFiles(directory, files);
+}
+files.push(CONFIGURATION_FILE);
 for (const filename of files) {
   checkFile(filename);
 }

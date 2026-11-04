@@ -1,4 +1,4 @@
-// 创建游戏编辑数据，逐项复制可以保证点击取消时不会改变列表里的对象
+// 创建独立游戏表单，逐项复制字段，取消时保留列表原值
 export function createGameForm(game) {
   const form = {
     num: "",
@@ -18,7 +18,7 @@ export function createGameForm(game) {
   return form;
 }
 
-// 创建账户编辑数据，只复制允许编辑的资料，避免把角色或密码意外覆盖
+// 创建账户表单，编辑时复制允许修改的资料，密码使用空值
 export function createAccountForm(account) {
   const form = {
     username: "",
@@ -41,7 +41,7 @@ export function createAccountForm(account) {
   return form;
 }
 
-// 复制树节点的可编辑字段，不复制子节点，取消编辑不会改动已经显示的树
+// 复制树节点的可编辑字段，子节点继续由树保存，取消时保留原树
 export function createNodeForm(node) {
   const form = {
     pid: null,
@@ -62,7 +62,7 @@ export function createNodeForm(node) {
   return form;
 }
 
-// 将勾选的角色整理为后端使用的编号字符串，避免在页面中重复拼接
+// 将勾选角色整理为编号字符串，全部取消时返回空字符串
 export function createRoleIds(admin, gameUser) {
   const roles = [];
   if (admin) {

@@ -54,7 +54,7 @@
   </section>
 </template>
 <script>
-import { updatePassword } from "~/services/infoServ";
+import { updatePassword } from "../../services/systemServ.js";
 import * as account from "../../logic/account.js";
 
 /** 返回修改密码表单的数据 */
@@ -83,7 +83,7 @@ async function submitPassword() {
   const error = account.checkPasswordChange(
     this.oldPassword,
     this.newPassword,
-    this.checkPassword
+    this.checkPassword,
   );
   if (error !== "") {
     this.notice = error;

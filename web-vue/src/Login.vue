@@ -1,15 +1,35 @@
 <template>
-  <main class="auth-page">
+  <main class="auth-page" :class="{ 'is-motion-paused': motionPaused }">
+    <!-- 星点独立于表单，三层分别移动形成远近层次 -->
+    <div class="auth-background" aria-hidden="true">
+      <div
+        v-for="layer in starLayers"
+        :key="layer.name"
+        class="auth-stars"
+        :class="layer.name"
+        :style="layer.style"
+      ></div>
+    </div>
+    <button
+      class="auth-motion-toggle"
+      type="button"
+      aria-label="暂停背景动画"
+      :title="motionButtonTitle"
+      :aria-pressed="motionPaused"
+      @click="toggleBackgroundMotion"
+    >
+      <span
+        v-if="motionPaused"
+        class="i-ep-video-play"
+        aria-hidden="true"
+      ></span>
+      <span v-else class="i-ep-video-pause" aria-hidden="true"></span>
+    </button>
     <div class="auth-layout">
       <section class="auth-panel" aria-labelledby="site-title">
         <!-- 登录页面上部区域 -->
         <h1 id="site-title">{{ formTitle }}</h1>
-        <div
-          v-if="!adminOnly"
-          class="auth-tabs"
-          role="tablist"
-          aria-label="账户操作"
-        >
+        <div class="auth-tabs" role="tablist" aria-label="账户操作">
           <button
             id="login-tab"
             type="button"
@@ -48,7 +68,7 @@
                 id="account-name"
                 v-model.trim="username"
                 autocomplete="username"
-                maxlength="20"
+                :maxlength="limits.USERNAME_LIMIT"
                 required
               />
               <!-- 用户注册表单内容 -->
@@ -58,7 +78,7 @@
                   id="nickname"
                   v-model.trim="name"
                   autocomplete="nickname"
-                  maxlength="50"
+                  :maxlength="limits.NAME_LIMIT"
                   required
                 />
                 <label for="email">邮箱（可选）</label>
@@ -67,7 +87,7 @@
                   v-model.trim="email"
                   type="email"
                   autocomplete="email"
-                  maxlength="60"
+                  :maxlength="limits.EMAIL_LIMIT"
                 />
               </template>
               <!-- 用户登录表单内容 -->
@@ -108,7 +128,7 @@
                   v-model.trim="validateCode"
                   inputmode="numeric"
                   autocomplete="off"
-                  maxlength="4"
+                  :maxlength="limits.CAPTCHA_LENGTH"
                   pattern="[0-9]{4}"
                   required
                 />
@@ -160,7 +180,6 @@
         <h2>你的游戏，尽在这里</h2>
         <p>回到游戏库，收藏喜欢的游戏，留下每一次游玩的记录。</p>
         <button
-          v-if="!adminOnly"
           class="platform-secondary-button"
           type="button"
           :disabled="submitting"
@@ -168,10 +187,6 @@
         >
           创建我的账户
         </button>
-        <p class="auth-login-links">
-          <RouterLink v-if="!adminOnly" to="/AdminLogin">管理员登录</RouterLink>
-          <RouterLink v-else to="/Login">返回用户登录</RouterLink>
-        </p>
       </aside>
     </div>
   </main>
@@ -181,21 +196,58 @@
 import { useAppStore } from "./stores/app";
 import * as account from "./logic/account.js";
 import * as auth from "./logic/auth.js";
+import * as limits from "./logic/limits.js";
+import { usePreferencesStore } from "./stores/preferences.js";
+
+// 三层星点的数量集中维护，小星点较密，大星点较疏
+const STAR_LAYERS = [
+  { name: "auth-stars-small", count: 420 },
+  { name: "auth-stars-medium", count: 130 },
+  { name: "auth-stars-large", count: 55 },
+];
+
+// 创建三层星点的阴影位置，视口单位让窗口缩放后仍铺满背景
+function createStarLayers() {
+  const layers = [];
+  for (const configuration of STAR_LAYERS) {
+    const shadows = [];
+    for (let index = 0; index < configuration.count; index = index + 1) {
+      const horizontal = Math.random() * 100;
+      const vertical = Math.random() * 100;
+      const shadow = horizontal + "vw " + vertical + "vh currentColor";
+      shadows.push(shadow);
+    }
+    layers.push({
+      name: configuration.name,
+      style: { boxShadow: shadows.join(", ") },
+    });
+  }
+  return layers;
+}
 
 export default {
-  props: { adminOnly: Boolean },
   // 返回表单中使用的数据
   data: function loginState() {
     const form = auth.createLoginForm();
+    form.limits = limits;
     form.passwordLimit = account.REGISTER_PASSWORD_LIMIT;
+    form.starLayers = createStarLayers();
     return form;
   },
   computed: {
+    // 登录页与设置窗口共用背景开关，刷新页面后恢复浏览器中的选择
+    motionPaused: function motionPaused() {
+      return !usePreferencesStore().settings.loginMotion;
+    },
+    // 根据暂停状态返回按钮提示，切换登录和注册时沿用当前选择
+    motionButtonTitle: function motionButtonTitle() {
+      if (this.motionPaused) {
+        return "播放背景动画";
+      }
+      return "暂停背景动画";
+    },
     // 根据当前操作显示表单标题
     formTitle: function formTitle() {
-      if (this.adminOnly) {
-        return "管理员登录";
-      }
       if (this.mode === "register") {
         return "创建账户";
       }
@@ -217,6 +269,17 @@ export default {
     this.refreshCaptcha();
   },
   methods: {
+    // 切换背景动画的暂停状态，CSS 保留暂停时的位置以便继续播放
+    toggleBackgroundMotion: function toggleBackgroundMotion() {
+      const store = usePreferencesStore();
+      const settings = {
+        trailEnabled: store.settings.trailEnabled,
+        trailDensity: store.settings.trailDensity,
+        trailSize: store.settings.trailSize,
+        loginMotion: this.motionPaused,
+      };
+      store.update(settings);
+    },
     // 刷新验证码，同时清空上次填写的验证码
     refreshCaptcha: async function refreshCaptcha() {
       await auth.refreshCaptcha(this);
@@ -237,7 +300,6 @@ export default {
         this.password,
         this.validateCodeId,
         this.validateCode,
-        this.adminOnly
       );
       try {
         await store.setNavi();
@@ -246,11 +308,7 @@ export default {
         throw error;
       }
       this.password = "";
-      let nextPage = "/MainPage";
-      if (this.adminOnly) {
-        nextPage = "/AccountManage";
-      }
-      await this.$router.replace(nextPage);
+      await this.$router.replace("/MainPage");
     },
     // 检查表单后执行登录或注册，并显示请求结果
     submit: async function submit() {
@@ -272,7 +330,7 @@ export default {
       } catch (error) {
         this.notice = account.getErrorMessage(
           error,
-          "请求失败，请检查网络后重试"
+          "请求失败，请检查网络后重试",
         );
         await this.refreshCaptcha();
       } finally {

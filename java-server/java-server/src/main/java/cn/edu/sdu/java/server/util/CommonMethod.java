@@ -2,406 +2,113 @@ package cn.edu.sdu.java.server.util;
 
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.UserDetailsImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.VerticalAlignment;
-import org.apache.poi.xssf.usermodel.XSSFCellStyle;
-import org.apache.poi.xssf.usermodel.XSSFFont;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import java.util.Map;
 
-import java.math.BigDecimal;
-import java.util.*;
-
-/**
- * CommonMethod 公共处理方法实例类
- */
+/** 整理接口响应、当前登录身份和菜单参数 */
 public class CommonMethod {
-    private static final ObjectMapper mapper = new ObjectMapper();
-    public static final MediaType exelType = new MediaType("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    public static DataResponse getReturnData(Object obj, String msg){
-        return new   DataResponse(0,obj,msg);
-    }
-    public static DataResponse getReturnMessage(Integer code, String msg){
-        return new   DataResponse(code,null,msg);
-    }
-    public static  DataResponse getReturnData(Object obj){
-        return getReturnData(obj,null);
-    }
-    public static DataResponse getReturnMessageOK(String msg){
-        return getReturnMessage(0, msg);
-    }
-    public static DataResponse getReturnMessageOK(){
-        return getReturnMessage(0, null);
-    }
-    public static DataResponse getReturnMessageError(String msg){
-        return getReturnMessage(1, msg);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** 返回业务数据及说明，成功码统一为零 */
+    public static DataResponse getReturnData(Object data, String message) {
+        return new DataResponse(0, data, message);
     }
 
-    /**
-     * Integer getUserId() 获得用户的userId 该static 方法可以在任何的Controller和Service中使用，可以获得当前登录用户的用户ID，可以通过在Web请求服务中使用该方法获取当前请求客户的信息
-     * @return
-     */
-    public static Integer getUserId(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(!(obj instanceof UserDetailsImpl userDetails))
-            return null;
-        return userDetails.getId();
-    }
-    public static String getUsername(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(!(obj instanceof UserDetailsImpl userDetails))
-            return null;
-        return userDetails.getUsername();
-    }
-    public static String getRoleName(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(!(obj instanceof UserDetailsImpl userDetails))
-            return null;
-        return  userDetails.getAuthorities().iterator().next().toString();
+    /** 返回指定状态码和提示文字 */
+    public static DataResponse getReturnMessage(Integer code, String message) {
+        return new DataResponse(code, null, message);
     }
 
-    public static String getNextNum2(String num) {
-        String str;
-        String prefix;
-        if(num.length() == 2) {
-            str = num;
-            prefix= "";
-        }
-        else {
-            str = num.substring(num.length() - 2);
-            prefix = num.substring(0,num.length() - 2);
-        }
-        int c;
-        if(str.charAt(0)=='0') {
-            c = str.charAt(1)-'0';
-        }else {
-            c = (str.charAt(0)-'0')*10 + str.charAt(1)-'0';
-        }
-        c++;
-        if(c < 10) {
-            return prefix+"0" + c;
-        }else {
-            return prefix+ c;
-        }
-    }
-    public static String getNextNum3( String num) {
-        String str;
-        String prefix;
-        if(num.length() == 3) {
-            str = num;
-            prefix= "";
-        }
-        else {
-            str = num.substring(num.length() - 3);
-            prefix = num.substring(0,num.length() - 3);
-        }
-        int c;
-        if(str.charAt(0)=='0') {
-            if(str.charAt(1)=='0') {
-                c = str.charAt(2)-'0';
-            }else {
-                c = (str.charAt(1)-'0')*10 + str.charAt(2)-'0';
-            }
-        }else {
-            c = (str.charAt(0)-'0')*100  +(str.charAt(1)-'0')*10 + str.charAt(2)-'0';
-        }
-        c++;
-        if(c < 10) {
-            return prefix+"00" + c;
-        }else if(c < 100) {
-            return prefix+"0" + c;
-        }else {
-            return prefix+ c;
-        }
-    }
-    public static String getNextNum4( String num) {
-        String str;
-        String prefix;
-        if(num.length() == 4) {
-            str = num;
-            prefix= "";
-        }
-        else {
-            str = num.substring(num.length() - 4);
-            prefix = num.substring(0,num.length() - 4);
-        }
-        int c;
-        if(str.charAt(0)=='0') {
-            if (str.charAt(1) == '0') {
-                if (str.charAt(2) == '0') {
-                    c = str.charAt(3) - '0';
-                } else {
-                    c = (str.charAt(2) - '0') * 10 + str.charAt(3) - '0';
-                }
-            } else {
-                c = (str.charAt(1) - '0') * 100 + (str.charAt(2) - '0') * 10 + str.charAt(3) - '0';
-            }
-        }else {
-            c = (str.charAt(0) - '0') * 1000 + (str.charAt(1) - '0') * 100 + (str.charAt(2) - '0') * 10 + str.charAt(3) - '0';
-        }
-        c++;
-        if(c < 10) {
-            return prefix+"000" + c;
-        }else if(c < 100) {
-            return prefix+"00" + c;
-        }else if(c < 1000){
-            return prefix + "0" + c;
-        }else {
-            return prefix+ c;
-        }
-    }
-    public static String[] getStrings(Map<String,Object> data,String key){
-        Object obj = data.get(key);
-        if(obj == null)
-            return new String[]{};
-        if(obj instanceof String[])
-            return (String[])obj;
-        return new String[]{};
+    /** 返回不带提示文字的业务数据 */
+    public static DataResponse getReturnData(Object data) {
+        return getReturnData(data, null);
     }
 
-    public static String getString(Map<String,Object> data,String key){
-        Object obj = data.get(key);
-        if(obj == null)
-            return "";
-        if(obj instanceof String)
-            return (String)obj;
-        return obj.toString();
-    }
-    public static Boolean getBoolean(Map<String,Object> data,String key){
-        Object obj = data.get(key);
-        if(obj == null)
-            return false;
-        if(obj instanceof Boolean)
-            return (Boolean)obj;
-        return "true".equals(obj.toString());
-    }
-    public static List<?> getList(Map<String,Object> data, String key){
-        Object obj = data.get(key);
-        if(obj == null)
-            return new ArrayList<>();
-        if(obj instanceof List)
-            return (List<?>)obj;
-        else
-            return new ArrayList<>();
-    }
-    public static Map<String,Object> getMap(Map<String,Object> data,String key){
-        Object obj = data.get(key);
-        if(obj == null)
-            return new HashMap<>();
-        if(obj instanceof Map)
-            return (Map<String, Object>) obj;
-        else
-            return new HashMap<>();
+    /** 返回带说明的成功结果 */
+    public static DataResponse getReturnMessageOK(String message) {
+        return getReturnMessage(0, message);
     }
 
-    public static Integer getInteger(Map<String,Object> data,String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Integer)
-            return (Integer)obj;
-        String str = obj.toString();
-        try {
-            return (int)Double.parseDouble(str);
-        }catch(Exception e) {
-            return null;
-        }
-    }
-    public static Integer getInteger0(Map<String,Object> data,String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return 0;
-        if(obj instanceof Integer)
-            return (Integer)obj;
-        String str = obj.toString();
-        try {
-            return (int)Double.parseDouble(str);
-        }catch(Exception e) {
-            return 0;
-        }
-    }
-    public static Long getLong(Map<String,Object> data,String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Long)
-            return (Long)obj;
-        String str = obj.toString();
-        try {
-            return Long.parseLong(str);
-        }catch(Exception e) {
-            return null;
-        }
+    /** 返回不带说明的成功结果 */
+    public static DataResponse getReturnMessageOK() {
+        return getReturnMessageOK(null);
     }
 
-    public static Double getDouble(Map<String,Object> data,String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Double)
-            return (Double)obj;
-        String str = obj.toString();
-        try {
-            return Double.parseDouble(str);
-        }catch(Exception e) {
-            return null;
-        }
-    }
-    public static Double getDouble0(Map<String,Object> data,String key) {
-        Double d0 = 0d;
-        Object obj = data.get(key);
-        if(obj == null)
-            return d0;
-        if(obj instanceof Double)
-            return (Double)obj;
-        String str = obj.toString();
-        try {
-            return Double.parseDouble(str);
-        }catch(Exception e) {
-            return d0;
-        }
-    }
-    public static Date getDate(Map<String,Object> data, String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Date)
-            return (Date)obj;
-        String str = obj.toString();
-        return DateTimeTool.formatDateTime(str,"yyyy-MM-dd");
-    }
-    public static Date getTime(Map<String,Object> data,String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Date)
-            return (Date)obj;
-        String str = obj.toString();
-        return DateTimeTool.formatDateTime(str,"yyyy-MM-dd HH:mm:ss");
+    /** 返回业务失败说明，失败码统一为一 */
+    public static DataResponse getReturnMessageError(String message) {
+        return getReturnMessage(1, message);
     }
 
-    public static String replaceNameValue(String html, Map<String,String>m) {
-        if(html== null || html.isEmpty())
-            return html;
-        StringBuilder buf = new StringBuilder();
-        StringTokenizer sz = new StringTokenizer(html,"$");
-        if(sz.countTokens()<=1)
-            return html;
-        String str,key,value;
-        int index;
-        while(sz.hasMoreTokens()) {
-            str = sz.nextToken();
-            if(str.charAt(0)== '{') {
-                index = str.indexOf("}",1);
-                key = str.substring(1,index);
-                value = m.get(key);
-                if(value== null){
-                    value = "";
-                }
-                buf.append(value).append(str, index + 1, str.length());
-            }else {
-                buf.append(str);
-            }
+    /** 从认证上下文读取本站账户，未登录时返回空值 */
+    private static UserDetailsImpl currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return null;
         }
-        return buf.toString();
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof UserDetailsImpl)) {
+            return null;
+        }
+        return (UserDetailsImpl) principal;
     }
 
-    public static String addHeadInfo(String html,String head) {
-        int index0 = html.indexOf("<head>");
-        int index1 = html.indexOf("</head>");
-        return html.substring(0,index0+6)+head + html.substring(index1);
+    /** 返回当前用户编号，未登录时返回空值 */
+    public static Integer getUserId() {
+        UserDetailsImpl user = currentUser();
+        if (user == null) {
+            return null;
+        }
+        return user.getId();
     }
 
-    public static String removeErrorString(String html,String ... subs) {
-        if(html== null || html.isEmpty())
-            return html;
-        StringBuilder buf;
-        int index;
-        int oldIndex;
-        int slen;
-        String content = html;
-        for(String sub : subs) {
-            slen = sub.length();
-            buf = new StringBuilder();
-            index = 0;
-            oldIndex = 0;
-            while(index >= 0) {
-                index = content.indexOf(sub,oldIndex);
-                if(index > 0) {
-                    buf.append(content, oldIndex, index);
-                    oldIndex = index+slen;
-                }else {
-                    buf.append(content, oldIndex, content.length());
-                }
-            }
-            content = buf.toString();
+    /** 返回当前账户的角色名称，未登录或没有角色时返回空值 */
+    public static String getRoleName() {
+        UserDetailsImpl user = currentUser();
+        if (user == null) {
+            return null;
         }
-        return content;
+        for (GrantedAuthority authority : user.getAuthorities()) {
+            return authority.getAuthority();
+        }
+        return null;
     }
 
-    public static String getLevelFromScore(Double score) {
-        if(score == null)
-            return "";
-        if(score >=89.5)
-            return "优";
-        if(score >=79.5)
-            return "良";
-        if(score >=69.5)
-            return "中";
-        if(score >=59.5)
-            return "及格";
-        return "不及格";
-    }
-    public static ResponseEntity<StreamingResponseBody> getByteDataResponseBodyPdf(byte[] data) {
-        if (data == null || data.length == 0)
-            return ResponseEntity.internalServerError().build();
-        try {
-            StreamingResponseBody stream = outputStream -> {
-                outputStream.write(data);
-            };
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(stream);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    public static Double getDouble2(Double f) {
-        if (f == null)
-            return 0d;
-        BigDecimal bg = new BigDecimal(f);
-        return bg.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
-    }
-    public static String ObjectToJSon(Object o){
-        try {
-            //p是指定要转换的对象
-            String json = mapper.writeValueAsString(o);
-            return json;
-        }catch(Exception e){
+    /** 从参数表读取文字，字段不存在时返回空字符串 */
+    public static String getString(Map<String, Object> data, String key) {
+        Object value = data.get(key);
+        if (value == null) {
             return "";
         }
+        return value.toString();
     }
-    public static XSSFCellStyle createCellStyle(XSSFWorkbook workbook, int fontSize) {
-        XSSFFont font = workbook.createFont();
-        //在对应的workbook中新建字体
-        font.setFontName("微软雅黑");
-        //字体微软雅黑
-        font.setFontHeightInPoints((short) fontSize);
-        //设置字体大小
-        XSSFCellStyle style = workbook.createCellStyle();
-        //新建Cell字体
-        style.setFont(font);
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        return style;
+
+    /** 从参数表读取整数，沿用原有数字转换方式，无法转换时返回空值 */
+    public static Integer getInteger(Map<String, Object> data, String key) {
+        Object value = data.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        try {
+            double number = Double.parseDouble(value.toString());
+            return (int) number;
+        } catch (NumberFormatException error) {
+            return null;
+        }
+    }
+
+    /** 将对象转换为日志中的 JSON，无法转换时返回空字符串 */
+    public static String ObjectToJSon(Object value) {
+        try {
+            return MAPPER.writeValueAsString(value);
+        } catch (JsonProcessingException error) {
+            return "";
+        }
     }
 }

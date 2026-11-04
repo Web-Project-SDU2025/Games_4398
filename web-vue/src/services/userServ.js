@@ -5,14 +5,9 @@ export async function userLoginReq(
   username,
   password,
   validateCodeId,
-  validateCode,
-  adminOnly
+  validateCode
 ) {
-  let url = "/auth/login";
-  if (adminOnly) {
-    url = "/auth/adminLogin";
-  }
-  const result = await axios.post(url, {
+  const result = await axios.post("/auth/login", {
     username: username,
     password: password,
     validateCodeId: validateCodeId,

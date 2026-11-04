@@ -39,6 +39,9 @@ export async function askAi(conversationId, message, signal) {
     if (error.code === "ERR_NETWORK") {
       throw new Error("无法连接后端，请检查服务是否启动");
     }
+    if (error.response && error.response.data && error.response.data.msg) {
+      throw new Error(error.response.data.msg);
+    }
     throw error;
   }
 }

@@ -6,8 +6,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /*
- * GameRecord 保存用户一次游玩的分数、时长和时间。
- * user 和 game 分别关联游戏用户和游戏。
+ * GameRecord 保存用户一次游玩的分数、时长和时间
+ * user 和 game 分别关联游戏用户和游戏
  */
 @Getter
 @Setter

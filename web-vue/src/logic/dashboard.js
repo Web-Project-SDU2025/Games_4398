@@ -1,7 +1,12 @@
+// 活动图显示的天数，按北京时间确定日期
 export const ACTIVITY_DAYS = 7;
+// 首页最近记录最多显示的条数
 export const RECENT_RECORD_LIMIT = 5;
+// 首页游戏库预览最多显示的游戏数
 export const PREVIEW_GAME_LIMIT = 3;
+// 每天的毫秒数，用于生成连续日期
 const DAY_MILLISECONDS = 24 * 60 * 60 * 1000;
+// 小时转换使用的秒数
 const SECONDS_PER_HOUR = 3600;
 
 // 将日期转换为北京时间的年月日，返回适合比较的日期文字
@@ -96,7 +101,7 @@ export function summarizeDashboard(games, records, userId, now) {
   };
 }
 
-// 根据已收录数量计算百分比，空目录返回零，避免除以零
+// 根据已收录数量计算百分比，空目录直接返回零
 export function collectionPercent(count, total) {
   if (total === 0) {
     return 0;

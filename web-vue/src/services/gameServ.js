@@ -1,14 +1,4 @@
-import { generalRequest } from "./genServ";
-import { useAppStore } from "../stores/app.js";
-
-// 只有服务器确认写入成功才标记列表过期，读取或失败请求不会触发刷新
-async function writeGameData(url, data, kind) {
-  const result = await generalRequest(url, data);
-  if (result.code === 0) {
-    useAppStore().dataChanged(kind);
-  }
-  return result;
-}
+import { generalRequest, writeRequest } from "./genServ.js";
 
 // 获取游戏列表、游戏库或收藏，参数包括列表类型和查询文字
 export function getGames(mode, search) {
@@ -17,24 +7,24 @@ export function getGames(mode, search) {
 
 // 保存游戏资料，返回保存结果
 export function saveGame(game) {
-  return writeGameData("/api/game/save", game, "games");
+  return writeRequest("/api/game/save", game, "games");
 }
 
 // 删除指定游戏，返回删除结果
 export function deleteGame(gameId) {
-  return writeGameData("/api/game/delete", { gameId: gameId }, "games");
+  return writeRequest("/api/game/delete", { gameId: gameId }, "games");
 }
 
 // 修改游戏库或收藏，added 表示加入还是移出
 export function changeCollection(gameId, mode, added) {
-  return writeGameData(
+  return writeRequest(
     "/api/game/collection",
     {
       gameId: gameId,
       mode: mode,
       added: added,
     },
-    "games"
+    "games",
   );
 }
 
@@ -45,14 +35,14 @@ export function getRecords() {
 
 // 保存一次游玩的游戏、分数和时长
 export function saveRecord(record) {
-  return writeGameData("/api/game/recordSave", record, "records");
+  return writeRequest("/api/game/recordSave", record, "records");
 }
 
 // 删除指定游戏记录，返回删除结果
 export function deleteRecord(recordId) {
-  return writeGameData(
+  return writeRequest(
     "/api/game/recordDelete",
     { recordId: recordId },
-    "records"
+    "records",
   );
 }

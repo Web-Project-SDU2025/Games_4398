@@ -14,6 +14,7 @@ public class OptionItemList {
     private Integer code = 0;
     private List<OptionItem> itemList;
 
+    /** 保存结果码和选项列表，空列表表示当前没有可选项 */
     public OptionItemList(Integer code,List<OptionItem> itemList ){
         this.code = code;
         this.itemList = itemList;

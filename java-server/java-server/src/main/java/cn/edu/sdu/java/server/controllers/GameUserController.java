@@ -6,18 +6,19 @@ import cn.edu.sdu.java.server.services.GameUserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** GameUserController 提供账户管理和个人资料接口。 */
+/** GameUserController 提供账户管理和个人资料接口 */
 @RestController
 @RequestMapping("/api/gameUser")
 public class GameUserController {
     private final GameUserService service;
 
+    /** 保存账户业务服务，权限和资料处理沿用现有接口分工 */
     public GameUserController(GameUserService service) {
         this.service = service;
     }
 
     /**
-     * 查询账户列表，只允许管理员调用。
+     * 查询账户列表，只允许管理员调用
      * @param request data 中可包含账号或昵称的搜索文字
      * @return 账户列表
      */
@@ -28,7 +29,7 @@ public class GameUserController {
     }
 
     /**
-     * 创建一个管理员或游戏用户账户，只允许管理员调用。
+     * 创建一个管理员或游戏用户账户，只允许管理员调用
      * @param request data 中包含账号、密码、昵称和角色
      * @return 创建成功或失败的响应
      */
@@ -39,7 +40,7 @@ public class GameUserController {
     }
 
     /**
-     * 查询当前登录账户的个人资料。
+     * 查询当前登录账户的个人资料
      * @return 当前账户资料
      */
     @PostMapping("/profile")
@@ -48,7 +49,7 @@ public class GameUserController {
     }
 
     /**
-     * 保存个人资料，普通用户只能修改自己的资料。
+     * 保存个人资料，普通用户只能修改自己的资料
      * @param request data 中包含昵称、邮箱、电话和签名
      * @return 保存成功或失败的响应
      */

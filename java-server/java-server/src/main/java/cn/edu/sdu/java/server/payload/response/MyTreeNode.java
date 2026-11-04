@@ -25,16 +25,18 @@ public class MyTreeNode {
     private String userTypeIds;
     private String parentTitle;
     private List<MyTreeNode> children;
+    /** 创建空树节点，供 JSON 工具逐项填充字段 */
     public MyTreeNode(){
 
     }
+    /** 保存节点字段，子列表由树形业务统一装配 */
     public MyTreeNode(Integer id, String value, String title,Integer isLeaf){
         this.id  = id;
         this.value = value;
         this.title = title;
         this.isLeaf = isLeaf;
-//        this.label = id+"-" + title;
     }
+    /** 返回显示标签，空标签沿用当前节点的空值 */
     public String toString(){
         return label;
     }

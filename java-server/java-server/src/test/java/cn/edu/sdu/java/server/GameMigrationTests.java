@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+/** 验证迁移后的游戏接口，测试账号和游戏数据由事务隔离 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -33,6 +34,7 @@ class GameMigrationTests {
     @Autowired
     private ObjectMapper mapper;
 
+    /** 使用指定开发账号构造请求，身份读取失败时直接结束该测试 */
     private MockHttpServletRequestBuilder request(String path, String body, Integer accountId) {
         User account = users.findById(accountId).orElseThrow();
         UserDetailsImpl details = UserDetailsImpl.build(account);
@@ -43,6 +45,7 @@ class GameMigrationTests {
         return request;
     }
 
+    /** 在当前测试事务中创建游戏，测试结束后回滚 */
     private Game createGame() {
         Game game = new Game();
         game.setNum("migration-check");
@@ -50,6 +53,7 @@ class GameMigrationTests {
         return games.saveAndFlush(game);
     }
 
+    /** 对照管理员和普通用户的账户、游戏维护权限 */
     @Test
     void onlyAdministratorCanManageAccountsAndGames() throws Exception {
         client.perform(request("/api/gameUser/list", "{\"data\":{}}", 1))
@@ -60,6 +64,7 @@ class GameMigrationTests {
                 .andExpect(MockMvcResultMatchers.status().isForbidden());
     }
 
+    /** 验证游戏库、收藏和记录按账户区分，已有关联时拒绝删除游戏 */
     @Test
     void libraryFavoritesAndRecordsBelongToCurrentAccount() throws Exception {
         Game game = createGame();
@@ -87,6 +92,7 @@ class GameMigrationTests {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(1));
     }
 
+    /** 注册角色由服务固定为游戏用户，覆盖请求携带管理员角色的情况 */
     @Test
     void registrationAlwaysCreatesGameUser() throws Exception {
         String body = "{\"data\":{\"username\":\"migration_user\",\"password\":\"Test123!\",\"perName\":\"验证账户\",\"role\":\"ADMIN\"}}";
@@ -103,6 +109,7 @@ class GameMigrationTests {
         org.junit.jupiter.api.Assertions.assertEquals("ROLE_GAME_USER", account.getUserType().getName());
     }
 
+    /** 验证管理员创建、编辑和删除账户，测试数据随事务回滚 */
     @Test
     void administratorCanCreateEditAndDeleteGameAccount() throws Exception {
         String createBody = "{\"data\":{\"username\":\"migration_user\",\"password\":\"Test123!\",\"name\":\"验证账户\",\"role\":\"ROLE_GAME_USER\"}}";

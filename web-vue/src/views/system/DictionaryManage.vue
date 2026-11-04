@@ -64,6 +64,7 @@ import {
 } from "~/services/systemServ";
 import { message, messageConform } from "~/tools/messageBox";
 import { createNodeForm } from "../../logic/forms.js";
+import { useAppStore } from "../../stores/app.js";
 export default {
   // 创建当前树形页面的状态
   data: function treeState() {
@@ -86,17 +87,24 @@ export default {
     this.query();
   },
   methods: {
-    // 读取失败时保留当前树，并让用户知道请求未完成
+    // 按请求令牌接收字典结果，切号后丢弃旧响应，当前账号失败时显示提示
     query: async function query() {
       if (this.loading) {
         return;
       }
       this.loading = true;
+      const token = useAppStore().userInfo.token;
       try {
-        this.nodes = await getDictionaryTreeNodeList();
+        const nodes = await getDictionaryTreeNodeList();
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
+        this.nodes = nodes;
         this.loaded = true;
       } catch (error) {
-        message(this, "字典读取失败，请稍后重试");
+        if (token === useAppStore().userInfo.token) {
+          message(this, "字典读取失败，请稍后重试");
+        }
       } finally {
         this.loading = false;
       }
@@ -123,7 +131,7 @@ export default {
       this.dialogTitle = "添加字典项对话框";
       this.$refs.editor.showModal();
     },
-    // 复制选中节点，编辑内容不会直接改变树形列表
+    // 复制选中节点作为表单，取消编辑时保留树的原值
     editItem: function editItem() {
       if (!this.currentNode.id) {
         message(this, "请先选择数据项");

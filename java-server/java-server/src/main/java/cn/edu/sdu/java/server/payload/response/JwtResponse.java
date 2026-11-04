@@ -22,6 +22,7 @@ public class JwtResponse {
     private String role;
     private String serverName;
 
+    /** 保存登录成功后的身份字段，昵称为空时由前端使用账号显示 */
     public JwtResponse(String token, Integer id, String username, String perName,String role) {
         this.token = token;
         this.id = id;

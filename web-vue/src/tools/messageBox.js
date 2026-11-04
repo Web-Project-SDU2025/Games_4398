@@ -15,7 +15,7 @@ export async function messageConform(content) {
     });
     return true;
   } catch (error) {
-    // 取消是正常选择，返回 false 后页面就不会继续执行删除
+    // 取消时返回 false，由页面保留原数据
     return false;
   }
 }

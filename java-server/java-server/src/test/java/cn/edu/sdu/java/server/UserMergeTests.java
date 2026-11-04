@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 
+/** 验证账户合并后的资料与关联，测试数据随事务回滚 */
 @SpringBootTest
 @Transactional
 class UserMergeTests {
@@ -42,6 +43,7 @@ class UserMergeTests {
     @Autowired
     private BaseService baseService;
 
+    /** 将指定开发账户放入认证上下文，调用方在 finally 中清理身份 */
     private void signIn(Integer userId) {
         User user = users.findById(userId).orElseThrow();
         UserDetailsImpl details = UserDetailsImpl.build(user);
@@ -50,6 +52,7 @@ class UserMergeTests {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
+    /** 创建带资料的测试账户，创建失败时由断言报告 */
     private User createAccount() {
         DataRequest request = new DataRequest();
         request.add("username", "merge_check");
@@ -62,6 +65,7 @@ class UserMergeTests {
         return users.findByUserName("merge_check").orElseThrow();
     }
 
+    /** 核对新账户的资料、头像和密码哈希，旧表数量应为零 */
     @Test
     void newAccountStoresAllProfileFieldsInOneTable() {
         User user = createAccount();
@@ -90,6 +94,7 @@ class UserMergeTests {
         assertEquals(0, oldTables);
     }
 
+    /** 普通用户提交其他账号编号时仍只更新本人资料 */
     @Test
     void ordinaryUserCannotEditAnotherAccount() {
         signIn(2);
@@ -113,6 +118,7 @@ class UserMergeTests {
         }
     }
 
+    /** 删除账户时清理关联记录，游戏实体继续保留 */
     @Test
     void deletingAccountRemovesItsRelationsAndKeepsGame() {
         User user = createAccount();
@@ -154,6 +160,7 @@ class UserMergeTests {
         }
     }
 
+    /** 检查简单密码、旧密码错误、最大长度及空输入分支 */
     @Test
     void passwordChangeAcceptsSimplePasswordsAndLimitsMaximumLength() {
         User account = createAccount();

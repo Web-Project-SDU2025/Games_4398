@@ -1,4 +1,7 @@
 .desktop-shell {
+  /* 同级菜单共享字号和行高，图标与文字按同一基线排列 */
+  --sidebar-link-size: 15px;
+  --account-control-height: 40px;
   height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -56,15 +59,25 @@
   gap: var(--space-sm);
   flex-wrap: nowrap;
   min-width: 0;
+  margin: 0;
+  align-self: center;
+  line-height: 1;
 }
 .workspace-user-menu > span {
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  height: var(--account-control-height);
 }
 .workspace-user-menu select {
-  min-height: 36px;
+  align-items: center;
+  min-height: var(--account-control-height);
+  height: var(--account-control-height);
+  box-sizing: border-box;
+  line-height: 1.4;
   flex: 0 1 auto;
   min-width: 0;
   width: max-content;
@@ -107,7 +120,8 @@
   margin: 0;
 }
 .sidebar-group summary {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
   padding: 14px 12px;
   cursor: pointer;
   color: var(--color-sidebar-muted);
@@ -119,7 +133,8 @@
   min-height: 42px;
   box-sizing: border-box;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: var(--sidebar-link-size);
+  line-height: 1.4;
   gap: 12px;
   border-radius: var(--radius-control);
   color: var(--color-sidebar-muted);
@@ -236,8 +251,10 @@
     grid-template-columns: 224px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
   }
-  .desktop-shell .platform-sidebar {
-    display: block;
+  .desktop-shell .platform-sidebar,
+  .desktop-shell .platform-sidebar.is-expanded {
+    display: flex;
+    flex-direction: column;
     max-height: none;
     border-bottom: 0;
     border-right: 1px solid var(--color-rule);
@@ -264,13 +281,31 @@
   gap: var(--space-sm);
   flex-wrap: nowrap;
   max-width: 100%;
+  align-self: center;
+  align-items: center;
+  min-height: var(--account-control-height);
+}
+.workspace-university {
+  margin-top: auto;
+  padding: var(--space-lg) 12px var(--space-md);
+}
+.workspace-university img {
+  display: block;
+  width: 100%;
+  max-width: 176px;
+  height: auto;
+  margin-inline: auto;
+}
+.desktop-shell .workspace-user-menu {
+  margin-block: 0;
 }
 .sidebar-shortcuts {
   margin-top: var(--space-lg);
   border-top: 1px solid var(--color-rule);
   padding-top: var(--space-sm);
 }
-.sidebar-shortcuts a {
+.sidebar-shortcuts a,
+.sidebar-shortcuts button {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -278,6 +313,39 @@
   white-space: nowrap;
   border-radius: var(--radius-control);
   color: var(--color-sidebar-muted);
+  font-size: var(--sidebar-link-size);
+  line-height: 1.4;
+  min-height: 42px;
+  box-sizing: border-box;
+}
+.sidebar-shortcuts button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: var(--color-clear);
+}
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  max-width: 100%;
+  align-self: center;
+}
+.workspace-icon-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-clear);
+  color: var(--color-muted);
+}
+.workspace-icon-button span {
+  width: 20px;
+  height: 20px;
 }
 .sidebar-shortcuts span,
 .workspace-logout span {
@@ -288,8 +356,9 @@
 .workspace-logout {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: var(--account-control-height);
+  height: var(--account-control-height);
+  align-self: center;
   padding: 0;
   background: var(--color-clear);
   color: var(--color-muted);

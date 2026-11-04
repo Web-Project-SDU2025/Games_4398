@@ -124,7 +124,7 @@ function chatState() {
   };
 }
 
-// 初次显示时检查密钥配置，错误直接显示，不退回本地问答
+// 初次显示时读取配置状态，读取失败时显示重试提示
 async function checkStatus() {
   const revision = this.revision;
   try {
@@ -140,7 +140,7 @@ async function checkStatus() {
   this.scrollMessages();
 }
 
-// 输入法选词时不提交，Shift 加回车仍然换行
+// 输入法选词与 Shift 加回车保留编辑行为，普通回车发送问题
 function handleKey(event) {
   if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
@@ -148,13 +148,13 @@ function handleKey(event) {
   }
 }
 
-// 建议问题也走真实模型接口，不提供预设答案
+// 将建议问题填入输入区并通过共用发送流程提交
 function ask(question) {
   this.question = question;
   this.send();
 }
 
-// 记录问题后请求模型，等待期间防止重复提交
+// 记录问题后请求模型，等待期间直接保留当前请求
 async function send() {
   if (this.pending || !support.addQuestion(this.conversation, this.question)) {
     return;
@@ -165,7 +165,7 @@ async function send() {
   await this.requestReply(question);
 }
 
-// 请求序号保证切换会话、关闭宠物或切号后，旧回答不会写入新对话
+// 按请求序号接收回复，切换会话、关闭宠物和切号后丢弃旧响应
 async function requestReply(question) {
   const conversation = this.conversation;
   const request = new AbortController();
@@ -188,7 +188,7 @@ async function requestReply(question) {
     if (revision !== this.revision) {
       return;
     }
-    // 超时后云端可能已接收问题，重试时换新上下文，避免重复发送同一轮
+    // 超时后重新分配云端编号，重试从新上下文开始
     conversation.cloudId = crypto.randomUUID();
     this.failedQuestion = question;
     this.notice = error.message;
@@ -203,7 +203,7 @@ async function requestReply(question) {
   }
 }
 
-// 重试保留原来的问题气泡，不重复插入同一条用户消息
+// 重试复用原问题气泡，当前仍在等待时保持等待状态
 async function retry() {
   if (!this.pending && this.failedQuestion) {
     await this.requestReply(this.failedQuestion);
@@ -223,7 +223,7 @@ function cancelRequest(conversation) {
   this.$emit("pending", false);
 }
 
-// 用户主动停止后允许重新提问，不把取消误报为网络错误
+// 用户主动停止后恢复输入，并显示停止状态
 function stop() {
   const messages = this.conversation.messages;
   if (messages.length > 0) {
@@ -260,7 +260,7 @@ function speaker(role) {
   return "Octorange";
 }
 
-// 按用户操作复制纯文本，模型返回的 HTML 不会被执行
+// 通过剪贴板写入回复文字，权限失败时提示手动选择复制
 async function copyReply(content) {
   try {
     await navigator.clipboard.writeText(content);

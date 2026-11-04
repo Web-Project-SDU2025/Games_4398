@@ -33,7 +33,7 @@ public class LocalAccountController {
         this.enabled = enabled;
     }
 
-    /** 判断请求是否直接来自本机，不使用可伪造的转发头 */
+    /** 按连接来源判断本机访问，转发头由客户端输入独立保存 */
     public boolean available(HttpServletRequest request) {
         String address = request.getRemoteAddr();
         return enabled && ("127.0.0.1".equals(address) || "::1".equals(address)

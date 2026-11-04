@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/** 使用开发库验证认证接口，测试写入由事务回滚 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -30,6 +31,7 @@ class AuthenticationTests {
     @Autowired
     private ObjectMapper mapper;
 
+    /** 生成带有效验证码的管理员请求，每次调用使用新验证码 */
     private LoginRequest loginRequest() {
         LoginRequest request = new LoginRequest();
         request.setUsername("admin");
@@ -41,11 +43,13 @@ class AuthenticationTests {
         return request;
     }
 
+    /** 将请求转换为 JSON 并提交，后续断言保留原 HTTP 状态 */
     private ResultActions send(String path, Object request) throws Exception {
         String body = mapper.writeValueAsString(request);
         return client.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
+    /** 校验验证码图片的 PNG 字节与解码结果，空图片会使断言失败 */
     @Test
     void captchaImageIsValidPng() throws Exception {
         MvcResult result = send("/auth/getValidateCode", new DataRequest()).andReturn();
@@ -58,6 +62,7 @@ class AuthenticationTests {
         assertNotNull(ImageIO.read(new ByteArrayInputStream(bytes)));
     }
 
+    /** 检查缺失、错误和重复验证码对应的登录拒绝结果 */
     @Test
     void loginRequiresCaptchaAndRejectsReuse() throws Exception {
         LoginRequest missing = new LoginRequest();
@@ -72,6 +77,7 @@ class AuthenticationTests {
         send("/auth/login", valid).andExpect(status().isBadRequest());
     }
 
+    /** 密码错误时返回未授权状态和统一提示 */
     @Test
     void badPasswordReturnsReadableMessage() throws Exception {
         LoginRequest request = loginRequest();
@@ -80,6 +86,7 @@ class AuthenticationTests {
                 .andExpect(jsonPath("$.msg").value("账号或密码不正确"));
     }
 
+    /** 验证注册、登录和重复账号分支，写入在测试事务结束后回滚 */
     @Test
     void registrationRequiresCaptchaAndPreventsDuplicates() throws Exception {
         DataRequest request = new DataRequest();

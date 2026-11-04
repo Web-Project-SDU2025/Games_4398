@@ -24,7 +24,7 @@ function loadSession(profileRequest) {
   };
   let source = fs.readFileSync(
     new URL("../src/stores/app.js", import.meta.url),
-    "utf8"
+    "utf8",
   );
   source = source.replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
   source = source.replace("export const useAppStore", "const useAppStore");
@@ -70,7 +70,7 @@ function loadSession(profileRequest) {
   };
   let routeSource = fs.readFileSync(
     new URL("../src/router/index.js", import.meta.url),
-    "utf8"
+    "utf8",
   );
   routeSource = routeSource.replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
   routeSource = routeSource.replace("export default router;", "");
@@ -83,9 +83,9 @@ function loadSession(profileRequest) {
   };
 }
 
-// 浏览器保存的普通用户身份不能覆盖后端已经生效的管理员身份
+// 浏览器旧身份按后端当前管理员身份更新
 test("旧登录身份会同步为真实管理员，系统菜单正常进入", async function testPromotion() {
-  // 返回管理员身份，不依赖菜单名称推断权限
+  // 返回服务器管理员身份，权限按角色字段判断
   async function getProfile() {
     return {
       code: 0,
@@ -109,7 +109,7 @@ test("旧登录身份会同步为真实管理员，系统菜单正常进入", as
   assert.equal(session.store.systemConfig.naviList.length, 1);
 });
 
-// 浏览器即使残留管理员标记，普通用户也不能因此进入系统管理
+// 浏览器残留管理员标记时，后端普通角色使管理导航返回首页
 test("后端取消管理员身份后，旧缓存不能继续放行", async function testDemotion() {
   // 模拟角色已由管理员降为普通游戏用户
   async function getProfile() {
@@ -133,7 +133,7 @@ test("后端取消管理员身份后，旧缓存不能继续放行", async funct
   assert.equal(session.store.userInfo.role, "ROLE_GAME_USER");
 });
 
-// 身份请求未结束就切号时，迟到的响应不能改动新账号，也不能完成旧导航
+// 身份请求期间切号后丢弃旧响应，原导航返回取消状态
 test("身份同步期间切号不会串改角色", async function testAccountRace() {
   let complete;
   // 保存完成函数，测试主动安排切号和响应的顺序
@@ -166,7 +166,7 @@ test("身份同步期间切号不会串改角色", async function testAccountRac
   assert.equal(session.store.userInfo.role, "ROLE_GAME_USER");
 });
 
-// 网络失败保留当前登录，但管理页面不能凭旧身份直接放行
+// 身份读取失败时保留登录，并取消当前管理页面导航
 test("身份读取失败给出提示并取消管理页面跳转", async function testIdentityFailure() {
   // 模拟后端暂时无法连接
   async function getProfile() {

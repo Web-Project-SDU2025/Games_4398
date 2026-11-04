@@ -16,11 +16,13 @@ import org.springframework.stereotype.Component;
 public class SystemApplicationListener implements ApplicationListener<ApplicationReadyEvent> {
     private static final Logger log = LoggerFactory.getLogger(SystemApplicationListener.class);
     private final SystemService systemService;  //系统服务对象自动注入
+    /** 保存系统初始化服务，准备完成后统一读取系统数据 */
     public SystemApplicationListener(SystemService systemService) {
         this.systemService = systemService;
     }
 
 
+    /** 应用就绪后加载字典与系统配置，读取异常交给启动日志报告 */
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
         log.info(event.toString());

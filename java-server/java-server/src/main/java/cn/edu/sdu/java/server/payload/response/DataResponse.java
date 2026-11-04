@@ -15,10 +15,12 @@ public class DataResponse {
     private Integer code;
     private Object data;
     private String msg;
+    /** 提供 JSON 工具使用的空响应，字段随后由工具填充 */
     public DataResponse(){
 
     }
 
+    /** 保存状态码、业务数据和提示，允许数据或提示为空 */
     public DataResponse(Integer code, Object data, String msg) {
         this.code = code;
         this.data = data;

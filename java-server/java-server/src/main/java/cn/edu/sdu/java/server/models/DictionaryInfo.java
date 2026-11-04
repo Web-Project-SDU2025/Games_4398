@@ -9,9 +9,11 @@ package cn.edu.sdu.java.server.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import cn.edu.sdu.java.server.util.FieldLimits;
 
 import lombok.Getter;
 import lombok.Setter;
+/** 保存字典节点，父编号为空或零的节点作为根节点 */
 @Getter
 @Setter
 @Entity
@@ -26,9 +28,9 @@ public class DictionaryInfo {
 
     private Integer pid;
 
-    @Size(max = 40)
+    @Size(max = FieldLimits.SHORT_TEXT)
     private String value;
 
-    @Size(max = 40)
+    @Size(max = FieldLimits.SHORT_TEXT)
     private String label;
 }

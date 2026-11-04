@@ -1,6 +1,13 @@
+// 单条问题最多字符数，与 AI 入口保持一致
 export const QUESTION_LIMIT = 2000;
+// 本机最多保存的对话数
 const HISTORY_LIMIT = 20;
+// 每段对话最多保存的消息数
 const MESSAGE_LIMIT = 80;
+// 首条问题自动生成标题时保留的字符数
+const AUTO_TITLE_LIMIT = 20;
+// 重命名对话时的标题最多字符数
+export const TITLE_LIMIT = 40;
 
 // 每个账号使用自己的浏览器存储，提问时只发送当前问题和对话编号
 function storageKey(userId) {
@@ -47,7 +54,7 @@ export function readConversations(userId) {
   }
 }
 
-// 旧历史没有云端编号时创建新编号，避免把本地快速问答当成模型上下文
+// 旧历史缺少云端编号时生成新编号，新编号开始独立上下文
 function readCloudId(value) {
   if (typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value)) {
     return value;
@@ -64,7 +71,7 @@ export function saveConversations(userId, conversations) {
   localStorage.setItem(storageKey(userId), JSON.stringify(recent));
 }
 
-// 新会话不预置虚构回答，首条提问作为标题
+// 创建空会话，标题由首条提问生成
 export function createConversation() {
   return {
     id: crypto.randomUUID(),
@@ -76,19 +83,20 @@ export function createConversation() {
 
 // 只添加用户问题，回答必须等百炼接口成功后再添加
 export function addQuestion(conversation, question) {
-  const text = question.trim().substring(0, QUESTION_LIMIT);
+  const trimmed = question.trim();
+  const text = trimmed.substring(0, QUESTION_LIMIT);
   if (text === "") {
     return false;
   }
   if (conversation.messages.length === 0) {
-    conversation.title = text.substring(0, 20);
+    conversation.title = text.substring(0, AUTO_TITLE_LIMIT);
   }
   conversation.messages.push({ role: "user", content: text });
   trimMessages(conversation);
   return true;
 }
 
-// 百炼回答成功后加入消息，不在网络失败时伪造固定答复
+// 将已取得的百炼回复加入消息，并裁剪到历史条数上限
 export function addReply(conversation, reply) {
   conversation.messages.push({
     role: "assistant",
@@ -97,7 +105,7 @@ export function addReply(conversation, reply) {
   trimMessages(conversation);
 }
 
-// 限制显示和存储的条数，不把整段浏览器历史重复发送给云端
+// 将显示和存储的消息裁剪到上限，保留最近消息
 function trimMessages(conversation) {
   if (conversation.messages.length > MESSAGE_LIMIT) {
     conversation.messages = conversation.messages.slice(-MESSAGE_LIMIT);

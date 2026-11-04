@@ -11,7 +11,7 @@ function loadChat(askAi) {
   const source = fs.readFileSync(file, "utf8");
   let script = source.substring(
     source.indexOf("<script>") + 8,
-    source.indexOf("</script>")
+    source.indexOf("</script>"),
   );
   script = script.replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
   script = script.replace("export default", "const component =");
@@ -49,7 +49,7 @@ function loadChat(askAi) {
   return { state: state, component: component };
 }
 
-// 慢请求期间再次点击发送不能重复插入问题，成功只添加真实回复
+// 慢请求期间保留一条问题，接口成功后添加对应回复
 test("聊天等待期间防重复，成功后恢复输入", async function testChatSuccess() {
   let complete;
   let requests = 0;
@@ -78,7 +78,7 @@ test("聊天等待期间防重复，成功后恢复输入", async function testC
   assert.equal(chat.conversation.messages[1].content, "连成五子获胜");
 });
 
-// 停止和切换历史后，即使网络替身迟到，旧消息也不能写进新会话
+// 停止和切换历史后丢弃迟到的响应，新会话保持原状态
 test("停止或切换对话后丢弃迟到的模型回复", async function testChatCancellation() {
   let complete;
   let requestSignal;
@@ -109,7 +109,7 @@ test("停止或切换对话后丢弃迟到的模型回复", async function testC
   assert.equal(chat.conversation.messages.length, 0);
 });
 
-// 重试不复制问题，失败后换云端编号，避免云端重复接收同一轮上下文
+// 重试复用原问题，失败后分配新编号并开始独立上下文
 test("回答失败后保留问题并支持重试", async function testChatRetry() {
   let failed = true;
   // 先模拟服务器繁忙，再返回正常回答
@@ -153,7 +153,7 @@ test("账号历史隔离、旧数据兼容和宠物边界正确", function testS
     assert.equal(support.readConversations(2).length, 0);
     setItem(
       "4398-support-3",
-      '[null,{"id":"old","title":"旧历史","messages":[null]}]'
+      '[null,{"id":"old","title":"旧历史","messages":[null]}]',
     );
     assert.equal(support.readConversations(3)[0].messages.length, 0);
     assert.equal(support.readConversations(3)[0].cloudId.length, 36);

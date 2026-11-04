@@ -26,7 +26,7 @@ public class AdminRecordService {
     private final UserRepository users;
     private final GameService gameService;
 
-    /** 复用原有仓库和记录转换方法，不再创建第二套分数表 */
+    /** 共用记录仓库和转换方法，分数视图使用同一条记录 */
     public AdminRecordService(GameRecordRepository records, GameRepository games,
             UserRepository users, GameService gameService) {
         this.records = records;
@@ -52,7 +52,7 @@ public class AdminRecordService {
         return CommonMethod.getReturnData(result);
     }
 
-    /** 读取非负整数，拒绝小数和超范围数字，避免分数被静默截断 */
+    /** 读取非负整数，小数和超范围数字返回空值供调用方校验 */
     private Integer readNumber(DataRequest request, String key) {
         String text = request.getString(key);
         try {

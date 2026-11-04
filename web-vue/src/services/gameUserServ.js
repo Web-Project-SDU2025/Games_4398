@@ -1,5 +1,4 @@
-import { generalRequest } from "./genServ";
-import { useAppStore } from "../stores/app.js";
+import { generalRequest, writeRequest } from "./genServ.js";
 
 // 查询账户列表，参数是账号或昵称
 export function getAccounts(search) {
@@ -17,14 +16,8 @@ export function createAccount(profile) {
 }
 
 // 删除指定游戏用户，返回操作结果
-export async function deleteAccount(userId) {
-  const result = await generalRequest("/api/gameUser/delete", {
-    userId: userId,
-  });
-  if (result.code === 0) {
-    useAppStore().dataChanged("records");
-  }
-  return result;
+export function deleteAccount(userId) {
+  return writeRequest("/api/gameUser/delete", { userId: userId }, "records");
 }
 
 // 获取当前账户的个人资料

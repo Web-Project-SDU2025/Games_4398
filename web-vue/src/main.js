@@ -4,7 +4,7 @@ import App from "./App.vue";
 import pinia from "./stores";
 
 import ElementPlus from "element-plus";
-// 使用本地组件样式，页面不依赖外部样式地址
+// 应用入口加载本地组件样式
 import "element-plus/dist/index.css";
 
 import "uno.css";
@@ -16,12 +16,13 @@ import "~/styles/workspace.css";
 import "~/styles/home.css";
 import "~/styles/support.css";
 import "~/styles/pet.css";
+import "~/styles/settings.css";
 import "~/styles/motion.css";
 import { revealDirective } from "./tools/motion.js";
 import { markdownDirective } from "./tools/markdown.js";
 
 // 管理页面会显示消息提示，因此在入口加载提示组件样式
-import "element-plus/theme-chalk/src/message.scss";
+import "element-plus/es/components/message/style/css";
 import router from "./router";
 
 const app = createApp(App);
@@ -30,7 +31,7 @@ app.use(ElementPlus);
 app.use(router);
 app.directive("reveal", revealDirective);
 app.directive("markdown", markdownDirective);
-// 等初始路由确定后再显示页面，避免先出现登录表单再跳转到主页
+// 初始路由确定后挂载页面，刷新时直接显示目标路由
 async function startApp() {
   await router.isReady();
   app.mount("#app");

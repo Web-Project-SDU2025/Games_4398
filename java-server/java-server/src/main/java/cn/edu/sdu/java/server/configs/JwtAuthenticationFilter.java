@@ -23,6 +23,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import java.io.IOException;
 import java.util.Date;
 
+/** 校验请求中的登录令牌，缺少令牌时交给后续权限规则处理 */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
@@ -33,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private RequestAttributeSecurityContextRepository repo;
 
+    /** 保存令牌解析、用户读取和异常处理组件，复用框架认证流程 */
     public JwtAuthenticationFilter(
         JwtService jwtService,
         UserDetailsServiceImpl userDetailsService,
@@ -43,6 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.handlerExceptionResolver = handlerExceptionResolver;
     }
 
+    /** 读取并校验登录身份，异常交给统一异常解析器处理 */
     @Override
     protected void doFilterInternal(
         @NonNull HttpServletRequest request,

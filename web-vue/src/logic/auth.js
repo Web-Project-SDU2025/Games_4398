@@ -1,7 +1,7 @@
 import { getValidateCode, registerUser } from "../services/userServ.js";
 import { createRegistration } from "./account.js";
 
-// 创建独立的登录表单数据，避免页面重新打开时保留上次输入的密码
+// 创建独立登录表单，每次打开页面时密码和验证码均为空
 export function createLoginForm() {
   return {
     mode: "login",
@@ -19,7 +19,7 @@ export function createLoginForm() {
   };
 }
 
-// 更新表单的验证码图片和编号，同时清除旧输入，避免提交已经失效的验证码
+// 更新验证码图片和编号，刷新时清除旧输入，失败时提供重试提示
 export async function refreshCaptcha(form) {
   form.captchaLoading = true;
   form.captchaImage = "";
@@ -39,7 +39,7 @@ export async function refreshCaptcha(form) {
   }
 }
 
-// 切换登录或注册表单，保留账号但清空密码，防止两种操作共用密码输入
+// 切换表单时保留账号、清空密码，提交期间保持当前模式
 export async function changeLoginMode(form, mode) {
   if (form.mode === mode || form.submitting) {
     return;

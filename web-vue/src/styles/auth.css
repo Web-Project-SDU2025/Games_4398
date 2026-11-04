@@ -1,8 +1,75 @@
 .auth-page {
-  min-height: 72dvh;
-  background: var(--color-header);
+  /* 星点大小和亮度按远近层次分别维护 */
+  --auth-star-small-size: 1px;
+  --auth-star-medium-size: 2px;
+  --auth-star-large-size: 3px;
+  --auth-star-small-opacity: 0.45;
+  --auth-star-medium-opacity: 0.6;
+  --auth-star-large-opacity: 0.75;
+  position: relative;
+  isolation: isolate;
+  flex: 1 0 auto;
+  box-sizing: border-box;
+  background: var(--color-workspace-background);
   color: var(--color-ink);
   padding: var(--space-xl) var(--space-lg) var(--space-2xl);
+}
+.auth-background {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.auth-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-ink);
+  border-radius: 50%;
+}
+/* 上方复制一屏相同星点，向下移动一屏后首尾自然衔接 */
+.auth-stars::after {
+  content: "";
+  position: absolute;
+  top: -100vh;
+  left: 0;
+  width: inherit;
+  height: inherit;
+  border-radius: inherit;
+  box-shadow: inherit;
+}
+.auth-stars-small {
+  width: var(--auth-star-small-size);
+  height: var(--auth-star-small-size);
+  opacity: var(--auth-star-small-opacity);
+}
+.auth-stars-medium {
+  width: var(--auth-star-medium-size);
+  height: var(--auth-star-medium-size);
+  opacity: var(--auth-star-medium-opacity);
+}
+.auth-stars-large {
+  width: var(--auth-star-large-size);
+  height: var(--auth-star-large-size);
+  opacity: var(--auth-star-large-opacity);
+}
+.auth-motion-toggle {
+  position: fixed;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  background: var(--color-workspace-background);
+}
+.auth-motion-toggle span {
+  font-size: 20px;
 }
 .auth-layout {
   max-width: 940px;
@@ -116,14 +183,16 @@
   max-width: 300px;
   margin: 0 auto var(--space-lg);
 }
-.auth-login-links {
-  margin-top: var(--space-lg);
-}
 @media (min-width: 48rem) {
   .auth-layout {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: var(--space-2xl);
   }
+  .auth-page {
+    padding-top: var(--space-2xl);
+  }
+}
+@media (max-width: 47.99rem) {
   .auth-page {
     padding-top: var(--space-2xl);
   }

@@ -23,6 +23,7 @@ public class SystemService {
     private final SystemInfoRepository systemInfoRepository; //数据数据操作自动注入
 
     private final ModifyLogRepository modifyLogRepository; //数据数据操作自动注入
+    /** 保存字典、系统配置和日志仓库，启动初始化共用同一组依赖 */
     public SystemService(DictionaryInfoRepository dictionaryInfoRepository, SystemInfoRepository systemInfoRepository, ModifyLogRepository modifyLogRepository) {
         this.dictionaryInfoRepository = dictionaryInfoRepository;
         this.systemInfoRepository = systemInfoRepository;
@@ -57,6 +58,7 @@ public class SystemService {
         pi.setDictListMap(dictListMap);
         pi.setDictMapMap(dictMapMap);
     }
+    /** 将系统配置加载到进程缓存，空表生成空映射 */
     public void initSystem() {
         List<SystemInfo> sList = systemInfoRepository.findAll();
         Map<String,String> map = new HashMap<>();
@@ -66,6 +68,7 @@ public class SystemService {
         ComDataUtil pi = ComDataUtil.getInstance();
         pi.setSystemMap(map);
     }
+    /** 整理修改日志并保存，JSON 解析结果沿用公共转换方法 */
     public void modifyLog(Object o, boolean isCreate) {
         String info = CommonMethod.ObjectToJSon(o);
         if(info == null)

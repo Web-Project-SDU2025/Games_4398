@@ -6,6 +6,8 @@ import * as account from "../src/logic/account.js";
 import * as navigation from "../src/logic/navigation.js";
 import * as forms from "../src/logic/forms.js";
 import * as support from "../src/logic/support.js";
+import * as limits from "../src/logic/limits.js";
+import * as dashboard from "../src/logic/dashboard.js";
 
 // 提问只创建用户消息，真实回答由接口成功后添加，编辑记录不修改原对象
 test("客服不再使用本地问答，消息和记录编辑保持独立", function testSupportAndRecords() {
@@ -103,6 +105,7 @@ test("刷新动画支持取消、卸载和减少动态效果", function testMoti
 
 // 读取列表页面的普通脚本，接口使用测试替身，不访问数据库
 function loadListComponent(filename, services) {
+  services.limits = limits;
   const url = new URL(filename, import.meta.url);
   const source = fs.readFileSync(url, "utf8");
   const start = source.indexOf("<script>") + "<script>".length;
@@ -115,6 +118,84 @@ function loadListComponent(filename, services) {
   vm.runInContext(script, services);
   return services.component;
 }
+
+// 身份切为普通用户时立即停止显示管理页面，首页继续按登录状态显示
+test("切号期间按新角色阻止重建管理员页面", function testRoleRenderDuringSwitch() {
+  const component = loadListComponent("../src/components/Navi.vue", {
+    AccountSwitcher: {},
+    Octorange: {},
+    PointerTrail: {},
+    InterfaceSettings: {},
+  });
+  const state = {
+    $route: { meta: { adminOnly: true } },
+    isAdmin: true,
+    loggedIn: true,
+  };
+  assert.equal(component.computed.canViewCurrentPage.call(state), true);
+  state.isAdmin = false;
+  assert.equal(component.computed.canViewCurrentPage.call(state), false);
+  state.$route.meta = {};
+  assert.equal(component.computed.canViewCurrentPage.call(state), true);
+  state.loggedIn = false;
+  assert.equal(component.computed.canViewCurrentPage.call(state), false);
+});
+
+// 管理树请求在切号后返回时保留原数据，当前账号请求失败仍显示提示
+test("切号后丢弃管理员菜单与字典的迟到响应", async function testTreeAccountRace() {
+  const store = { userInfo: { token: "admin-token" } };
+  let complete;
+  let reject;
+  const notices = [];
+  // 返回测试当前身份，令牌由测试控制切换时间
+  function useAppStore() {
+    return store;
+  }
+  // 保存请求完成入口，测试分别安排失败响应和成功响应
+  function holdRequest(resolve, rejectRequest) {
+    complete = resolve;
+    reject = rejectRequest;
+  }
+  // 创建等待中的树读取请求，原列表在等待期间继续保留
+  function readTree() {
+    return new Promise(holdRequest);
+  }
+  // 记录当前账户的错误提示，供断言检查
+  function message(page, text) {
+    notices.push(text);
+  }
+  for (const filename of [
+    "../src/views/system/MenuManage.vue",
+    "../src/views/system/DictionaryManage.vue",
+  ]) {
+    const component = loadListComponent(filename, {
+      useAppStore: useAppStore,
+      getMenuTreeNodeList: readTree,
+      getDictionaryTreeNodeList: readTree,
+      message: message,
+    });
+    const state = component.data();
+    state.nodes = [{ id: 1 }];
+    store.userInfo.token = "admin-token";
+    const failed = component.methods.query.call(state);
+    store.userInfo.token = "player-token";
+    reject(new Error("Forbidden"));
+    await failed;
+    assert.equal(notices.length, 0);
+    assert.equal(state.loading, false);
+    store.userInfo.token = "next-admin-token";
+    const delayed = component.methods.query.call(state);
+    store.userInfo.token = "player-token";
+    complete([{ id: 2 }]);
+    await delayed;
+    assert.equal(state.nodes[0].id, 1);
+    const currentFailure = component.methods.query.call(state);
+    reject(new Error("network failure"));
+    await currentFailure;
+    assert.equal(notices.length, 1);
+    notices.length = 0;
+  }
+});
 
 // 手动控制请求完成时间，检查等待期间旧列表是否仍然存在
 test("返回列表时保留原数据，请求失败也不清空已加载内容", async function testListRefresh() {
@@ -206,7 +287,86 @@ test("列表首次只读取一次，缓存未过期不刷新，失败后保留�
   }
 });
 
-// 路由过渡未结束时，提示内容变化不能再给同一区域播放第二层淡化
+// 概览返回时使用缓存，游戏或记录变化后刷新，错误时保留原概览并允许重试
+test("首页按游戏和记录版本刷新概览，返回缓存时直接显示", async function testHomeCache() {
+  const store = {
+    userInfo: { id: 2, token: "test-token" },
+    gameRevision: 0,
+    recordRevision: 0,
+  };
+  let requests = 0;
+  let failNext = false;
+  // 模拟当前账户和共享的数据版本
+  function useAppStore() {
+    return store;
+  }
+  // 使用空列表校验概览零值，失败时模拟网络异常
+  async function readList() {
+    requests = requests + 1;
+    if (failNext) {
+      throw new Error("测试网络故障");
+    }
+    return { code: 0, data: [] };
+  }
+  const component = loadListComponent("../src/views/MainPage.vue", {
+    useAppStore: useAppStore,
+    getGames: readList,
+    getRecords: readList,
+    dashboard: dashboard,
+    account: account,
+    DashboardActivity: {},
+  });
+  const state = component.data();
+  state.userInfo = store.userInfo;
+  state.loadDashboard = component.methods.loadDashboard.bind(state);
+  await component.activated.call(state);
+  const original = state.summary;
+  assert.equal(requests, 2);
+  await component.activated.call(state);
+  assert.equal(requests, 2);
+  assert.equal(state.summary, original);
+  store.recordRevision = 1;
+  failNext = true;
+  await component.activated.call(state);
+  assert.equal(state.summary, original);
+  assert.ok(state.error.includes("测试网络故障"));
+  assert.equal(state.loading, false);
+  failNext = false;
+  await component.activated.call(state);
+  assert.equal(state.loadedRecordRevision, 1);
+  store.gameRevision = 1;
+  await component.activated.call(state);
+  assert.equal(state.loadedGameRevision, 1);
+});
+
+// 侧栏保持后端原菜单，账户管理在系统管理下只出现一次，缺少分组时创建管理分组
+test("账户管理按角色归入管理分组且保持原菜单", function testSidebarManagement() {
+  const original = [
+    {
+      id: 1,
+      title: "我的账户",
+      sList: [{ id: 11, name: "MainPage", title: "首页" }],
+    },
+    {
+      id: 2,
+      title: "系统管理",
+      sList: [
+        { id: 21, name: "MenuManage", title: "菜单管理" },
+        { id: 23, name: "GameUserManage", title: "用户管理" },
+      ],
+    },
+  ];
+  const admin = navigation.createSidebarGroups(original, true);
+  assert.equal(admin[1].sList.length, 2);
+  assert.equal(admin[1].sList[1].name, "AccountManage");
+  assert.equal(original[1].sList[1].name, "GameUserManage");
+  const ordinary = navigation.createSidebarGroups(original, false);
+  assert.equal(ordinary[1].sList.length, 1);
+  const fallback = navigation.createSidebarGroups([], true);
+  assert.equal(fallback[0].sList[0].name, "AccountManage");
+});
+
+// 路由过渡期间使用现有淡化，提示内容变化复用该过渡
 test("页面过渡期间不重复播放内容动画", function testRevealDuringPageEnter() {
   const sourceUrl = new URL("../src/tools/motion.js", import.meta.url);
   let source = fs.readFileSync(sourceUrl, "utf8");
@@ -229,7 +389,7 @@ test("页面过渡期间不重复播放内容动画", function testRevealDuringP
   assert.equal(plays, 0);
 });
 
-// 检查标签去重、关闭回退和首页保护，避免切换页面时产生重复或空标签
+// 检查标签去重、关闭回退和首页保留规则，覆盖重复与缺失标签
 test("页面标签不会重复，关闭当前标签回到相邻页面", function testTabs() {
   const tabs = navigation.createHomeTabs();
   navigation.rememberTab(tabs, "/GameCatalog", "游戏列表");

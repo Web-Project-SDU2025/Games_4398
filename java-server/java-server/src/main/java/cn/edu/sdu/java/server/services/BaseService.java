@@ -17,22 +17,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import java.nio.file.Files;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 
+/** 提供菜单、字典和附件业务，公共下载流程使用命名输出类 */
 @Service
 public class BaseService {
+    // 新密码最大字符数，与前端修改密码表单保持一致
+    private static final int PASSWORD_LENGTH_LIMIT = 20;
     private static final Logger log = LoggerFactory.getLogger(BaseService.class);
     @Value("${attach.folder}")    //环境配置变量获取
     private String attachFolder;  //服务器端数据存储
@@ -44,6 +45,7 @@ public class BaseService {
     private final DictionaryInfoRepository dictionaryInfoRepository;  //数据字典数据操作自动注入
     private final UserTypeRepository userTypeRepository;   //用户类型数据操作自动注入
 
+    /** 保存基础业务仓库和密码编码器，接口共用相同数据来源 */
     public BaseService(PasswordEncoder encoder, UserRepository userRepository, MenuInfoRepository menuInfoRepository, DictionaryInfoRepository dictionaryInfoRepository, UserTypeRepository userTypeRepository) {
         this.encoder = encoder;
         this.userRepository = userRepository;
@@ -52,6 +54,7 @@ public class BaseService {
         this.userTypeRepository = userTypeRepository;
     }
 
+    /** 返回配置中的数据库账号名称，沿用原接口响应格式 */
     public DataResponse getDataBaseUserName() {
         return CommonMethod.getReturnData(dataBaseUserName);
     }
@@ -124,6 +127,7 @@ public class BaseService {
 
 
 
+    /** 按角色递归读取子菜单，查询结果为空时返回空列表 */
     public List<Map<String, Object>> getMenuList(Integer userTypeId, Integer pid) {
         List<Map<String, Object>> sList = new ArrayList<>();
         Map<String, Object> ms;
@@ -149,6 +153,7 @@ public class BaseService {
         return sList;
     }
 
+    /** 读取根菜单及其子菜单，省略角色编号时使用当前账户角色 */
     public DataResponse getMenuList(DataRequest dataRequest) {
         List<Map<String, Object>> dataList = new ArrayList<>();
         Integer userTypeId = dataRequest.getInteger("userTypeId");
@@ -182,6 +187,7 @@ public class BaseService {
     }
 
 
+    /** 将角色整理为选项列表，空角色表返回空选项 */
     public OptionItemList getRoleOptionItemList(@Valid @RequestBody DataRequest dataRequest) {
         List<UserType> uList = userTypeRepository.findAll();
         List<OptionItem> itemList = new ArrayList<>();
@@ -192,6 +198,7 @@ public class BaseService {
     }
 
 
+    /** 删除指定菜单，存在子菜单时返回业务提示 */
     public DataResponse menuDelete(DataRequest dataRequest) {
         Integer id = dataRequest.getInteger("id");
         int count  = menuInfoRepository.countMenuInfoByPid(id);
@@ -199,10 +206,13 @@ public class BaseService {
             return CommonMethod.getReturnMessageError("存在子菜单，不能删除！");
         }
         Optional<MenuInfo> op = menuInfoRepository.findById(id);
-        op.ifPresent(menuInfoRepository::delete);
+        if (op.isPresent()) {
+            menuInfoRepository.delete(op.get());
+        }
         return CommonMethod.getReturnMessageOK();
     }
 
+    /** 根据编辑类型保存菜单，新增主键重复时保留原菜单并返回提示 */
     public DataResponse menuSave(DataRequest dataRequest) {
         Integer editType = dataRequest.getInteger("editType");
         Map<String, Object> node = dataRequest.getMap("node");
@@ -232,6 +242,7 @@ public class BaseService {
         return CommonMethod.getReturnMessageOK();
     }
 
+    /** 删除指定字典节点，存在子项时返回业务提示 */
     public DataResponse deleteDictionary(DataRequest dataRequest) {
         Integer id = dataRequest.getInteger("id");
         int count = dictionaryInfoRepository.countDictionaryInfoByPid(id);
@@ -239,10 +250,13 @@ public class BaseService {
             return CommonMethod.getReturnMessageError("存在数据项，不能删除！");
         }
         Optional<DictionaryInfo> op = dictionaryInfoRepository.findById(id);
-        op.ifPresent(dictionaryInfoRepository::delete);
+        if (op.isPresent()) {
+            dictionaryInfoRepository.delete(op.get());
+        }
         return CommonMethod.getReturnMessageOK();
     }
 
+    /** 保存字典字段，已有编号对应修改，新编号对应新增 */
     public DataResponse dictionarySave(DataRequest dataRequest) {
         Integer id = dataRequest.getInteger("id");
         Integer pid = dataRequest.getInteger("pid");
@@ -265,10 +279,10 @@ public class BaseService {
         return CommonMethod.getReturnMessageOK();
     }
 
+    /** 按字典类型读取选项，查询为空时返回空选项列表 */
     public OptionItemList getDictionaryOptionItemList(DataRequest dataRequest) {
         String code = dataRequest.getString("code");
         List<DictionaryInfo> dList = dictionaryInfoRepository.getDictionaryInfoList(code);
-        OptionItem item;
         List<OptionItem> itemList = new ArrayList<>();
         for (DictionaryInfo d : dList) {
             itemList.add(new OptionItem(d.getId(), d.getValue(), d.getLabel()));
@@ -276,22 +290,13 @@ public class BaseService {
         return new OptionItemList(0, itemList);
     }
 
+    /** 读取附件并提供下载，读取失败时返回服务器错误 */
     public ResponseEntity<StreamingResponseBody> getFileByteData(DataRequest dataRequest) {
         String fileName = dataRequest.getString("fileName");
         try {
             File file = new File(attachFolder + fileName);
-            int len = (int) file.length();
-            byte[] data = new byte[len];
-            FileInputStream in = new FileInputStream(file);
-            int size = in.read(data);
-            in.close();
-            MediaType mType = new MediaType(MediaType.APPLICATION_OCTET_STREAM);
-            StreamingResponseBody stream = outputStream -> {
-                outputStream.write(data);
-            };
-            return ResponseEntity.ok()
-                    .contentType(mType)
-                    .body(stream);
+            byte[] data = Files.readAllBytes(file.toPath());
+            return byteResponse(data, MediaType.APPLICATION_OCTET_STREAM);
         } catch (Exception e) {
             log.error(e.getMessage());
         }
@@ -299,6 +304,7 @@ public class BaseService {
     }
 
 
+    /** 保存图片字节到指定附件文件，写入异常时返回上传提示 */
     public DataResponse uploadPhoto(byte[] barr,String remoteFile) {
         try {
             OutputStream os = new FileOutputStream(new File(attachFolder + remoteFile));
@@ -309,6 +315,7 @@ public class BaseService {
             return CommonMethod.getReturnMessageError("上传错误");
         }
     }
+    /** 读取账户头像，头像为空时返回资源缺失状态 */
     public ResponseEntity<StreamingResponseBody> getBlobByteData(DataRequest dataRequest) {
         Integer userId = dataRequest.getInteger("userId");
         try {
@@ -322,19 +329,14 @@ public class BaseService {
             }else {
                 return ResponseEntity.internalServerError().build();
             }
-            MediaType mType = new MediaType(MediaType.APPLICATION_OCTET_STREAM);
-            StreamingResponseBody stream = outputStream -> {
-                outputStream.write(data);
-            };
-            return ResponseEntity.ok()
-                    .contentType(mType)
-                    .body(stream);
+            return byteResponse(data, MediaType.APPLICATION_OCTET_STREAM);
         } catch (Exception e) {
             log.error(e.getMessage());
         }
         return ResponseEntity.internalServerError().build();
     }
 
+    /** 保存指定账户的头像字节，账户缺失时返回提示 */
     public DataResponse uploadPhotoBlob(byte[] barr,String userId ) {
         try {
             Optional<User> op = userRepository.findById(Integer.parseInt(userId));
@@ -349,14 +351,15 @@ public class BaseService {
         }
     }
 
+    /** 校验旧密码后保存新密码，空输入或超长输入返回业务提示 */
     public DataResponse updatePassword(DataRequest dataRequest) {
-        String oldPassword = dataRequest.getString("oldPassword");  //获取oldPassword
-        String newPassword = dataRequest.getString("newPassword");  //获取newPassword
+        String oldPassword = dataRequest.getString("oldPassword");
+        String newPassword = dataRequest.getString("newPassword");
         if (oldPassword == null || oldPassword.isEmpty() || newPassword == null || newPassword.isEmpty()) {
             return CommonMethod.getReturnMessageError("旧密码和新密码不能为空");
         }
-        if (newPassword.length() > 20) {
-            return CommonMethod.getReturnMessageError("密码长度最大为20位");
+        if (newPassword.length() > PASSWORD_LENGTH_LIMIT) {
+            return CommonMethod.getReturnMessageError("密码长度最大为" + PASSWORD_LENGTH_LIMIT + "位");
         }
         Optional<User> op = userRepository.findById(Objects.requireNonNull(CommonMethod.getUserId()));
         if (op.isEmpty())
@@ -371,6 +374,7 @@ public class BaseService {
     }
 
 
+    /** 保存已解码的 HTML 到内存，返回后续读取使用的编号 */
     @PostMapping("/uploadHtmlString")
     @PreAuthorize(" hasRole('ADMIN') ")
     public DataResponse uploadHtmlString(DataRequest dataRequest) {
@@ -380,19 +384,15 @@ public class BaseService {
         return CommonMethod.getReturnData(htmlCount);
     }
 
+    /** 按编号返回暂存 HTML，编码统一使用 UTF-8 */
     public ResponseEntity<StreamingResponseBody> htmlGetBaseHtmlPage(HttpServletRequest request) {
         String htmlCountStr = request.getParameter("htmlCount");
         int htmlCount = Integer.parseInt(htmlCountStr);
         String html = ComDataUtil.getInstance().getHtmlString(htmlCount);
         MediaType mType = new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8);
         try {
-            byte[] data = html.getBytes();
-            StreamingResponseBody stream = outputStream -> {
-                outputStream.write(data);
-            };
-            return ResponseEntity.ok()
-                    .contentType(mType)
-                    .body(stream);
+            byte[] data = html.getBytes(StandardCharsets.UTF_8);
+            return byteResponse(data, mType);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -421,6 +421,7 @@ public class BaseService {
         return CommonMethod.getReturnMessageError("下载错误！");
     }
 
+    /** 将表单图片转交共用写入流程，结果沿用上传接口格式 */
     public DataResponse uploadPhotoWeb(Map<String,Object> pars, MultipartFile file) {
         try {
             String remoteFile = CommonMethod.getString(pars, "remoteFile");
@@ -438,6 +439,7 @@ public class BaseService {
         }
         return CommonMethod.getReturnMessageOK();
     }
+    /** 将表单头像转交账户头像保存方法，读取异常时记录日志 */
     public DataResponse uploadPhotoBlobWeb(Map<String,Object> pars, MultipartFile file) {
         try {
             String userId = CommonMethod.getString(pars, "remoteFile");
@@ -451,6 +453,29 @@ public class BaseService {
             log.error(e.getMessage());
         }
         return CommonMethod.getReturnMessageOK();
+    }
+
+    /** 将字节内容和类型整理成下载响应，三个下载入口共用此方法 */
+    private ResponseEntity<StreamingResponseBody> byteResponse(byte[] content, MediaType type) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        response.contentType(type);
+        return response.body(new ByteContent(content));
+    }
+
+    /** 保存需要输出的字节，流回调只负责写出内容 */
+    private static class ByteContent implements StreamingResponseBody {
+        private final byte[] content;
+
+        /** 保存当前下载的内容 */
+        private ByteContent(byte[] content) {
+            this.content = content;
+        }
+
+        /** 将内容写入 Spring 提供的输出流 */
+        @Override
+        public void writeTo(OutputStream output) throws IOException {
+            output.write(content);
+        }
     }
 
 }

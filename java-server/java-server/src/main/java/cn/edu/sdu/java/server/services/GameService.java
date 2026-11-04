@@ -10,12 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/** 管理游戏和个人关联，写入操作使用事务保持数据一致 */
 @Service
 public class GameService {
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final GameRecordRepository recordRepository;
 
+    /** 保存游戏、账户和记录仓库，相关操作共用实体转换方法 */
     public GameService(GameRepository gameRepository, UserRepository userRepository,
                        GameRecordRepository recordRepository) {
         this.gameRepository = gameRepository;
@@ -24,7 +26,7 @@ public class GameService {
     }
 
     /**
-     * 查询当前登录账户。
+     * 查询当前登录账户
      * @return 当前登录账户
      */
     public User currentUser() {
@@ -32,7 +34,7 @@ public class GameService {
     }
 
     /**
-     * 将游戏对象整理成前端需要的资料对象。
+     * 将游戏对象整理成前端需要的资料对象
      * @param game 要转换的游戏
      * @return 包含游戏基本资料的 Map
      */
@@ -47,9 +49,9 @@ public class GameService {
         return info;
     }
 
-    // 查询游戏列表、当前账户的游戏库或收藏。
+    // 查询游戏列表、当前账户的游戏库或收藏
     /**
-     * 根据模式查询全部游戏、当前用户的游戏库或收藏。
+     * 根据模式查询全部游戏、当前用户的游戏库或收藏
      * @param request data 中可包含 mode 和 search
      * @return 游戏列表
      */
@@ -79,9 +81,9 @@ public class GameService {
         return CommonMethod.getReturnData(results);
     }
 
-    // 保存游戏资料，保留原有游戏编号，防止重复创建。
+    // 保存前校验编号是否重复，重复时保留原有资料
     /**
-     * 新增或修改游戏资料。
+     * 新增或修改游戏资料
      * @param request data 中包含 gameId、游戏编号、名称、分类、介绍和入口路径
      * @return 保存成功或失败的响应
      */
@@ -114,9 +116,9 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    // 删除没有被游戏库、收藏或游戏记录引用的游戏。
+    // 删除没有被游戏库、收藏或游戏记录引用的游戏
     /**
-     * 删除游戏，游戏仍被使用时不允许删除。
+     * 删除游戏，游戏仍被使用时不允许删除
      * @param request data 中包含 gameId
      * @return 删除成功或失败的响应
      */
@@ -136,7 +138,7 @@ public class GameService {
     }
 
     /**
-     * 修改当前用户的游戏库或收藏。
+     * 修改当前用户的游戏库或收藏
      * @param request data 中包含 gameId、mode 和 added
      * @return 操作成功或失败的响应
      */
@@ -164,7 +166,7 @@ public class GameService {
     }
 
     /**
-     * 将游戏记录对象整理成前端需要的资料对象。
+     * 将游戏记录对象整理成前端需要的资料对象
      * @param record 要转换的游戏记录
      * @return 包含账号、游戏、分数和时长的 Map
      */
@@ -179,9 +181,9 @@ public class GameService {
         return info;
     }
 
-    // 管理员可以查看全部记录，游戏用户只查看自己的记录。
+    // 管理员可以查看全部记录，游戏用户只查看自己的记录
     /**
-     * 查询当前用户可以查看的游戏记录。
+     * 查询当前用户可以查看的游戏记录
      * @return 游戏记录列表
      */
     @Transactional(readOnly = true)
@@ -200,7 +202,7 @@ public class GameService {
     }
 
     /**
-     * 保存当前用户的一次游玩记录。
+     * 保存当前用户的一次游玩记录
      * @param request data 中包含 gameId、score 和 durationSeconds
      * @return 保存成功或失败的响应
      */
@@ -227,7 +229,7 @@ public class GameService {
     }
 
     /**
-     * 删除一条游戏记录，普通用户不能删除其他用户的记录。
+     * 删除记录时校验归属，普通用户跨账户请求返回权限提示
      * @param request data 中包含 recordId
      * @return 删除成功或失败的响应
      */

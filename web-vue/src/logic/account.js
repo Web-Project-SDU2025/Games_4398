@@ -1,6 +1,5 @@
-// 密码上限与现有后端一致，注册和修改密码的限制分别维护
-export const REGISTER_PASSWORD_LIMIT = 60;
-export const CHANGE_PASSWORD_LIMIT = 20;
+import { CHANGE_PASSWORD_LIMIT } from "./limits.js";
+export { REGISTER_PASSWORD_LIMIT, CHANGE_PASSWORD_LIMIT } from "./limits.js";
 
 /** 根据账户资料返回昵称；没有昵称时使用账号 */
 export function getDisplayName(user) {
@@ -35,7 +34,7 @@ export function checkPasswordChange(oldPassword, newPassword, confirmation) {
   return "";
 }
 
-/** 整理注册请求，只发送注册所需字段，避免把界面状态传给后端 */
+/** 按注册协议整理字段，界面状态由表单自身管理 */
 export function createRegistration(form) {
   return {
     username: form.username,

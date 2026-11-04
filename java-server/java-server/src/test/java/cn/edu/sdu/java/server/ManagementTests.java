@@ -56,17 +56,17 @@ class ManagementTests {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    /** 测试结束后清除身份，避免下一项测试继承管理员权限 */
+    /** 测试结束后清除身份，每项测试分别设置账户主体 */
     @AfterEach
     void cleanup() {
         SecurityContextHolder.clearContext();
     }
 
-    /** 前端页面刷新被转发，未知资源不会被误当成首页 */
+    /** 核对页面转发和未知资源缺失状态，两种请求分别断言 */
     @Test
     void frontendRoutesForwardWithoutSwallowingMissingResources() throws Exception {
         MockMvc client = MockMvcBuilders.standaloneSetup(new PageController()).build();
-        for (String path : List.of("/MainPage", "/AdminLogin", "/AccountManage", "/AiSupport")) {
+        for (String path : List.of("/MainPage", "/AccountManage", "/AiSupport")) {
             ResultActions response = client.perform(get(path));
             response.andExpect(status().isOk());
             response.andExpect(forwardedUrl("/index.html"));
@@ -75,7 +75,7 @@ class ManagementTests {
         missing.andExpect(status().isNotFound());
     }
 
-    /** 本地开关关闭或远端请求时，即便伪造转发头也不能免密切号 */
+    /** 核对本机开关和真实连接来源，伪造转发头时仍执行来源检查 */
     @Test
     void accountSwitchRequiresLocalAddressAndExplicitFlag() {
         UserRepository users = mock(UserRepository.class);
@@ -98,9 +98,9 @@ class ManagementTests {
         verifyNoInteractions(users, auth);
     }
 
-    /** 管理员入口不能把密码正确的普通账户提升为管理员 */
+    /** 统一登录入口按数据库角色生成会话，普通账户保持游戏用户身份 */
     @Test
-    void administratorLoginRejectsOrdinaryAccount() {
+    void unifiedLoginKeepsDatabaseRole() {
         UserRepository users = mock(UserRepository.class);
         AuthenticationManager manager = mock(AuthenticationManager.class);
         JwtService jwt = mock(JwtService.class);
@@ -119,12 +119,17 @@ class ManagementTests {
         request.setPassword("test");
         request.setValidateCodeId(id);
         request.setValidateCode(LoginControlUtil.getInstance().getValidateCode(id));
-        assertEquals(403, service.authenticateAdmin(request).getStatusCode().value());
-        verify(users, never()).save(any());
-        verifyNoInteractions(jwt);
+        org.springframework.http.ResponseEntity<?> response = service.authenticateUser(request);
+        assertEquals(200, response.getStatusCode().value());
+        cn.edu.sdu.java.server.payload.response.JwtResponse session =
+                (cn.edu.sdu.java.server.payload.response.JwtResponse) response.getBody();
+        assertNotNull(session);
+        assertEquals("ROLE_GAME_USER", session.getRole());
+        verify(users).save(ordinary);
+        verify(jwt).generateToken(any());
     }
 
-    /** admin 不能删除或降级，其他账号可以由管理员设置角色 */
+    /** 核对系统账号保留规则和其他账号的角色更新结果 */
     @Test
     void protectedAdminCannotBeRemovedOrDemoted() {
         UserRepository users = mock(UserRepository.class);
@@ -149,7 +154,7 @@ class ManagementTests {
         assertEquals("ROLE_ADMIN", player.getUserType().getName());
     }
 
-    /** 分数管理拒绝小数，避免原请求工具把 1.5 静默转换为 1 */
+    /** 分数管理遇到小数时返回输入错误，仓库保持原数据 */
     @Test
     void recordsRejectFractionalScores() {
         GameRecordRepository records = mock(GameRecordRepository.class);
@@ -164,7 +169,7 @@ class ManagementTests {
         verifyNoInteractions(records);
     }
 
-    /** 新增、修改和删除复用同一编号，分数和记录视图不会出现两份数据 */
+    /** 新增、修改和删除复用同一记录编号，两种视图对应相同数据 */
     @Test
     void administratorsCanCreateUpdateAndDeleteRecords() {
         GameRecordRepository records = mock(GameRecordRepository.class);
@@ -223,6 +228,17 @@ class ManagementTests {
     @Configuration
     @EnableMethodSecurity(proxyTargetClass = true)
     static class MethodSecurityTest {
+        /** AI 服务使用替身，权限检查到达业务层后仅记录调用 */
+        @Bean
+        AiService aiService() {
+            return mock(AiService.class);
+        }
+
+        /** 使用真实 AI 控制器上的角色要求 */
+        @Bean
+        AiController aiController(AiService service) {
+            return new AiController(service);
+        }
         /** 提供记录服务替身，便于核对未授权请求是否到达业务层 */
         @Bean
         AdminRecordService records() {
@@ -233,6 +249,26 @@ class ManagementTests {
         @Bean
         AdminRecordController controller(AdminRecordService service) {
             return new AdminRecordController(service);
+        }
+    }
+
+    /** AI 控制器仅接受本站角色，其他已认证角色在调用服务前被拒绝 */
+    @Test
+    void aiRequiresRecognizedAccountRole() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(MethodSecurityTest.class)) {
+            AiController controller = context.getBean(AiController.class);
+            AiService service = context.getBean(AiService.class);
+            login(user(7, "unknown-role", "ROLE_OTHER"));
+            try {
+                controller.status();
+                fail("其他角色应返回权限拒绝");
+            } catch (AccessDeniedException error) {
+                assertNotNull(error);
+            }
+            verifyNoInteractions(service);
+            login(user(2, "player", "ROLE_GAME_USER"));
+            controller.status();
+            verify(service).status();
         }
     }
 }

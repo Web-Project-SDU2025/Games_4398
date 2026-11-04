@@ -24,6 +24,15 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
 
+// 活动图内部边距，预留坐标轴文字区域
+const CHART_GRID = { left: 40, right: 16, top: 24, bottom: 32 };
+// 折线上的数据点直径，单位为像素
+const POINT_SIZE = 6;
+// 折线宽度，单位为像素
+const LINE_WIDTH = 2;
+// 时长显示的小数位数
+const MINUTE_DECIMALS = 1;
+
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 // 读取指定颜色变量并去掉空格，styles 是工作区的计算样式
@@ -38,10 +47,13 @@ function activityOption() {
   const minutes = [];
   for (const day of this.activity) {
     labels.push(day.label);
-    const roundedMinutes = day.minutes.toFixed(1);
+    const roundedMinutes = day.minutes.toFixed(MINUTE_DECIMALS);
     minutes.push(Number(roundedMinutes));
   }
-  const shell = document.querySelector(".desktop-shell");
+  let shell = document.querySelector(".desktop-shell");
+  if (!shell) {
+    shell = document.documentElement;
+  }
   const styles = getComputedStyle(shell);
   const accent = readColor(styles, "--color-accent");
   const muted = readColor(styles, "--color-muted");
@@ -50,7 +62,7 @@ function activityOption() {
   const ink = readColor(styles, "--color-ink");
   return {
     animation: false,
-    grid: { left: 40, right: 16, top: 24, bottom: 32 },
+    grid: CHART_GRID,
     tooltip: {
       trigger: "axis",
       confine: true,
@@ -77,8 +89,8 @@ function activityOption() {
         name: "游玩分钟",
         type: "line",
         data: minutes,
-        symbolSize: 6,
-        lineStyle: { color: accent, width: 2 },
+        symbolSize: POINT_SIZE,
+        lineStyle: { color: accent, width: LINE_WIDTH },
         itemStyle: { color: accent },
       },
     ],

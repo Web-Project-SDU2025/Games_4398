@@ -1,7 +1,14 @@
+// 宠物与窗口边缘的预留距离，单位为像素
 export const PET_MARGIN = 12;
+// 指针移动达到此像素距离后进入拖动状态
 export const DRAG_THRESHOLD = 6;
+// 游戏提示的显示间隔，单位为毫秒
 export const GREETING_INTERVAL = 13000;
+// 单条提示的持续时间，单位为毫秒
 export const GREETING_DURATION = 5000;
+// 宠物初始纵向位置在可移动高度中的比例
+export const DEFAULT_VERTICAL_POSITION = 0.85;
+// 宠物轮流显示的游戏提示文字
 export const GREETINGS = [
   "今天想挑战哪个游戏？",
   "规则没看懂？我们一起研究",
@@ -9,20 +16,21 @@ export const GREETINGS = [
   "别忘了保存这一局的分数",
   "玩得开心，也记得休息一下",
 ];
+// 宠物各状态使用的本地图片
 export const PET_IMAGES = {
   idle: "/images/pet/idling.png",
   hover: "/images/pet/hovering.png",
   thinking: "/images/pet/thinking.png",
 };
 
-// 限制宠物位置，防止拖动或缩小窗口后找不到它
+// 将宠物位置限制在可见范围，窗口小于宠物时保留边缘距离
 export function clampPosition(
   left,
   top,
   width,
   height,
   viewportWidth,
-  viewportHeight
+  viewportHeight,
 ) {
   const maximumLeft = Math.max(PET_MARGIN, viewportWidth - width - PET_MARGIN);
   const maximumTop = Math.max(PET_MARGIN, viewportHeight - height - PET_MARGIN);
@@ -38,11 +46,11 @@ export function readSettings(userId) {
     visible: true,
     greetings: true,
     horizontal: 1,
-    vertical: 0.85,
+    vertical: DEFAULT_VERTICAL_POSITION,
   };
   try {
     const saved = JSON.parse(
-      localStorage.getItem("4398-pet-settings-" + userId)
+      localStorage.getItem("4398-pet-settings-" + userId),
     );
     if (!saved || typeof saved !== "object") {
       return defaults;

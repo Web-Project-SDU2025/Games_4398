@@ -1,6 +1,10 @@
 package cn.edu.sdu.java.server.services;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtParser;
+import io.jsonwebtoken.JwtParserBuilder;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -8,81 +12,60 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
 
+/** 生成和验证登录令牌，密钥与有效期由后端配置提供 */
 @Service
 public class JwtService {
     @Value("${security.jwt.secret-key}")
     private String secretKey;
-
     @Value("${security.jwt.expiration-time}")
     private long jwtExpiration;
 
+    /** 验证签名并读取令牌中的账号名称 */
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        Claims claims = extractAllClaims(token);
+        return claims.getSubject();
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
+    /** 根据账户生成带有效期的登录令牌 */
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        long now = System.currentTimeMillis();
+        JwtBuilder builder = Jwts.builder();
+        builder.setSubject(userDetails.getUsername());
+        builder.setIssuedAt(new Date(now));
+        builder.setExpiration(new Date(now + jwtExpiration));
+        builder.signWith(getSignInKey(), SignatureAlgorithm.HS256);
+        return builder.compact();
     }
 
-    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        return buildToken(extraClaims, userDetails, jwtExpiration);
-    }
-
-    public long getExpirationTime() {
-        return jwtExpiration;
-    }
-
-    private String buildToken(
-            Map<String, Object> extraClaims,
-            UserDetails userDetails,
-            long expiration
-    ) {
-        return Jwts
-                .builder()
-                .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
+    /** 校验令牌账号和有效期，签名错误由解析器抛出异常 */
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        Claims claims = extractAllClaims(token);
+        String username = claims.getSubject();
+        Date expiration = claims.getExpiration();
+        if (username == null || expiration == null) {
+            return false;
+        }
+        if (!username.equals(userDetails.getUsername())) {
+            return false;
+        }
+        return expiration.after(new Date());
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
+    /** 解析令牌并验证签名，返回其中的账户和有效期字段 */
     private Claims extractAllClaims(String token) {
-        return Jwts
-                .parserBuilder()
-                .setSigningKey(getSignInKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        JwtParserBuilder builder = Jwts.parserBuilder();
+        builder.setSigningKey(getSignInKey());
+        JwtParser parser = builder.build();
+        Jws<Claims> parsed = parser.parseClaimsJws(token);
+        return parsed.getBody();
     }
 
+    /** 将配置中的 Base64 密钥转换为签名密钥 */
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+        byte[] bytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(bytes);
     }
 }

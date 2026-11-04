@@ -111,6 +111,7 @@ import {
 } from "~/services/systemServ";
 import { message, messageConform } from "~/tools/messageBox";
 import { createNodeForm, createRoleIds } from "../../logic/forms.js";
+import { useAppStore } from "../../stores/app.js";
 export default {
   // 创建当前树形页面的状态
   data: function treeState() {
@@ -131,17 +132,24 @@ export default {
     this.query();
   },
   methods: {
-    // 等待时保留当前树，读取失败时显示异常说明
+    // 等待时保留当前树，按请求令牌接收结果，切号后丢弃旧账户响应
     query: async function query() {
       if (this.loading) {
         return;
       }
       this.loading = true;
+      const token = useAppStore().userInfo.token;
       try {
-        this.nodes = await getMenuTreeNodeList();
+        const nodes = await getMenuTreeNodeList();
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
+        this.nodes = nodes;
         this.loaded = true;
       } catch (error) {
-        message(this, "菜单读取失败，请稍后重试");
+        if (token === useAppStore().userInfo.token) {
+          message(this, "菜单读取失败，请稍后重试");
+        }
       } finally {
         this.loading = false;
       }
@@ -168,7 +176,7 @@ export default {
       this.editType = 1;
       this.$refs.editor.showModal();
     },
-    // 复制选中节点，编辑内容不会直接改变树形列表
+    // 复制选中节点作为表单，取消编辑时保留树的原值
     editItem: function editItem(node) {
       this.editedNode = createNodeForm(node);
       let roles = [];
@@ -190,7 +198,7 @@ export default {
     confirm: async function confirm() {
       this.editedNode.userTypeIds = createRoleIds(
         this.roleAdmin,
-        this.roleGameUser
+        this.roleGameUser,
       );
       try {
         const result = await menuSave(this.editType, this.editedNode);

@@ -1,5 +1,4 @@
-import { generalRequest } from "./genServ.js";
-import { useAppStore } from "../stores/app.js";
+import { generalRequest, writeRequest } from "./genServ.js";
 
 // 管理员按账号或游戏名查询记录与分数
 export function getAdminRecords(search) {
@@ -7,21 +6,15 @@ export function getAdminRecords(search) {
 }
 
 // 新建或修改记录，编号存在时修改，不存在时新建
-export async function saveAdminRecord(record) {
-  const result = await generalRequest("/api/admin/records/save", record);
-  if (result.code === 0) {
-    useAppStore().dataChanged("records");
-  }
-  return result;
+export function saveAdminRecord(record) {
+  return writeRequest("/api/admin/records/save", record, "records");
 }
 
 // 删除记录，同时删除这次游玩对应的分数
-export async function deleteAdminRecord(recordId) {
-  const result = await generalRequest("/api/admin/records/delete", {
-    recordId: recordId,
-  });
-  if (result.code === 0) {
-    useAppStore().dataChanged("records");
-  }
-  return result;
+export function deleteAdminRecord(recordId) {
+  return writeRequest(
+    "/api/admin/records/delete",
+    { recordId: recordId },
+    "records",
+  );
 }

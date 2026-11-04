@@ -2,6 +2,7 @@ package cn.edu.sdu.java.server.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
+import cn.edu.sdu.java.server.util.FieldLimits;
 
 /*
  * MenuInfo 菜单表实体类  保存菜单的的基本信息信息， 数据库表名 menu
@@ -12,6 +13,7 @@ import jakarta.validation.constraints.Size;
  */
 import lombok.Getter;
 import lombok.Setter;
+/** 保存菜单标题、路由名和角色编号，路由名为空时表示分组 */
 @Getter
 @Setter
 @Entity
@@ -26,11 +28,11 @@ public class MenuInfo {
     private String userTypeIds;
     private Integer pid;
 
-    @Size(max = 40)
+    @Size(max = FieldLimits.SHORT_TEXT)
     private String name;
 
 
-    @Size(max = 40)
+    @Size(max = FieldLimits.SHORT_TEXT)
     private String title;
 
 }

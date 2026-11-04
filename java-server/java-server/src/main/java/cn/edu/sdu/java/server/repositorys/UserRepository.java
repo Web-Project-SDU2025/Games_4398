@@ -18,12 +18,16 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+    /** 按登录名读取账户，缺失时返回空 Optional */
     Optional<User> findByUserName(String userName);
 
 
+    /** 检查账号重复，参数通过仓库规则绑定 */
     Boolean existsByUserName(String userName);
+    /** 统计指定时间后登录的账户，沿用原统计接口字段 */
     @Query(value="select count(*) from User where lastLoginTime >?1")
     Integer countLastLoginTime(String date);
+    /** 按角色统计账户数，空表返回空分组列表 */
     @Query(value = "select userType.id, count(userId) from User group by userType.id" )
     List<?> getCountList();
 }

@@ -1,0 +1,91 @@
+.interface-settings {
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: 85dvh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+.interface-settings::backdrop {
+  background: var(--color-overlay);
+}
+.settings-heading,
+.settings-row,
+.settings-range > span,
+.settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.settings-heading h2 {
+  font-size: 22px;
+  font-weight: 400;
+  margin: 0;
+}
+.settings-section {
+  margin: var(--space-lg) 0 0;
+  padding: var(--space-md) 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  min-width: 0;
+}
+.settings-section legend {
+  padding: 0 var(--space-sm) 0 0;
+  font-weight: 700;
+}
+.settings-row {
+  min-height: 44px;
+}
+.settings-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-accent);
+}
+.settings-range {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+.settings-range output {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.settings-range input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+.settings-range input:disabled {
+  opacity: 0.4;
+}
+.settings-notice {
+  min-height: 40px;
+  color: var(--color-muted);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+.settings-actions {
+  flex-wrap: wrap;
+}
+.pointer-trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 35;
+}
+.pointer-trail-pixel {
+  position: absolute;
+  background: var(--color-accent);
+  border-radius: 1px;
+}
+.pointer-trail-pixel:nth-child(2n) {
+  background: var(--color-success);
+}

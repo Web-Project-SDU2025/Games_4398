@@ -6,11 +6,13 @@ import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.*;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import cn.edu.sdu.java.server.util.DateTimeTool;
+import cn.edu.sdu.java.server.util.FieldLimits;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
+/** 管理账户资料和角色，删除时同时清理账户关联 */
 @Service
 public class GameUserService {
     private final UserRepository userRepository;
@@ -18,6 +20,7 @@ public class GameUserService {
     private final GameRecordRepository gameRecordRepository;
     private final PasswordEncoder encoder;
 
+    /** 保存账户、角色和记录仓库，密码操作复用同一编码器 */
     public GameUserService(UserRepository userRepository, UserTypeRepository userTypeRepository,
                            GameRecordRepository gameRecordRepository, PasswordEncoder encoder) {
         this.userRepository = userRepository;
@@ -27,7 +30,7 @@ public class GameUserService {
     }
 
     /**
-     * 将账户对象整理成前端需要的资料对象。
+     * 将账户对象整理成前端需要的资料对象
      * @param user 要转换的账户
      * @return 包含账号、昵称、联系方式和角色的 Map
      */
@@ -43,7 +46,7 @@ public class GameUserService {
         return info;
     }
 
-    // 查询游戏用户和管理员的资料，返回账户列表。
+    // 查询游戏用户和管理员的资料，返回账户列表
     public DataResponse getGameUserList(DataRequest request) {
         String search = request.getString("search");
         if (search == null) {
@@ -63,7 +66,7 @@ public class GameUserService {
     }
 
     /**
-     * 查询当前登录账户的个人资料。
+     * 查询当前登录账户的个人资料
      * @return 当前账户资料
      */
     public DataResponse getMyProfile() {
@@ -73,7 +76,7 @@ public class GameUserService {
     }
 
     /**
-     * 创建一个新的管理员或游戏用户账户，并保存密码哈希。
+     * 创建一个新的管理员或游戏用户账户，并保存密码哈希
      * @param request data 中包含账号、密码、昵称、邮箱、签名和角色
      * @return 创建成功或失败的响应
      */
@@ -88,7 +91,7 @@ public class GameUserService {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return CommonMethod.getReturnMessageError("账号和密码不能为空");
         }
-        if (username.length() > 20 || password.length() > 60) {
+        if (username.length() > FieldLimits.USERNAME || password.length() > FieldLimits.PASSWORD) {
             return CommonMethod.getReturnMessageError("账号或密码过长");
         }
         if (userRepository.existsByUserName(username)) {
@@ -112,9 +115,9 @@ public class GameUserService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    // 保存账户资料，普通用户只能修改自己的资料。
+    // 保存账户资料，普通用户只能修改自己的资料
     /**
-     * 保存账户的个人资料，管理员可以指定 userId 修改其他账户。
+     * 保存账户的个人资料，管理员可以指定 userId 修改其他账户
      * @param request data 中包含 userId、昵称、邮箱、电话和签名
      * @return 保存成功或失败的响应
      */
@@ -160,7 +163,7 @@ public class GameUserService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 管理员保存账户资料与角色，受保护账号和当前账号不能被降级 */
+    /** 管理员保存资料与角色，系统账号和当前账号保持管理员身份 */
     @Transactional
     public DataResponse saveAccount(DataRequest request) {
         Integer id = request.getInteger("userId");

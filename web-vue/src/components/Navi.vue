@@ -1,5 +1,8 @@
 <template>
-  <div class="platform-shell" :class="{ 'desktop-shell': loggedIn }">
+  <div
+    class="platform-shell"
+    :class="{ 'desktop-shell': loggedIn, 'auth-shell': !loggedIn }"
+  >
     <!-- 主页面的头部区域 -->
     <header class="platform-header">
       <div class="platform-header-inner">
@@ -46,16 +49,30 @@
             </button>
           </div>
         </TransitionGroup>
-        <AccountSwitcher
-          v-if="loggedIn"
-          :user-info="userInfo"
-          @logout="logout"
-          @notice="showSwitchNotice"
-        />
-        <div class="platform-account" v-else>
-          <span>简体中文</span
-          ><span class="platform-online">4398 PLATFORM</span>
+        <div v-if="loggedIn" class="workspace-header-actions">
+          <button
+            class="workspace-icon-button"
+            type="button"
+            aria-label="界面设置"
+            title="界面设置"
+            @click="openSettings"
+          >
+            <span class="i-ep-setting" aria-hidden="true"></span>
+          </button>
+          <AccountSwitcher
+            :user-info="userInfo"
+            @logout="logout"
+            @notice="showSwitchNotice"
+          />
         </div>
+        <img
+          v-else
+          class="platform-university"
+          src="/images/shandong-university.png"
+          alt="山东大学"
+          width="378"
+          height="107"
+        />
       </div>
     </header>
     <!-- 当登录成功后显示主页面 -->
@@ -69,7 +86,7 @@
       >
         <div class="workspace-menu-title">功能菜单</div>
         <details
-          v-for="group in systemConfig.naviList"
+          v-for="group in sidebarGroups"
           :key="group.id"
           class="sidebar-group"
           :aria-label="group.title"
@@ -79,7 +96,7 @@
           <summary>{{ group.title }}</summary>
           <template v-for="item in group.sList" :key="item.id">
             <RouterLink
-              v-if="item.name && item.name !== 'GameUserManage'"
+              v-if="item.name"
               :to="'/' + item.name"
               @click="closeMenu"
               ><span
@@ -110,11 +127,18 @@
             ><span class="i-ep-chat-dot-round" aria-hidden="true"></span>AI
             客服</RouterLink
           >
-          <RouterLink v-if="isAdmin" to="/AccountManage" @click="closeMenu"
-            ><span class="i-ep-setting" aria-hidden="true"></span
-            >账户管理</RouterLink
-          >
+          <button type="button" @click="openSettings">
+            <span class="i-ep-setting" aria-hidden="true"></span>界面设置
+          </button>
         </nav>
+        <div class="workspace-university">
+          <img
+            src="/images/shandong-university.png"
+            alt="山东大学"
+            width="378"
+            height="107"
+          />
+        </div>
       </aside>
       <!-- router-view 根据页面地址显示对应功能 -->
       <main class="platform-main" id="main-content">
@@ -122,7 +146,7 @@
           class="workspace-page"
           :class="{ 'workspace-support': $route.path === '/AiSupport' }"
         >
-          <!-- 只缓存列表，返回标签时保留内容，密码和账户表单仍会重新创建 -->
+          <!-- 缓存概览和列表，账户切换时按账号重建，密码表单每次单独创建 -->
           <router-view v-slot="page">
             <Transition name="page" appear>
               <KeepAlive
@@ -130,7 +154,11 @@
                 :include="cachedPages"
                 :max="cacheLimit"
               >
-                <component :is="page.Component" :key="page.route.path" />
+                <component
+                  v-if="canViewCurrentPage"
+                  :is="page.Component"
+                  :key="page.route.path"
+                />
               </KeepAlive>
             </Transition>
           </router-view>
@@ -144,17 +172,13 @@
       </Transition>
     </router-view>
     <Octorange v-if="loggedIn" :key="userInfo.id" :user-id="userInfo.id" />
+    <PointerTrail />
+    <InterfaceSettings v-if="loggedIn" ref="settings" />
     <footer v-if="loggedIn" class="workspace-status">
       <span>4398 游戏平台 · 第02组</span
       ><span>{{ roleName }}：{{ displayName }}</span
       ><span v-reveal="switchNotice" role="status">{{ switchNotice }}</span
       ><time>{{ clock }}</time>
-    </footer>
-    <footer v-else class="platform-footer">
-      <div>
-        <strong>4398</strong><span>游戏平台</span
-        ><span>游戏库 · 收藏 · 游玩记录</span>
-      </div>
     </footer>
   </div>
 </template>
@@ -165,9 +189,14 @@ import * as navigation from "../logic/navigation.js";
 import * as account from "../logic/account.js";
 import AccountSwitcher from "./AccountSwitcher.vue";
 import Octorange from "./Octorange.vue";
+import PointerTrail from "./PointerTrail.vue";
+import InterfaceSettings from "./InterfaceSettings.vue";
 
-const CACHED_PAGES = ["GameList", "GameRecords"];
-const PAGE_CACHE_LIMIT = 6;
+// 返回页面时保留列表数据的组件名称
+const CACHED_PAGES = ["MainPage", "GameList", "GameRecords"];
+// 同时保留的列表页面数量上限
+const PAGE_CACHE_LIMIT = 8;
+// 菜单页面与图标类名的对应表，未匹配页面使用文档图标
 const MENU_ICONS = {
   MainPage: "i-ep-house",
   GameCatalog: "i-ep-grid",
@@ -178,6 +207,7 @@ const MENU_ICONS = {
   Password: "i-ep-lock",
   MenuManage: "i-ep-menu",
   DictionaryManage: "i-ep-collection",
+  AccountManage: "i-ep-setting",
 };
 
 /** 返回标签页、菜单展开状态和时钟数据 */
@@ -202,9 +232,23 @@ function readUserInfo() {
 function readSystemConfig() {
   return useAppStore().systemConfig;
 }
+/** 按当前角色整理侧栏菜单，原始后端菜单继续由状态仓库保存 */
+function readSidebarGroups() {
+  return navigation.createSidebarGroups(
+    this.systemConfig.naviList,
+    this.isAdmin,
+  );
+}
 /** 判断当前账户是否已经登录 */
 function readLoggedIn() {
   return Boolean(this.userInfo.loggedIn && this.userInfo.token);
+}
+/** 按当前角色决定页面是否显示，切号期间的管理员地址保持空位直到导航完成 */
+function readCanViewCurrentPage() {
+  if (this.$route.meta.adminOnly) {
+    return this.isAdmin;
+  }
+  return this.loggedIn;
 }
 /** 返回账户昵称，没有昵称时显示账号 */
 function readDisplayName() {
@@ -240,32 +284,33 @@ function toggleMenu() {
 function closeMenu() {
   this.menuExpanded = false;
 }
+/** 从顶栏或侧栏打开共用设置，小屏先收起菜单以显示完整窗口 */
+function openSettings() {
+  this.closeMenu();
+  this.$refs.settings.open();
+}
 /** 页面加载后恢复菜单，失败时清除过期的登录信息 */
 async function restoreNavigation() {
   this.updateClock();
   this.clockTimer = window.setInterval(
     this.updateClock,
-    navigation.CLOCK_INTERVAL
+    navigation.CLOCK_INTERVAL,
   );
   if (!this.loggedIn) {
-    // 未登录访问范围由路由守卫处理，保留用户选择的管理员登录入口
+    // 未登录页面由路由守卫决定，框架仅启动时钟
     return;
   }
   try {
     await useAppStore().setNavi();
     this.rememberPage(this.$route.path);
-    if (
-      this.$route.path === "/Login" ||
-      this.$route.path === "/AdminLogin" ||
-      this.$route.path === "/"
-    ) {
+    if (this.$route.path === "/Login" || this.$route.path === "/") {
       await this.$router.replace("/MainPage");
     }
   } catch (error) {
     await this.logout();
   }
 }
-/** 离开框架时停止时钟，防止重复创建定时器 */
+/** 离开框架时停止时钟，重新进入时由挂载流程创建定时器 */
 function stopClock() {
   window.clearInterval(this.clockTimer);
 }
@@ -276,12 +321,7 @@ function updateClock() {
 }
 /** 路由变化时添加标签页，同一页面只添加一次 */
 function rememberPage(path) {
-  if (
-    !this.loggedIn ||
-    path === "/Login" ||
-    path === "/AdminLogin" ||
-    path === "/"
-  ) {
+  if (!this.loggedIn || path === "/Login" || path === "/") {
     return;
   }
   const name = path.substring(1);
@@ -310,11 +350,11 @@ function currentPage(path) {
 function groupOpen(id) {
   return !this.closedGroups.includes(id);
 }
-/** 记录用户折叠的分组，避免页面刷新状态时自动展开 */
+/** 记录分组的折叠选择，页面状态更新时继续使用该选择 */
 function syncGroup(id, event) {
   navigation.updateGroup(this.closedGroups, id, event.target.open);
 }
-/** 将切号结果显示在状态栏，工作区不再重复读取切号选项 */
+/** 将切号结果显示在状态栏，切号控件负责读取账号选项 */
 function showSwitchNotice(message) {
   this.switchNotice = message;
 }
@@ -337,12 +377,19 @@ async function logout() {
   await this.$router.replace("/Login");
 }
 export default {
-  components: { AccountSwitcher: AccountSwitcher, Octorange: Octorange },
+  components: {
+    AccountSwitcher: AccountSwitcher,
+    Octorange: Octorange,
+    PointerTrail: PointerTrail,
+    InterfaceSettings: InterfaceSettings,
+  },
   data: workspaceState,
   computed: {
     userInfo: readUserInfo,
     systemConfig: readSystemConfig,
+    sidebarGroups: readSidebarGroups,
     loggedIn: readLoggedIn,
+    canViewCurrentPage: readCanViewCurrentPage,
     displayName: readDisplayName,
     roleName: readRoleName,
     homePath: readHomePath,
@@ -360,6 +407,7 @@ export default {
     menuIcon: menuIcon,
     toggleMenu: toggleMenu,
     closeMenu: closeMenu,
+    openSettings: openSettings,
     updateClock: updateClock,
     closeTab: closeTab,
     currentPage: currentPage,

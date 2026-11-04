@@ -1,5 +1,9 @@
 <template>
-  <section class="workspace-home" aria-labelledby="home-title">
+  <section
+    class="workspace-home"
+    aria-labelledby="home-title"
+    :aria-busy="loading"
+  >
     <header class="workspace-home-heading">
       <div>
         <h1 id="home-title">游戏概览</h1>
@@ -26,9 +30,6 @@
       </div>
     </header>
     <p v-if="error" class="dashboard-error" role="alert">{{ error }}</p>
-    <p v-if="loading && !summary" role="status" class="dashboard-loading">
-      正在读取游戏概览
-    </p>
     <div class="dashboard-stat-grid" :aria-busy="loading">
       <RouterLink
         v-for="stat in statistics"
@@ -230,6 +231,8 @@ function homeState() {
     error: "",
     updatedAt: "",
     requestId: 0,
+    loadedGameRevision: -1,
+    loadedRecordRevision: -1,
   };
 }
 
@@ -248,7 +251,7 @@ function readRoleName() {
   return account.getRoleName(this.userInfo.role);
 }
 
-// 返回头像中的第一个字符，长昵称不会挤占账户区域
+// 返回昵称首字符作为头像，完整昵称由相邻文字显示
 function readAvatarLetter() {
   return this.displayName.substring(0, 1);
 }
@@ -310,7 +313,7 @@ function readLibraryPercent() {
   }
   return dashboard.collectionPercent(
     this.summary.libraryCount,
-    this.summary.catalogCount
+    this.summary.catalogCount,
   );
 }
 
@@ -321,7 +324,7 @@ function readFavoritePercent() {
   }
   return dashboard.collectionPercent(
     this.summary.favoriteCount,
-    this.summary.catalogCount
+    this.summary.catalogCount,
   );
 }
 
@@ -330,7 +333,7 @@ function readPendingText() {
   if (this.error) {
     return "概览读取失败，请刷新重试";
   }
-  return "正在读取";
+  return "";
 }
 
 // 返回游戏库空状态的文字，成功读取后才判断为空
@@ -341,7 +344,7 @@ function readEmptyLibraryText() {
   return "尚未加入游戏";
 }
 
-// 返回记录空状态的文字，避免把请求失败当成没有记录
+// 成功读取后判断记录是否为空，请求失败时显示重试提示
 function readEmptyRecordText() {
   if (!this.summary) {
     return this.pendingText;
@@ -357,8 +360,13 @@ function recordMinutes(record) {
 
 // 同时读取游戏和记录，成功后一次更新概览，旧账户的响应直接丢弃
 async function loadDashboard() {
+  if (this.loading) {
+    return;
+  }
   const store = useAppStore();
   const token = store.userInfo.token;
+  const gameRevision = store.gameRevision;
+  const recordRevision = store.recordRevision;
   this.requestId = this.requestId + 1;
   const requestId = this.requestId;
   this.loading = true;
@@ -378,8 +386,10 @@ async function loadDashboard() {
       results[0].data,
       results[1].data,
       this.userInfo.id,
-      now
+      now,
     );
+    this.loadedGameRevision = gameRevision;
+    this.loadedRecordRevision = recordRevision;
     this.updatedAt = now.toLocaleTimeString("zh-CN", {
       timeZone: "Asia/Shanghai",
       hour12: false,
@@ -388,7 +398,7 @@ async function loadDashboard() {
     if (requestId === this.requestId && token === store.userInfo.token) {
       this.error = account.getErrorMessage(
         error,
-        "游戏概览读取失败，请刷新重试"
+        "游戏概览读取失败，请刷新重试",
       );
     }
   } finally {
@@ -398,11 +408,16 @@ async function loadDashboard() {
   }
 }
 
-// 切号后清空旧统计，再读取新账户的数据
-function accountChanged() {
-  this.summary = null;
-  this.updatedAt = "";
-  this.loadDashboard();
+// 返回首页时按数据版本检查，已加载且版本相同的概览直接显示
+function activateDashboard() {
+  const store = useAppStore();
+  if (
+    !this.summary ||
+    this.loadedGameRevision !== store.gameRevision ||
+    this.loadedRecordRevision !== store.recordRevision
+  ) {
+    return this.loadDashboard();
+  }
 }
 
 // 离开首页后让尚未完成的响应失效
@@ -411,6 +426,7 @@ function invalidateRequest() {
 }
 
 export default {
+  name: "MainPage",
   components: { DashboardActivity: DashboardActivity },
   data: homeState,
   computed: {
@@ -425,9 +441,8 @@ export default {
     emptyLibraryText: readEmptyLibraryText,
     emptyRecordText: readEmptyRecordText,
   },
-  mounted: loadDashboard,
+  activated: activateDashboard,
   beforeUnmount: invalidateRequest,
-  watch: { "userInfo.username": accountChanged },
   methods: {
     metric: metric,
     recordMinutes: recordMinutes,

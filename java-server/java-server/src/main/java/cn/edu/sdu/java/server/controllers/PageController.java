@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class PageController {
     /** 直接访问或刷新页面时返回前端入口，页面内容由 Vue 路由决定 */
     @GetMapping({
-        "/Login", "/AdminLogin", "/MainPage", "/Password",
+        "/Login", "/MainPage", "/Password",
         "/MenuManage", "/DictionaryManage", "/GameCatalog", "/GameLibrary",
         "/GameFavorites", "/GameRecords", "/GameUserProfile",
         "/GameUserManage", "/AccountManage", "/AiSupport"

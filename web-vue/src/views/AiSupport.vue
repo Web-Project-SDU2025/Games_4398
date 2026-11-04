@@ -57,7 +57,10 @@
       <form class="game-form" @submit.prevent="saveName">
         <h3>重命名对话</h3>
         <label
-          >对话名称<input v-model.trim="newName" maxlength="40" required
+          >对话名称<input
+            v-model.trim="newName"
+            :maxlength="titleLimit"
+            required
         /></label>
         <div class="game-actions">
           <button type="submit">保存</button
@@ -78,6 +81,7 @@ export default {
   // 页面只维护输入和选中的会话，内容整理放在普通 JS 中
   data: function supportState() {
     return {
+      titleLimit: support.TITLE_LIMIT,
       conversations: [],
       currentId: "",
       notice: "",
@@ -91,7 +95,7 @@ export default {
     accountId: function accountId() {
       return useAppStore().userInfo.id;
     },
-    // 根据编号查找当前会话，避免历史切换时复制错消息
+    // 按编号取得当前会话，编号失效时返回空值
     current: function currentConversation() {
       for (const conversation of this.conversations) {
         if (conversation.id === this.currentId) {

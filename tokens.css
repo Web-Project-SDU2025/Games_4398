@@ -1,4 +1,6 @@
 :root {
+  /* 登录背景和工作区内容区共用底色 */
+  --color-workspace-background: #141619;
   --color-paper: #1b2838;
   --color-header: #171a21;
   --color-paper-2: #202f40;
@@ -37,7 +39,7 @@
 
 /* 工作区参考 anzhiyu 的中性深色界面，登录页沿用原有配色 */
 .desktop-shell {
-  --color-paper: #141619;
+  --color-paper: var(--color-workspace-background);
   --color-header: #101216;
   --color-paper-2: #1c1f24;
   --color-paper-3: #282d35;

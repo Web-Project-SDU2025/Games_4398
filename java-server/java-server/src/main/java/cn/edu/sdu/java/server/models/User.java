@@ -6,18 +6,20 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
 import java.util.ArrayList;
 import java.util.List;
+import cn.edu.sdu.java.server.util.FieldLimits;
 
 
 /*
- * User用户表实体类，保存账号、个人资料、游戏库和收藏。
+ * User用户表实体类，保存账号、个人资料、游戏库和收藏
  * Integer userId 用户表 user 主键 user_id
  * UserType userType 关联到用户类型对象
  * String userName 登录账号
- * String password 用户密码的哈希值，不能还原成原密码
+ * String password 保存密码哈希，登录时由编码器验证输入
  *
  */
 import lombok.Getter;
 import lombok.Setter;
+/** 统一保存身份、个人资料和游戏关联，账户关联使用独立集合 */
 @Getter
 @Setter
 @Entity
@@ -35,30 +37,30 @@ public class User {
     private UserType userType;
 
     @NotBlank
-    @Size(max = 20)
+    @Size(max = FieldLimits.USERNAME)
     private String userName;
 
 
     @NotBlank
-    @Size(max = 60)
+    @Size(max = FieldLimits.PASSWORD)
     private String password;
 
-    @Size(max = 50)
+    @Size(max = FieldLimits.NAME)
     private String name;
-    @Size(max = 2)
+    @Size(max = FieldLimits.GENDER)
     private String gender;
-    @Size(max = 10)
+    @Size(max = FieldLimits.DATE)
     private String birthday;
     @Email
-    @Size(max = 60)
+    @Size(max = FieldLimits.EMAIL)
     private String email;
-    @Size(max = 20)
+    @Size(max = FieldLimits.CONTACT)
     private String phone;
-    @Size(max = 20)
+    @Size(max = FieldLimits.CONTACT)
     private String address;
-    @Size(max = 1000)
+    @Size(max = FieldLimits.INTRODUCTION)
     private String introduce;
-    @Size(max = 200)
+    @Size(max = FieldLimits.SIGNATURE)
     private String signature;
 
     @Lob
@@ -77,9 +79,9 @@ public class User {
     private List<Game> favorites = new ArrayList<>();
 
     private Integer loginCount;
-    @Size(max = 20)
+    @Size(max = FieldLimits.DATE_TIME)
     private String lastLoginTime;
-    @Size(max = 20)
+    @Size(max = FieldLimits.DATE_TIME)
     private String  createTime;
     private Integer creatorId;
 }

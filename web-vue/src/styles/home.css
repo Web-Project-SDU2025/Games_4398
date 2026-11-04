@@ -1,5 +1,4 @@
-/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app */
-/* 设计自查：信息层级、业务针对性和克制程度均通过，采用参考界面的深色导航与真实统计 */
+/* 首页概览样式，颜色使用公共变量，小屏统计排列为两列 */
 .workspace-home {
   padding: var(--space-lg);
   min-height: 100%;
@@ -406,10 +405,6 @@
 .workspace-home .dashboard-error {
   color: var(--color-error);
   margin-bottom: var(--space-md);
-}
-.workspace-home .dashboard-loading {
-  margin-bottom: var(--space-md);
-  font-size: 13px;
 }
 @media (hover: hover) {
   .dashboard-stat:hover {

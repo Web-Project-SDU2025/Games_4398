@@ -5,8 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /*
- * Game 保存游戏编号、名称、分类、介绍和入口路径。
- * gameId 是 game 表的主键，游戏库和游戏记录通过它关联游戏。
+ * Game 保存游戏编号、名称、分类、介绍和入口路径
+ * gameId 是 game 表的主键，游戏库和游戏记录通过它关联游戏
  */
 @Getter
 @Setter

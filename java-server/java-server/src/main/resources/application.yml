@@ -44,5 +44,23 @@ logging:
 app:
   ai:
     api-key: ${DASHSCOPE_API_KEY:}
+    # 每个后端实例的并发请求总数上限，同一账号可使用多个对话名额
+    max-concurrent: 5
+    # 单个账号每分钟最多调用次数
+    account-minute-limit: 8
+    # 同一连接来源每分钟最多调用次数
+    ip-minute-limit: 20
+    # 当前后端实例每分钟最多调用次数
+    global-minute-limit: 60
+    # 单个账号每天最多调用次数，按北京时间切换日期
+    account-daily-limit: 40
+    # 共用用量文件的后端每天最多调用次数
+    global-daily-limit: 500
+    # 每日用量保存在本机，重启后继续计数
+    quota-file: runtime/ai-usage.json
+    # AI 入口接受的请求体字节上限
+    request-byte-limit: 16384
+    # 同一连接来源每分钟最多访问 AI 入口次数，包含无效请求
+    ip-attempt-limit: 60
   # 本地配置文件可开启检查切号，服务器默认关闭
   local-account-switch: ${LOCAL_ACCOUNT_SWITCH:false}

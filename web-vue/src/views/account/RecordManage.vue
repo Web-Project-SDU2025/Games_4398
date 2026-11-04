@@ -73,7 +73,7 @@
             v-model.number="form.score"
             type="number"
             min="0"
-            max="2147483647"
+            :max="recordNumberLimit"
             step="1"
             required
         /></label>
@@ -82,7 +82,7 @@
             v-model.number="form.durationSeconds"
             type="number"
             min="0"
-            max="2147483647"
+            :max="recordNumberLimit"
             step="1"
             required
         /></label>
@@ -112,12 +112,14 @@ import { getGames } from "../../services/gameServ.js";
 import { createRecordForm } from "../../logic/forms.js";
 import { messageConform } from "../../tools/messageBox.js";
 import { getErrorMessage } from "../../logic/account.js";
+import { RECORD_NUMBER_LIMIT } from "../../logic/limits.js";
 
 export default {
   props: { scoreOnly: Boolean },
   // 分数和记录显示同一份数据，只改变列表展示的列
   data: function recordManagementState() {
     return {
+      recordNumberLimit: RECORD_NUMBER_LIMIT,
       search: "",
       records: [],
       users: [],

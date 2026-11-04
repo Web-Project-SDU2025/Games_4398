@@ -1,6 +1,38 @@
+// 状态栏时钟的刷新间隔，单位为毫秒
 export const CLOCK_INTERVAL = 1000;
 
-/** 创建首页标签；每次返回新数组，避免不同账户共用标签状态 */
+/** 复制菜单并整理管理入口，使用角色控制账户管理，缺少管理分组时创建该分组 */
+export function createSidebarGroups(groups, isAdmin) {
+  const result = [];
+  let managementGroup = null;
+  for (const group of groups) {
+    const copied = { id: group.id, title: group.title, sList: [] };
+    for (const item of group.sList) {
+      if (item.name === "MenuManage" || item.name === "DictionaryManage") {
+        managementGroup = copied;
+      }
+      if (item.name === "GameUserManage" || item.name === "AccountManage") {
+        continue;
+      }
+      copied.sList.push(item);
+    }
+    result.push(copied);
+  }
+  if (isAdmin) {
+    if (!managementGroup) {
+      managementGroup = { id: "management", title: "系统管理", sList: [] };
+      result.push(managementGroup);
+    }
+    managementGroup.sList.push({
+      id: "account-management",
+      name: "AccountManage",
+      title: "账户管理",
+    });
+  }
+  return result;
+}
+
+/** 创建首页标签，每个账户使用独立数组保存打开状态 */
 export function createHomeTabs() {
   return [{ path: "/MainPage", title: "首页" }];
 }
@@ -79,7 +111,7 @@ export function updateGroup(closed, id, open) {
   }
 }
 
-/** 将日期按北京时间显示，避免电脑时区不同造成状态栏时间不同 */
+/** 将日期按北京时间显示，各电脑采用相同的显示时区 */
 export function formatClock(date) {
   return date.toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",

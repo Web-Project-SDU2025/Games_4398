@@ -6,9 +6,8 @@
       ><button @click="open">添加记录</button>
     </div>
     <p v-reveal="notice" role="status">{{ notice }}</p>
-    <div class="motion-results" :aria-busy="loaded && loading">
-      <p v-if="!loaded" role="status">{{ notice || "正在加载游戏记录" }}</p>
-      <div v-else class="game-table-wrap">
+    <div class="motion-results" :aria-busy="loading">
+      <div v-if="loaded" class="game-table-wrap">
         <table class="game-table">
           <thead>
             <tr>
@@ -88,7 +87,7 @@ import { messageConform } from "../../tools/messageBox.js";
 import { useAppStore } from "../../stores/app.js";
 export default {
   name: "GameRecords",
-  // 创建当前页面独立的数据，避免多个页面共用表单
+  // 创建独立记录列表和表单，页面缓存按账户分别保存
   data: function data() {
     return {
       records: [],

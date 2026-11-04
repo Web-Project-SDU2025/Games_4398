@@ -49,13 +49,13 @@ test("概览只统计当前账户并正确处理北京时间跨日", function te
   assert.equal(summary.activity[5].minutes, 10);
 });
 
-// 空列表显示真实零值，错误时间不能让日期处理抛出异常
+// 空列表返回零值，无法解析的时间返回明确文字
 test("空概览和无效日期有明确结果", function testEmptySummary() {
   const summary = dashboard.summarizeDashboard(
     [],
     [],
     2,
-    new Date("2026-11-03T12:00:00+08:00")
+    new Date("2026-11-03T12:00:00+08:00"),
   );
   assert.equal(summary.catalogCount, 0);
   assert.equal(summary.recordCount, 0);

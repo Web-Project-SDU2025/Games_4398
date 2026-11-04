@@ -67,11 +67,11 @@ export default {
     "userInfo.username": "loadAccounts",
   },
   methods: {
-    // 根据目标账户生成一行文字，不使用固定宽度猜测文本长度
+    // 根据目标账户生成单行标签，完整标签同时供提示读取
     optionLabel: function optionLabel(item) {
       return item.username + " · " + getRoleName(item.role);
     },
-    // 失败或切号后放弃旧响应，避免使用上一个账户的选项
+    // 按当前令牌读取切号选项，失败时清空选项并保留当前登录
     loadAccounts: async function loadAccounts() {
       const token = this.userInfo.token;
       this.enabled = false;

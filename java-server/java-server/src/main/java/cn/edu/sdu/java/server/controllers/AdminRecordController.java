@@ -6,7 +6,7 @@ import cn.edu.sdu.java.server.services.AdminRecordService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** 分数和记录管理接口统一要求管理员身份，隐藏前端入口不能替代这个检查 */
+/** 分数和记录管理接口统一验证管理员身份，权限由后端方法规则检查 */
 @RestController
 @RequestMapping("/api/admin/records")
 @PreAuthorize("hasRole('ADMIN')")
