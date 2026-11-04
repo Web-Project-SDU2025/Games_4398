@@ -33,9 +33,9 @@ cga！接入了 AI 客服功能（基于百炼应用）。
 以下截图展示登录、注册、首页和界面设置。首页与设置截图使用示例账户，游戏和记录展示为空数据状态。
 
 | 登录页面 | 注册页面 |
-| --- | --- |
+| :---: | :---: |
 | [![登录页面](docs/images/login.png)](docs/images/login.png) | [![注册页面](docs/images/register.png)](docs/images/register.png) |
-| 游戏概览 | 界面设置 |
+| **游戏概览** | **界面设置** |
 | [![游戏概览](docs/images/dashboard.png)](docs/images/dashboard.png) | [![界面设置](docs/images/settings.png)](docs/images/settings.png) |
 
 ## 项目文档
