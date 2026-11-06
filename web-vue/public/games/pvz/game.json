@@ -1,0 +1,54 @@
+{
+  "id": "pvz",
+  "name": "植物大战僵尸",
+  "number": "PVZ",
+  "category": "塔防",
+  "description": "原 Java 版游戏、六个关卡、图鉴和 Swing 关卡编辑器",
+  "runtime": "java17",
+  "cover": "assets/Screen/MainMenu.png",
+  "classpath": [
+    "game.jar",
+    "gson-2.11.0.jar"
+  ],
+  "adapter": "pvz.browser.BrowserGame",
+  "mainClass": "",
+  "editorMainClass": "",
+  "arguments": [],
+  "editorArguments": [],
+  "assets": "assets.zip",
+  "assetVersion": "java-1.10-2",
+  "capabilities": {
+    "editor": true,
+    "importData": true,
+    "exportData": true
+  },
+  "display": {
+    "width": 1440,
+    "height": 960
+  },
+  "imports": {
+    "minimum": 0,
+    "maximum": 99,
+    "maxBytes": 2097152,
+    "accept": ".json,application/json",
+    "label": "关卡编号"
+  },
+  "preservedPaths": [
+    "levels"
+  ],
+  "dataDirectory": "levels",
+  "resources": {
+    "game.jar": {
+      "path": "resources/0-1ebe6314aa4cf89c8b8f.bin",
+      "bytes": 177651
+    },
+    "gson-2.11.0.jar": {
+      "path": "resources/1-57928d6e5a6edeb2abd3.bin",
+      "bytes": 298435
+    },
+    "assets.zip": {
+      "path": "resources/2-4a1bd3815a256567afe9.bin",
+      "bytes": 25387849
+    }
+  }
+}
