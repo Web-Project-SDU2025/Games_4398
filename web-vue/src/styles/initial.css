@@ -1,4 +1,4 @@
-@import "../../../tokens.css";
+@import "./tokens.css";
 
 /* 脚本加载前显示深色背景，整页刷新使用同一背景 */
 html,

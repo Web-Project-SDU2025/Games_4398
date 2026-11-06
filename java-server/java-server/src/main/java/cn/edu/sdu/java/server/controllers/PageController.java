@@ -11,7 +11,7 @@ public class PageController {
         "/Login", "/MainPage", "/Password",
         "/MenuManage", "/DictionaryManage", "/GameCatalog", "/GameLibrary",
         "/GameFavorites", "/GameRecords", "/GameUserProfile",
-        "/GameUserManage", "/AccountManage", "/AiSupport"
+        "/GameUserManage", "/AccountManage", "/BlockcoinManage", "/RecordManage", "/AiSupport"
     })
     public String page() {
         return "forward:/index.html";

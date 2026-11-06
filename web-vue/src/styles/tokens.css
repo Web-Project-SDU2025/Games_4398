@@ -1,0 +1,62 @@
+:root {
+  /* 登录背景和工作区内容区共用底色 */
+  --color-workspace-background: #141619;
+  --color-paper: #1b2838;
+  --color-header: #171a21;
+  --color-paper-2: #202f40;
+  --color-paper-3: #2a3f53;
+  --color-field: #101923;
+  --color-ink: #e5edf3;
+  --color-muted: #a9bdce;
+  --color-rule: #486078;
+  --color-accent: #66c0f4;
+  --color-accent-dark: #1a5b85;
+  --color-accent-ink: #102434;
+  --color-focus: #b6e3ff;
+  --color-success: #bedc88;
+  --color-error: #ffb4ab;
+  --color-overlay: #080d16cc;
+  --color-clear: transparent;
+  --font-body: Arial, "Microsoft YaHei", sans-serif;
+  --font-display: "Arial Black", "Microsoft YaHei", sans-serif;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --radius-control: 3px;
+  --text-small: 13px;
+  --text-body: 15px;
+  --dur-short: 150ms;
+  --dur-press: 120ms;
+  --dur-panel: 200ms;
+  --dur-dialog: 220ms;
+  --dur-reduced: 100ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 工作区参考 anzhiyu 的中性深色界面，登录页沿用原有配色 */
+.desktop-shell {
+  --color-paper: var(--color-workspace-background);
+  --color-header: #101216;
+  --color-paper-2: #1c1f24;
+  --color-paper-3: #282d35;
+  --color-field: #16191e;
+  --color-ink: #edf0f5;
+  --color-muted: #a4acba;
+  --color-rule: #363d48;
+  --color-accent: #76a7ff;
+  --color-accent-dark: #244875;
+  --color-accent-ink: #101923;
+  --color-focus: #b6d4ff;
+  --color-success: #6ed5ad;
+  --color-error: #ffb4ab;
+  --color-amber: #e9bf78;
+  --color-sidebar: #0d1421;
+  --color-sidebar-muted: #a3aec0;
+  --color-selected: #255bc7;
+  --color-selected-ink: #f8faff;
+  --radius-control: 6px;
+  --radius-card: 8px;
+}

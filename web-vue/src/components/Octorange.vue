@@ -11,15 +11,6 @@
       <span class="i-ep-chat-dot-round" aria-hidden="true"></span>
     </button>
     <div v-else ref="pet" class="pet-character" :style="positionStyle">
-      <Transition name="pet-greeting">
-        <p
-          v-if="greeting && settings.greetings && !expanded && !hovered"
-          class="pet-greeting"
-          :style="greetingStyle"
-        >
-          {{ greeting }}
-        </p>
-      </Transition>
       <button
         ref="toggle"
         type="button"
@@ -82,7 +73,7 @@
             height="34"
           />
         </div>
-        <div><strong>Octorange</strong><small>游戏助手 · 百炼</small></div>
+        <div><strong>Octorange</strong></div>
         <button
           type="button"
           aria-label="新建宠物对话"
@@ -118,13 +109,6 @@
         @pending="setThinking"
       />
       <footer class="pet-panel-footer">
-        <label
-          ><input
-            v-model="settings.greetings"
-            type="checkbox"
-            @change="savePreferences"
-          />游戏提示</label
-        >
         <RouterLink to="/AiSupport" @click="closePanel"
           >打开 AI 客服</RouterLink
         >
@@ -141,10 +125,6 @@ import * as support from "../logic/support.js";
 
 // 键盘每次移动宠物的距离，单位为像素
 const KEYBOARD_DISTANCE = 20;
-// 提示气泡的预留宽度，单位为像素
-const GREETING_WIDTH = 220;
-// 宠物靠近顶栏时气泡改向下显示的距离，单位为像素
-const GREETING_TOP_CLEARANCE = 80;
 
 // 宠物只负责浮窗和位置，真实问答使用和客服页面相同的聊天组件
 function petState() {
@@ -163,38 +143,17 @@ function petState() {
     hovered: false,
     thinking: false,
     modalOpen: false,
-    greeting: "",
-    greetingIndex: 0,
-    greetingTimer: null,
-    hideTimer: null,
     observer: null,
     layoutObserver: null,
     notice: "",
     drag: null,
     suppressClick: false,
-    reducedMotion: null,
   };
 }
 
 // 把位置写在固定容器上，状态图片的淡入由独立 CSS 控制
 function positionStyle() {
   return { left: this.left + "px", top: this.top + "px" };
-}
-
-// 按宠物到窗口边缘的距离选择气泡方向，贴边时向内显示
-function greetingStyle() {
-  const available =
-    window.innerWidth - this.left - GREETING_WIDTH - pet.PET_MARGIN;
-  let offset = Math.min(0, available);
-  offset = Math.max(pet.PET_MARGIN - this.left, offset);
-  const header = document.querySelector(".platform-header");
-  if (
-    header &&
-    this.top < header.getBoundingClientRect().bottom + GREETING_TOP_CLEARANCE
-  ) {
-    return { left: offset + "px", right: "auto", top: "100%", bottom: "auto" };
-  }
-  return { left: offset + "px", right: "auto" };
 }
 
 // 回答期间优先显示思考状态，结束后按悬停状态选择图片
@@ -210,7 +169,6 @@ function imageState() {
 
 // 监听尺寸和业务弹窗，编辑弹窗打开时暂时隐藏宠物
 function mountPet() {
-  this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   this.$nextTick(this.restorePosition);
   window.addEventListener("resize", this.restorePosition);
   this.layoutObserver = new ResizeObserver(this.restorePosition);
@@ -227,18 +185,11 @@ function mountPet() {
     subtree: true,
   });
   this.checkModal();
-  this.greetingTimer = window.setInterval(
-    this.showGreeting,
-    pet.GREETING_INTERVAL,
-  );
-  this.showGreeting();
 }
 
-// 卸载时清理定时器和全局监听，切号后由新组件重新初始化
+// 卸载时清理全局监听，切号后由新组件重新初始化
 function disposePet() {
   window.removeEventListener("resize", this.restorePosition);
-  window.clearInterval(this.greetingTimer);
-  window.clearTimeout(this.hideTimer);
   if (this.observer) {
     this.observer.disconnect();
   }
@@ -264,6 +215,11 @@ function checkModal() {
 function restorePosition() {
   if (!this.$refs.pet) {
     return;
+  }
+  // 图片草稿会改变输入区高度，尺寸变化时同步避让快捷问题和输入框
+  const composer = document.querySelector(".support-main .support-composer");
+  if (composer && this.layoutObserver) {
+    this.layoutObserver.observe(composer);
   }
   const rectangle = this.$refs.pet.getBoundingClientRect();
   const availableWidth = window.innerWidth - rectangle.width;
@@ -308,14 +264,22 @@ function applyPosition(left, top) {
     viewportBottom - rectangle.height - pet.PET_MARGIN,
   );
   this.top = Math.min(maximumTop, Math.max(minimumTop, position.top));
-  const composer = document.querySelector(".support-main .support-composer");
+  let composer = document.querySelector(".support-main .support-suggestions");
+  if (!composer) {
+    composer = document.querySelector(".support-main .support-composer");
+  }
   if (composer) {
     const composerBox = composer.getBoundingClientRect();
+    const input = document.querySelector(".support-main .support-composer");
+    let bottom = composerBox.bottom;
+    if (input) {
+      bottom = Math.max(bottom, input.getBoundingClientRect().bottom);
+    }
     const overlapsHorizontally =
       this.left < composerBox.right &&
       this.left + rectangle.width > composerBox.left;
     const overlapsVertically =
-      this.top < composerBox.bottom &&
+      this.top < bottom &&
       this.top + rectangle.height > composerBox.top;
     if (overlapsHorizontally && overlapsVertically) {
       this.top = Math.max(
@@ -438,7 +402,7 @@ function closePanel() {
   }
 }
 
-// 鼠标停留和键盘聚焦都给出相同状态反馈，同时暂停循环提示
+// 鼠标停留和键盘聚焦都显示相同的宠物状态
 function hoverPet() {
   this.hovered = true;
 }
@@ -451,31 +415,6 @@ function leavePet() {
 // 子组件通知等待状态，宠物据此切换思考图片
 function setThinking(pending) {
   this.thinking = pending;
-}
-
-// 游戏提示只是招呼语，用户问题始终交给百炼回答
-function showGreeting() {
-  if (
-    !this.settings.visible ||
-    !this.settings.greetings ||
-    this.expanded ||
-    this.hovered ||
-    this.modalOpen
-  ) {
-    return;
-  }
-  if (this.reducedMotion && this.reducedMotion.matches) {
-    return;
-  }
-  this.greeting = pet.GREETINGS[this.greetingIndex];
-  this.greetingIndex = (this.greetingIndex + 1) % pet.GREETINGS.length;
-  window.clearTimeout(this.hideTimer);
-  this.hideTimer = window.setTimeout(this.hideGreeting, pet.GREETING_DURATION);
-}
-
-// 清空当前提示，下一轮定时器再选择新的提示文字
-function hideGreeting() {
-  this.greeting = "";
 }
 
 // 保存宠物的开关和位置，失败时保留本次界面状态
@@ -530,7 +469,6 @@ export default {
   data: petState,
   computed: {
     positionStyle: positionStyle,
-    greetingStyle: greetingStyle,
     imageState: imageState,
   },
   mounted: mountPet,
@@ -551,8 +489,6 @@ export default {
     hoverPet: hoverPet,
     leavePet: leavePet,
     setThinking: setThinking,
-    showGreeting: showGreeting,
-    hideGreeting: hideGreeting,
     savePreferences: savePreferences,
     hidePet: hidePet,
     showPet: showPet,

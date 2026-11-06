@@ -8,6 +8,7 @@ import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.GameRecordRepository;
 import cn.edu.sdu.java.server.repositorys.GameRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
+import cn.edu.sdu.java.server.repositorys.GamePlayRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,21 +19,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** 管理员维护游玩记录和其中的游戏分数，两种视图共用一份数据 */
+/** 管理员统一维护游玩记录的游戏、分数、时长与时间 */
 @Service
 public class AdminRecordService {
     private final GameRecordRepository records;
     private final GameRepository games;
     private final UserRepository users;
     private final GameService gameService;
+    private final GamePlayRepository plays;
 
-    /** 共用记录仓库和转换方法，分数视图使用同一条记录 */
+    /** 共用现有记录仓库和字段转换方法 */
     public AdminRecordService(GameRecordRepository records, GameRepository games,
-            UserRepository users, GameService gameService) {
+            UserRepository users, GameService gameService, GamePlayRepository plays) {
         this.records = records;
         this.games = games;
         this.users = users;
         this.gameService = gameService;
+        this.plays = plays;
     }
 
     /** 按账号或游戏名搜索记录，管理员可查看全部用户的数据 */
@@ -49,6 +52,7 @@ public class AdminRecordService {
                 result.add(gameService.recordInfo(record));
             }
         }
+        gameService.markRecordVisibility(result);
         return CommonMethod.getReturnData(result);
     }
 
@@ -84,6 +88,9 @@ public class AdminRecordService {
         GameRecord record = new GameRecord();
         Integer recordId = request.getInteger("recordId");
         if (recordId != null) {
+            if (plays.findByRecordId(recordId).isPresent()) {
+                return CommonMethod.getReturnMessageError("自动记录由游戏结算维护");
+            }
             Optional<GameRecord> found = records.findById(recordId);
             if (found.isEmpty()) {
                 return CommonMethod.getReturnMessageError("记录不存在或已经删除");
@@ -111,14 +118,13 @@ public class AdminRecordService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 按编号删除一条记录，分数视图也会同步移除这条数据 */
-    @Transactional
-    public DataResponse delete(DataRequest request) {
-        Integer id = request.getInteger("recordId");
-        if (id == null || !records.existsById(id)) {
-            return CommonMethod.getReturnMessageError("记录不存在或已经删除");
-        }
-        records.deleteById(id);
-        return CommonMethod.getReturnMessageOK();
+    /** 管理员隐藏当前视图中的记录，其他账户继续使用自己的显示选择 */
+    public DataResponse hide(DataRequest request) {
+        return gameService.hideRecord(request);
+    }
+
+    /** 恢复当前管理员的记录显示，玩家的显示选择继续独立保存 */
+    public DataResponse restore(DataRequest request) {
+        return gameService.restoreRecord(request);
     }
 }

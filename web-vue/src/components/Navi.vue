@@ -3,7 +3,6 @@
     class="platform-shell"
     :class="{ 'desktop-shell': loggedIn, 'auth-shell': !loggedIn }"
   >
-    <!-- 主页面的头部区域 -->
     <header class="platform-header">
       <div class="platform-header-inner">
         <button
@@ -49,8 +48,47 @@
             </button>
           </div>
         </TransitionGroup>
-        <div v-if="loggedIn" class="workspace-header-actions">
+        <div
+          :class="{
+            'workspace-header-actions': loggedIn,
+            'auth-header-actions': !loggedIn,
+          }"
+        >
           <button
+            v-if="
+              playerSession.game && playerSession.ownerToken === userInfo.token
+            "
+            class="workspace-game-return"
+            type="button"
+            :title="playerSession.game.name"
+            @click="returnToGame"
+          >
+            <span class="i-ep-video-play" aria-hidden="true"></span>返回游戏
+          </button>
+          <RouterLink
+            v-if="loggedIn && wallet.balance !== null"
+            class="workspace-wallet"
+            to="/GameCatalog"
+            title="字块币账户"
+          >
+            <span class="i-ep-coin" aria-hidden="true"></span
+            >{{ wallet.balance }} BC
+          </RouterLink>
+          <BackgroundMusic />
+          <MessageBell v-if="loggedIn" :key="userInfo.token" />
+          <button
+            v-if="loggedIn"
+            class="workspace-icon-button"
+            type="button"
+            aria-label="快速反馈"
+            title="快速反馈"
+            aria-haspopup="dialog"
+            @click="openQuickFeedback"
+          >
+            <span class="i-ep-chat-dot-round" aria-hidden="true"></span>
+          </button>
+          <button
+            v-if="loggedIn"
             class="workspace-icon-button"
             type="button"
             aria-label="界面设置"
@@ -60,13 +98,14 @@
             <span class="i-ep-setting" aria-hidden="true"></span>
           </button>
           <AccountSwitcher
+            v-if="loggedIn"
             :user-info="userInfo"
             @logout="logout"
             @notice="showSwitchNotice"
           />
         </div>
         <img
-          v-else
+          v-if="!loggedIn"
           class="platform-university"
           src="/images/shandong-university.png"
           alt="山东大学"
@@ -75,9 +114,7 @@
         />
       </div>
     </header>
-    <!-- 当登录成功后显示主页面 -->
     <div class="platform-workspace" v-if="loggedIn">
-      <!-- 中心区域的菜单区域 -->
       <aside
         id="workspace-navigation"
         class="platform-sidebar"
@@ -123,6 +160,9 @@
           </template>
         </details>
         <nav class="sidebar-shortcuts" aria-label="更多功能">
+          <RouterLink to="/Messages" @click="closeMenu">
+            <span class="i-ep-bell" aria-hidden="true"></span>消息中心
+          </RouterLink>
           <RouterLink to="/AiSupport" @click="closeMenu"
             ><span class="i-ep-chat-dot-round" aria-hidden="true"></span>AI
             客服</RouterLink
@@ -144,7 +184,12 @@
       <main class="platform-main" id="main-content">
         <div
           class="workspace-page"
-          :class="{ 'workspace-support': $route.path === '/AiSupport' }"
+          :class="{
+            'workspace-support': $route.path === '/AiSupport',
+            'workspace-playing': gameVisible,
+          }"
+          :inert="gameVisible"
+          :aria-hidden="gameVisible"
         >
           <!-- 缓存概览和列表，账户切换时按账号重建，密码表单每次单独创建 -->
           <router-view v-slot="page">
@@ -163,9 +208,13 @@
             </Transition>
           </router-view>
         </div>
+        <GamePlayer
+          :key="userInfo.token"
+          :owner-token="userInfo.token"
+          :admin="isAdmin"
+        />
       </main>
     </div>
-    <!-- 当登录前显示登录注册页面 -->
     <router-view v-else v-slot="page">
       <Transition name="page" mode="out-in" appear>
         <component :is="page.Component" :key="page.route.path" />
@@ -174,11 +223,24 @@
     <Octorange v-if="loggedIn" :key="userInfo.id" :user-id="userInfo.id" />
     <PointerTrail />
     <InterfaceSettings v-if="loggedIn" ref="settings" />
+    <MessageComposer
+      v-if="loggedIn"
+      ref="quickFeedback"
+      dialog-id="quick-feedback-title"
+      @saved="feedbackSent"
+    />
     <footer v-if="loggedIn" class="workspace-status">
-      <span>4398 游戏平台 · 第02组</span
+      <span class="workspace-team">
+        <span>4398 游戏平台 · 第02组</span>
+        <span v-for="member in teamMembers" :key="member">{{
+          member
+        }}</span> </span
       ><span>{{ roleName }}：{{ displayName }}</span
-      ><span v-reveal="switchNotice" role="status">{{ switchNotice }}</span
-      ><time>{{ clock }}</time>
+      ><span v-reveal="switchNotice" role="status">{{ switchNotice }}</span>
+      <div class="workspace-status-details">
+        <span aria-label="当前版本">{{ version }}</span>
+        <time>{{ clock }}</time>
+      </div>
     </footer>
   </div>
 </template>
@@ -191,9 +253,18 @@ import AccountSwitcher from "./AccountSwitcher.vue";
 import Octorange from "./Octorange.vue";
 import PointerTrail from "./PointerTrail.vue";
 import InterfaceSettings from "./InterfaceSettings.vue";
+import BackgroundMusic from "./BackgroundMusic.vue";
+import project from "../../package.json";
+import { useWalletStore } from "../stores/wallet.js";
+import { useGamePlayerStore } from "../stores/gamePlayer.js";
+import GamePlayer from "./GamePlayer.vue";
+import MessageBell from "./MessageBell.vue";
+import MessageComposer from "./MessageComposer.vue";
 
 // 返回页面时保留列表数据的组件名称
 const CACHED_PAGES = ["MainPage", "GameList", "GameRecords"];
+// 小组成员按照页面展示顺序维护
+const TEAM_MEMBERS = ["张昱晨", "吴易", "张牧", "赵振武"];
 // 同时保留的列表页面数量上限
 const PAGE_CACHE_LIMIT = 8;
 // 菜单页面与图标类名的对应表，未匹配页面使用文档图标
@@ -205,16 +276,18 @@ const MENU_ICONS = {
   GameRecords: "i-ep-document",
   GameUserProfile: "i-ep-user",
   Password: "i-ep-lock",
-  MenuManage: "i-ep-menu",
-  DictionaryManage: "i-ep-collection",
-  AccountManage: "i-ep-setting",
+  AccountManage: "i-ep-user",
+  BlockcoinManage: "i-ep-coin",
+  RecordManage: "i-ep-document",
 };
 
-/** 返回标签页、菜单展开状态和时钟数据 */
+/** 返回标签页、菜单展开状态、时钟和项目配置中的版本号 */
 function workspaceState() {
   return {
     tabs: navigation.createHomeTabs(),
+    teamMembers: TEAM_MEMBERS,
     closedGroups: [],
+    version: "v" + project.version,
     clock: "",
     clockTimer: null,
     cachedPages: CACHED_PAGES,
@@ -227,6 +300,32 @@ function workspaceState() {
 /** 返回当前账户的登录信息 */
 function readUserInfo() {
   return useAppStore().userInfo;
+}
+/** 顶栏余额与商城使用同一账户仓库，切号后重新读取后端余额 */
+function readWallet() {
+  return useWalletStore();
+}
+/** 运行信息由公共层维护，缓存列表的创建与销毁均不会结束当前游戏 */
+function readPlayerSession() {
+  return useGamePlayerStore();
+}
+/** 当前页面显示游戏时隐藏其后方列表，其他页面仍按原布局显示 */
+function readGameVisible() {
+  const player = this.playerSession;
+  return Boolean(
+    player.game &&
+      player.ownerToken === this.userInfo.token &&
+      player.expanded &&
+      player.routePath === this.$route.path,
+  );
+}
+/** 顶栏入口返回当前游戏的启动页面，并恢复原实例画面 */
+function returnToGame() {
+  const path = this.playerSession.resume();
+  this.closeMenu();
+  if (path && path !== this.$route.path) {
+    this.$router.push(path);
+  }
 }
 /** 返回当前账户的菜单 */
 function readSystemConfig() {
@@ -289,6 +388,17 @@ function openSettings() {
   this.closeMenu();
   this.$refs.settings.open();
 }
+/** 从顶栏直接打开共用反馈弹窗，小屏状态下先收起菜单 */
+function openQuickFeedback() {
+  this.closeMenu();
+  this.$refs.quickFeedback.open("feedback");
+}
+/** 反馈提交成功后在底部状态栏显示结果 */
+function feedbackSent(message) {
+  if (message.kind === "feedback" && !message.editing) {
+    this.switchNotice = "问题反馈已发送";
+  }
+}
 /** 页面加载后恢复菜单，失败时清除过期的登录信息 */
 async function restoreNavigation() {
   this.updateClock();
@@ -297,11 +407,11 @@ async function restoreNavigation() {
     navigation.CLOCK_INTERVAL,
   );
   if (!this.loggedIn) {
-    // 未登录页面由路由守卫决定，框架仅启动时钟
     return;
   }
   try {
     await useAppStore().setNavi();
+    useWalletStore().refresh();
     this.rememberPage(this.$route.path);
     if (this.$route.path === "/Login" || this.$route.path === "/") {
       await this.$router.replace("/MainPage");
@@ -310,14 +420,13 @@ async function restoreNavigation() {
     await this.logout();
   }
 }
-/** 离开框架时停止时钟，重新进入时由挂载流程创建定时器 */
+/** 页面卸载时停止时钟刷新，重新进入时由挂载过程启动 */
 function stopClock() {
   window.clearInterval(this.clockTimer);
 }
-/** 使用北京时间更新底部状态栏 */
+/** 将北京时间显示在右下角，版本号在相邻位置独立显示 */
 function updateClock() {
-  const now = new Date();
-  this.clock = navigation.formatClock(now);
+  this.clock = navigation.formatClock(new Date());
 }
 /** 路由变化时添加标签页，同一页面只添加一次 */
 function rememberPage(path) {
@@ -360,6 +469,7 @@ function showSwitchNotice(message) {
 }
 /** 登录身份变化时清空标签，列表缓存也由账户名称区分 */
 function accountChanged() {
+  useWalletStore().refresh();
   this.tabs = navigation.createHomeTabs();
   this.closedGroups = [];
   this.switchNotice = "";
@@ -382,9 +492,16 @@ export default {
     Octorange: Octorange,
     PointerTrail: PointerTrail,
     InterfaceSettings: InterfaceSettings,
+    BackgroundMusic: BackgroundMusic,
+    GamePlayer: GamePlayer,
+    MessageBell: MessageBell,
+    MessageComposer: MessageComposer,
   },
   data: workspaceState,
   computed: {
+    wallet: readWallet,
+    playerSession: readPlayerSession,
+    gameVisible: readGameVisible,
     userInfo: readUserInfo,
     systemConfig: readSystemConfig,
     sidebarGroups: readSidebarGroups,
@@ -402,19 +519,22 @@ export default {
     "userInfo.username": accountChanged,
   },
   methods: {
+    updateClock: updateClock,
     logout: logout,
     menuTitle: menuTitle,
     menuIcon: menuIcon,
     toggleMenu: toggleMenu,
     closeMenu: closeMenu,
     openSettings: openSettings,
-    updateClock: updateClock,
+    openQuickFeedback: openQuickFeedback,
+    feedbackSent: feedbackSent,
     closeTab: closeTab,
     currentPage: currentPage,
     groupOpen: groupOpen,
     syncGroup: syncGroup,
     rememberPage: rememberPage,
     showSwitchNotice: showSwitchNotice,
+    returnToGame: returnToGame,
   },
 };
 </script>

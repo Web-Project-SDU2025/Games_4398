@@ -70,6 +70,8 @@ public class LocalAccountController {
         if (found.isEmpty()) {
             return CommonMethod.getReturnMessageError("账号不存在或已经删除");
         }
-        return CommonMethod.getReturnData(auth.createSession(found.get()));
+        User user = found.get();
+        auth.recordSuccessfulLogin(user);
+        return CommonMethod.getReturnData(auth.createSession(user));
     }
 }

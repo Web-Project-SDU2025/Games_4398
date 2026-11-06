@@ -1,0 +1,40 @@
+.background-music {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.music-toggle {
+  position: relative;
+}
+.music-note {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask: url("/icons/music.svg") center / contain no-repeat;
+}
+.music-toggle.is-playing {
+  color: var(--color-accent);
+}
+.music-toggle.is-muted::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-45deg);
+}
+.music-toggle.is-waiting {
+  border-style: dashed;
+}
+.auth-header-actions {
+  position: fixed;
+  top: var(--space-md);
+  right: calc(var(--space-md) + var(--auth-control-size) + var(--space-sm));
+  z-index: 3;
+}
+.auth-header-actions .music-toggle {
+  width: var(--auth-control-size);
+  height: var(--auth-control-size);
+  background: var(--color-workspace-background);
+}

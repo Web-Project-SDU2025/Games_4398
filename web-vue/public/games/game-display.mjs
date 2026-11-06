@@ -22,26 +22,44 @@ export function windowBounds(windows, width, height) {
 }
 
 // 观察 Java 窗口并居中可见区域，保持原始尺寸，小屏通过滚动查看完整画面
-export function centerGameDisplay(width, height) {
+export function centerGameDisplay(width, height, modeChanged) {
   const host = document.getElementById("java-display");
   const desktop = document.getElementById("cheerpjDisplay");
   let scheduled = 0;
+  let previousMode = null;
+  const parameters = new URLSearchParams(location.search);
+  const editorLaunch = parameters.get("mode") === "editor";
 
   // 读取窗口原始布局尺寸，避开画布重绘，让游戏更新保持原有频率
   function updateDisplay() {
     scheduled = 0;
     const windows = [];
+    const floatingWindows = [];
+    let hasGame = false;
     for (const window of desktop.querySelectorAll(":scope > .cjWindow")) {
       if (window.style.display !== "none") {
-        windows.push({
+        const bounds = {
           left: window.offsetLeft,
           top: window.offsetTop,
           width: window.offsetWidth,
           height: window.offsetHeight,
-        });
+        };
+        windows.push(bounds);
+        if (window.querySelector(".cjTitleBar")) {
+          floatingWindows.push(bounds);
+        } else {
+          hasGame = true;
+        }
       }
     }
-    const bounds = windowBounds(windows, width, height);
+    let editorMode = false;
+    let visible = windows;
+    if (floatingWindows.length > 0 && (hasGame || editorLaunch)) {
+      editorMode = true;
+      visible = floatingWindows;
+    }
+    host.classList.toggle("editor-active", editorMode);
+    const bounds = windowBounds(visible, width, height);
     const credit = DISPLAY_OPTIONS.creditHeight;
     host.style.width = bounds.width + "px";
     host.style.height = bounds.height + credit + "px";
@@ -53,6 +71,12 @@ export function centerGameDisplay(width, height) {
       bounds.top + bounds.height + "px",
     );
     desktop.style.setProperty("--credit-width", bounds.width + "px");
+    if (windows.length > 0 || previousMode !== null) {
+      if (editorMode !== previousMode) {
+        previousMode = editorMode;
+        modeChanged(editorMode);
+      }
+    }
   }
 
   // 同一帧的窗口移动与尺寸变化合并处理，避免反复计算布局

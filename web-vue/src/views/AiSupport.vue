@@ -39,7 +39,7 @@
     </aside>
     <div class="support-main">
       <header class="support-heading">
-        <strong>AI 客服</strong><span>Octorange · 百炼</span>
+        <strong>AI 客服</strong>
       </header>
       <Transition name="page" mode="out-in">
         <SupportChat

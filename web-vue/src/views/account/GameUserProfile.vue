@@ -33,6 +33,7 @@
 <script>
 import { getProfile, saveProfile } from "../../services/gameUserServ";
 import * as limits from "../../logic/limits.js";
+import { useAppStore } from "../../stores/app.js";
 export default {
   // 创建独立资料表单，加载结果只填入当前页面
   data: function data() {
@@ -46,9 +47,13 @@ export default {
   },
   // 页面打开时加载初始资料
   created: async function created() {
+    const token = useAppStore().userInfo.token;
     this.loading = true;
     try {
       const result = await getProfile();
+      if (token !== useAppStore().userInfo.token) {
+        return;
+      }
       if (result.code === 0) {
         this.form = result.data;
         this.loaded = true;
@@ -56,7 +61,9 @@ export default {
         this.notice = result.msg;
       }
     } catch (error) {
-      this.notice = "加载失败";
+      if (token === useAppStore().userInfo.token) {
+        this.notice = "加载失败";
+      }
     } finally {
       this.loading = false;
     }
@@ -68,15 +75,26 @@ export default {
         return;
       }
       this.loading = true;
+      const store = useAppStore();
+      const token = store.userInfo.token;
+      const profile = Object.assign({}, this.form);
       try {
-        const result = await saveProfile(this.form);
+        const result = await saveProfile(profile);
+        if (token !== store.userInfo.token) {
+          return;
+        }
         if (result.code === 0) {
+          // 保存接口返回操作结果，已提交字段同步到当前资料，登录信息继续保留
+          store.profile = profile;
+          store.userInfo.perName = profile.name;
           this.notice = "保存成功";
         } else {
           this.notice = result.msg;
         }
       } catch (error) {
-        this.notice = "保存失败";
+        if (token === store.userInfo.token) {
+          this.notice = "保存失败";
+        }
       } finally {
         this.loading = false;
       }

@@ -7,10 +7,18 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountGameLibrary: typeof import('./components/AccountGameLibrary.vue')['default']
     AccountSwitcher: typeof import('./components/AccountSwitcher.vue')['default']
+    BackgroundMusic: typeof import('./components/BackgroundMusic.vue')['default']
+    BlockcoinAdjustment: typeof import('./components/BlockcoinAdjustment.vue')['default']
+    BlockcoinHistory: typeof import('./components/BlockcoinHistory.vue')['default']
+    DashboardAccount: typeof import('./components/DashboardAccount.vue')['default']
     DashboardActivity: typeof import('./components/DashboardActivity.vue')['default']
-    ElTree: typeof import('element-plus/es')['ElTree']
+    GameLauncher: typeof import('./components/GameLauncher.vue')['default']
+    GamePlayer: typeof import('./components/GamePlayer.vue')['default']
     InterfaceSettings: typeof import('./components/InterfaceSettings.vue')['default']
+    MessageBell: typeof import('./components/MessageBell.vue')['default']
+    MessageComposer: typeof import('./components/MessageComposer.vue')['default']
     Navi: typeof import('./components/Navi.vue')['default']
     Octorange: typeof import('./components/Octorange.vue')['default']
     PointerTrail: typeof import('./components/PointerTrail.vue')['default']

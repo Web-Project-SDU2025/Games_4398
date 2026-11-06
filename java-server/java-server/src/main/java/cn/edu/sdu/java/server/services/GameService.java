@@ -5,9 +5,11 @@ import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.*;
 import cn.edu.sdu.java.server.util.CommonMethod;
+import cn.edu.sdu.java.server.util.GameplayRules;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 /** 管理游戏和个人关联，写入操作使用事务保持数据一致 */
@@ -16,13 +18,18 @@ public class GameService {
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final GameRecordRepository recordRepository;
+    private final GamePlayRepository playRepository;
+    private final RecordVisibilityService visibility;
 
     /** 保存游戏、账户和记录仓库，相关操作共用实体转换方法 */
     public GameService(GameRepository gameRepository, UserRepository userRepository,
-                       GameRecordRepository recordRepository) {
+                       GameRecordRepository recordRepository, GamePlayRepository playRepository,
+                       RecordVisibilityService visibility) {
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
         this.recordRepository = recordRepository;
+        this.playRepository = playRepository;
+        this.visibility = visibility;
     }
 
     /**
@@ -116,44 +123,67 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    // 删除没有被游戏库、收藏或游戏记录引用的游戏
     /**
-     * 删除游戏，游戏仍被使用时不允许删除
-     * @param request data 中包含 gameId
+     * 删除游戏，清理关联资料时要求管理员确认后的 removeRelated 标记
+     * @param request data 中包含 gameId 与可选 removeRelated
      * @return 删除成功或失败的响应
      */
     @Transactional
     public DataResponse delete(DataRequest request) {
-        Game game = gameRepository.findById(request.getInteger("gameId")).orElseThrow();
-        if (recordRepository.existsByGameGameId(game.getGameId())) {
-            return CommonMethod.getReturnMessageError("游戏已有游玩记录，不能删除");
+        Integer gameId = request.getInteger("gameId");
+        if (gameId == null) {
+            return CommonMethod.getReturnMessageError("请指定要删除的游戏");
         }
-        for (User user : userRepository.findAll()) {
-            if (user.getGames().contains(game) || user.getFavorites().contains(game)) {
-                return CommonMethod.getReturnMessageError("游戏已加入游戏库或收藏，不能删除");
+        Optional<Game> existing = gameRepository.findById(gameId);
+        if (existing.isEmpty()) {
+            return CommonMethod.getReturnMessageError("游戏已删除，请刷新列表");
+        }
+        Game game = existing.get();
+        boolean removeRelated = request.getBoolean("removeRelated");
+        List<User> users = userRepository.findAll();
+        if (!removeRelated) {
+            if (recordRepository.existsByGameGameId(gameId)) {
+                return CommonMethod.getReturnMessageError("请确认同时清理此游戏的游玩记录、游戏库和收藏");
             }
+            for (User user : users) {
+                if (user.getGames().contains(game) || user.getFavorites().contains(game)) {
+                    return CommonMethod.getReturnMessageError("请确认同时清理此游戏的游戏库和收藏");
+                }
+            }
+        } else {
+            // 先移除关联行再删游戏，所有变更由同一事务统一提交或回滚
+            recordRepository.deleteByGameGameId(gameId);
+            for (User user : users) {
+                boolean changed = user.getGames().remove(game);
+                boolean favoriteChanged = user.getFavorites().remove(game);
+                if (changed || favoriteChanged) {
+                    userRepository.save(user);
+                }
+            }
+            userRepository.flush();
+            recordRepository.flush();
         }
         gameRepository.delete(game);
         return CommonMethod.getReturnMessageOK();
     }
 
     /**
-     * 修改当前用户的游戏库或收藏
+     * 修改当前用户的收藏，游戏库由购买流程维护
      * @param request data 中包含 gameId、mode 和 added
      * @return 操作成功或失败的响应
      */
     @Transactional
     public DataResponse changeCollection(DataRequest request) {
         String mode = request.getString("mode");
-        if (!"library".equals(mode) && !"favorites".equals(mode)) {
+        if ("library".equals(mode)) {
+            return CommonMethod.getReturnMessageError("游戏库由购买记录维护");
+        }
+        if (!"favorites".equals(mode)) {
             return CommonMethod.getReturnMessageError("未知的游戏列表");
         }
         User user = currentUser();
         Game game = gameRepository.findById(request.getInteger("gameId")).orElseThrow();
-        List<Game> games = user.getGames();
-        if ("favorites".equals(mode)) {
-            games = user.getFavorites();
-        }
+        List<Game> games = user.getFavorites();
         if (request.getBoolean("added")) {
             if (!games.contains(game)) {
                 games.add(game);
@@ -175,9 +205,28 @@ public class GameService {
         info.put("recordId", record.getRecordId());
         info.put("userId", record.getUser().getUserId());
         info.put("username", record.getUser().getUserName());
+        info.put("playerName", record.getUser().getName());
         info.put("score", record.getScore());
         info.put("durationSeconds", record.getDurationSeconds());
         info.put("playedAt", record.getPlayedAt());
+        info.put("automatic", false);
+        info.put("outcome", "manual");
+        info.put("levelName", "");
+        info.put("reward", 0);
+        Optional<GamePlay> session = playRepository.findByRecordId(record.getRecordId());
+        if (session.isPresent()) {
+            GamePlay play = session.get();
+            String outcome = play.getOutcome();
+            if ("playing".equals(outcome)
+                    && Instant.now().isAfter(play.getUpdatedAt().plusSeconds(GameplayRules.IDLE_SECONDS))) {
+                outcome = "abandoned";
+            }
+            info.put("automatic", true);
+            info.put("outcome", outcome);
+            info.put("levelName", play.getLevelName());
+            info.put("mode", play.getMode());
+            info.put("reward", play.getAwardedAmount());
+        }
         return info;
     }
 
@@ -198,6 +247,7 @@ public class GameService {
         for (GameRecord record : records) {
             results.add(recordInfo(record));
         }
+        markRecordVisibility(results);
         return CommonMethod.getReturnData(results);
     }
 
@@ -228,19 +278,18 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /**
-     * 删除记录时校验归属，普通用户跨账户请求返回权限提示
-     * @param request data 中包含 recordId
-     * @return 删除成功或失败的响应
-     */
-    @Transactional
-    public DataResponse deleteRecord(DataRequest request) {
-        GameRecord record = recordRepository.findById(request.getInteger("recordId")).orElseThrow();
-        if (!"ROLE_ADMIN".equals(CommonMethod.getRoleName())
-                && !record.getUser().getUserId().equals(CommonMethod.getUserId())) {
-            return CommonMethod.getReturnMessageError("不能删除其他用户的记录");
-        }
-        recordRepository.delete(record);
-        return CommonMethod.getReturnMessageOK();
+    /** 个人与管理列表共用当前查看账户的隐藏标记，完整数据供首页统计使用 */
+    public void markRecordVisibility(List<Map<String, Object>> rows) {
+        visibility.mark(rows);
+    }
+
+    /** 隐藏记录复用独立可见性服务，资金、时长与原记录继续保留 */
+    public DataResponse hideRecord(DataRequest request) {
+        return visibility.hide(request);
+    }
+
+    /** 恢复当前账户的记录显示，复用隐藏操作相同的访问规则 */
+    public DataResponse restoreRecord(DataRequest request) {
+        return visibility.restore(request);
     }
 }

@@ -1,6 +1,6 @@
-const activeReveals = new WeakMap();
 // 刷新反馈从此透明度恢复到完全显示
 const REVEAL_START_OPACITY = 0.65;
+const activeReveals = new WeakMap();
 
 // 数据更新后淡入，重复刷新先取消旧动画，表格保持原位置
 export function revealContent(element) {
@@ -30,11 +30,7 @@ export function revealContent(element) {
 // 绑定数据改变时播放反馈，输入和时钟等更新复用当前内容
 function updateReveal(element, binding) {
   // 首次数据填充和路由切换期间使用页面自身过渡
-  if (
-    element.closest(
-      ".page-enter-active, .page-leave-active, .panel-enter-active, .panel-leave-active",
-    )
-  ) {
+  if (element.closest(".page-enter-active, .page-leave-active")) {
     return;
   }
   // 请求期间由半透明样式显示等待反馈，完成后再执行淡入

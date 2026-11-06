@@ -1,11 +1,9 @@
 const fs = require("node:fs");
-const path = require("node:path");
 const parser = require("@babel/parser");
+const sources = require("../../scripts/source-files.cjs");
 
-// 检查业务源码、测试和工具，生成的类型声明由生成工具维护
-const SOURCE_DIRECTORIES = ["src", "tests", "scripts"];
-// 当前使用的前端构建配置文件
-const CONFIGURATION_FILE = "vite.config.js";
+// JavaScript 与 Vue 共用工作区范围，原服务器连接文件由清单保留
+const EXTENSIONS = [".js", ".mjs", ".cjs", ".vue"];
 // 禁用语法与对应提示，按语法树节点名称查询
 const FORBIDDEN_SYNTAX = {
   ArrowFunctionExpression: "请使用有名称的普通函数",
@@ -20,19 +18,6 @@ const FORBIDDEN_SYNTAX = {
   OptionalCallExpression: "请用 if 检查函数后再调用",
 };
 const errors = [];
-
-// 收集手写的 JS 和 Vue 文件，类型声明由工具生成，不在检查范围内
-function collectFiles(directory, files) {
-  const entries = fs.readdirSync(directory, { withFileTypes: true });
-  for (const entry of entries) {
-    const filename = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      collectFiles(filename, files);
-    } else if (/\.(js|mjs|cjs|vue)$/.test(filename)) {
-      files.push(filename);
-    }
-  }
-}
 
 // 记录文件和行号，让检查结果能直接定位需要修改的位置
 function report(filename, node, message) {
@@ -120,13 +105,9 @@ function checkFile(filename) {
   checkNode(tree.program, null, tree.comments, source, filename);
 }
 
-const files = [];
-for (const directory of SOURCE_DIRECTORIES) {
-  collectFiles(directory, files);
-}
-files.push(CONFIGURATION_FILE);
-for (const filename of files) {
-  checkFile(filename);
+const files = sources.sourceFiles(EXTENSIONS);
+for (const file of files) {
+  checkFile(file.absolute);
 }
 if (errors.length > 0) {
   console.error(errors.join("\n"));

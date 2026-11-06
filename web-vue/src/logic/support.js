@@ -8,6 +8,30 @@ const MESSAGE_LIMIT = 80;
 const AUTO_TITLE_LIMIT = 20;
 // 重命名对话时的标题最多字符数
 export const TITLE_LIMIT = 40;
+// 单条历史缩略图允许的字符数，历史只保存小图以控制浏览器存储占用
+const PREVIEW_LIMIT = 60000;
+// 每条历史保存的图片数量上限
+const HISTORY_IMAGE_LIMIT = 4;
+
+// 复制安全的图片缩略图，历史内容只接收 JPEG Data URL 和文件名
+function imagePreviews(images) {
+  const result = [];
+  if (!Array.isArray(images)) {
+    return result;
+  }
+  for (const image of images.slice(0, HISTORY_IMAGE_LIMIT)) {
+    if (
+      image &&
+      typeof image.name === "string" &&
+      typeof image.preview === "string" &&
+      image.preview.length <= PREVIEW_LIMIT &&
+      /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(image.preview)
+    ) {
+      result.push({ name: image.name, preview: image.preview });
+    }
+  }
+  return result;
+}
 
 // 每个账号使用自己的浏览器存储，提问时只发送当前问题和对话编号
 function storageKey(userId) {
@@ -37,7 +61,11 @@ export function readConversations(userId) {
             (message.role === "user" || message.role === "assistant") &&
             typeof message.content === "string"
           ) {
-            messages.push({ role: message.role, content: message.content });
+            const saved = { role: message.role, content: message.content };
+            if (message.role === "user" && message.images) {
+              saved.images = imagePreviews(message.images);
+            }
+            messages.push(saved);
           }
         }
         conversations.push({
@@ -45,6 +73,7 @@ export function readConversations(userId) {
           cloudId: readCloudId(item.cloudId),
           title: item.title,
           messages: messages.slice(-MESSAGE_LIMIT),
+          multimodal: item.multimodal === true,
         });
       }
     }
@@ -82,16 +111,24 @@ export function createConversation() {
 }
 
 // 只添加用户问题，回答必须等百炼接口成功后再添加
-export function addQuestion(conversation, question) {
+export function addQuestion(conversation, question, images) {
   const trimmed = question.trim();
   const text = trimmed.substring(0, QUESTION_LIMIT);
-  if (text === "") {
+  const previews = imagePreviews(images);
+  if (text === "" && previews.length === 0) {
     return false;
   }
   if (conversation.messages.length === 0) {
     conversation.title = text.substring(0, AUTO_TITLE_LIMIT);
+    if (text === "") {
+      conversation.title = "图片问题";
+    }
   }
-  conversation.messages.push({ role: "user", content: text });
+  const message = { role: "user", content: text };
+  if (previews.length > 0) {
+    message.images = previews;
+  }
+  conversation.messages.push(message);
   trimMessages(conversation);
   return true;
 }

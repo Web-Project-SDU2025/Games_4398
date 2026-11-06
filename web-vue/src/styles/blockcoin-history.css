@@ -1,0 +1,81 @@
+.blockcoin-history {
+  /* 收支配色和图标尺寸归属足迹区域，页面移动时继续使用相同参数 */
+  --blockcoin-income: #8ee6b0;
+  --blockcoin-expense: #eea05b;
+  --blockcoin-icon-size: 32px;
+  margin-top: var(--space-lg);
+  border-top: 1px solid var(--color-rule);
+  padding-top: 20px;
+}
+.blockcoin-history header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.blockcoin-history header > span {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.blockcoin-history h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.blockcoin-history ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.blockcoin-history li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+.blockcoin-entry-icon {
+  display: grid;
+  place-items: center;
+  width: var(--blockcoin-icon-size);
+  height: var(--blockcoin-icon-size);
+  flex-shrink: 0;
+  color: var(--blockcoin-expense);
+  background: var(--color-paper-3);
+  border-radius: 4px;
+}
+.blockcoin-entry-icon span {
+  width: 18px;
+  height: 18px;
+}
+.blockcoin-history li strong {
+  font-size: 14px;
+  font-weight: 400;
+}
+.blockcoin-history time {
+  display: block;
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.blockcoin-entry-amount {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.blockcoin-history small {
+  color: var(--color-muted);
+  min-width: 80px;
+  text-align: right;
+}
+.blockcoin-history .is-income {
+  color: var(--blockcoin-income);
+}
+@media (max-width: 47.99rem) {
+  .blockcoin-history small {
+    display: none;
+  }
+}

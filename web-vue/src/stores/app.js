@@ -32,6 +32,7 @@ export const useAppStore = defineStore("gameApp", {
   state: function appState() {
     return {
       userInfo: emptyUserInfo(),
+      profile: null,
       systemConfig: {
         naviList: [],
       },
@@ -60,6 +61,7 @@ export const useAppStore = defineStore("gameApp", {
       this.userInfo.role = profile.role;
       this.userInfo.id = profile.userId;
       this.userInfo.perName = profile.name;
+      this.profile = profile;
       return true;
     },
     // 登录成功后保存服务器返回的账户和令牌
@@ -76,20 +78,40 @@ export const useAppStore = defineStore("gameApp", {
         validateCode,
       );
       this.userInfo = sessionInfo(result);
+      this.profile = null;
       this.gameRevision = 0;
       this.recordRevision = 0;
     },
-    // 目标凭证和菜单都读取成功后再替换身份，网络失败时仍保留当前账号
+    // 目标账户的菜单和个人资料都读取成功后再完成切换
     switchAccount: async function changeAccount(username) {
+      const previousUserInfo = this.userInfo;
+      const previousProfile = this.profile;
+      const previousSystemConfig = this.systemConfig;
+      const previousGameRevision = this.gameRevision;
+      const previousRecordRevision = this.recordRevision;
       const result = await switchAccount(username, this.userInfo.token);
       this.systemConfig = { naviList: result.menus };
       this.userInfo = sessionInfo(result.session);
+      this.profile = null;
       this.gameRevision = 0;
       this.recordRevision = 0;
+      try {
+        await this.refreshIdentity();
+      } catch (error) {
+        if (this.userInfo.token === result.session.token) {
+          this.userInfo = previousUserInfo;
+          this.profile = previousProfile;
+          this.systemConfig = previousSystemConfig;
+          this.gameRevision = previousGameRevision;
+          this.recordRevision = previousRecordRevision;
+        }
+        throw error;
+      }
     },
     // 退出时清空身份、菜单和数据版本，下一账户重新初始化
     logout: function logout() {
       this.userInfo = emptyUserInfo();
+      this.profile = null;
       this.systemConfig = {
         naviList: [],
       };

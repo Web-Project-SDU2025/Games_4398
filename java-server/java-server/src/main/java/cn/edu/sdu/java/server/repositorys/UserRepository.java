@@ -5,6 +5,8 @@ import cn.edu.sdu.java.server.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,9 +20,16 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+    /** 钱包操作先锁定账户行，初始化、购买和奖励按同一顺序串行提交 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select account from User account where account.userId = ?1")
+    Optional<User> lockAccount(Integer userId);
     /** 按登录名读取账户，缺失时返回空 Optional */
     Optional<User> findByUserName(String userName);
 
+    /** 按数据库角色读取管理员账户，用于分配问题反馈 */
+    @Query("select account from User account where account.userType.name = ?1")
+    List<User> findByUserTypeName(String roleName);
 
     /** 检查账号重复，参数通过仓库规则绑定 */
     Boolean existsByUserName(String userName);

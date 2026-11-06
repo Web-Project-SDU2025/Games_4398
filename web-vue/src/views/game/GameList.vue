@@ -14,6 +14,13 @@
     </form>
     <p v-reveal="notice" role="status">{{ notice }}</p>
     <div class="motion-results" :aria-busy="loading">
+      <GameLauncher
+        v-if="showLauncher && games.length > 0"
+        :catalog="games"
+        :admin="admin"
+        :updating="updating"
+        @favorite="toggleFavorite"
+      />
       <div v-if="loaded && games.length === 0" class="catalog-empty">
         <img
           src="/images/game-collection.png"
@@ -26,13 +33,13 @@
           v-if="mode !== 'catalog'"
           class="platform-secondary-button"
           to="/GameCatalog"
-          >浏览游戏列表</RouterLink
+          >浏览游戏商城</RouterLink
         >
         <button v-else-if="admin" type="button" @click="editGame(null)">
           添加第一个游戏
         </button>
       </div>
-      <div v-else-if="loaded" class="game-table-wrap">
+      <div v-else-if="loaded && !showLauncher" class="game-table-wrap">
         <table class="game-table">
           <thead>
             <tr>
@@ -56,24 +63,6 @@
               <td>{{ game.category }}</td>
               <td>{{ game.description }}</td>
               <td class="game-actions">
-                <button
-                  v-if="!game.owned"
-                  @click="setCollection(game, 'library', true)"
-                >
-                  加入游戏库
-                </button>
-                <button v-else @click="setCollection(game, 'library', false)">
-                  移出游戏库
-                </button>
-                <button
-                  v-if="!game.favorite"
-                  @click="setCollection(game, 'favorites', true)"
-                >
-                  收藏
-                </button>
-                <button v-else @click="setCollection(game, 'favorites', false)">
-                  取消收藏
-                </button>
                 <template v-if="admin && mode === 'catalog'">
                   <button @click="editGame(game)">编辑</button
                   ><button @click="removeGame(game)">删除</button>
@@ -84,7 +73,7 @@
         </table>
       </div>
     </div>
-    <!-- 对话框显示 -->
+    <BlockcoinHistory v-if="mode === 'library'" :history="wallet.history" />
     <dialog ref="editor">
       <form class="game-form" @submit.prevent="confirmGame">
         <h3>游戏资料</h3>
@@ -131,16 +120,28 @@ import {
   getGames,
   saveGame,
   deleteGame,
-  changeCollection,
+  changeFavorite,
 } from "../../services/gameServ";
 import { useAppStore } from "../../stores/app";
 import { createGameForm } from "../../logic/forms.js";
 import { messageConform } from "../../tools/messageBox.js";
 import * as limits from "../../logic/limits.js";
+import GameLauncher from "../../components/GameLauncher.vue";
+import BlockcoinHistory from "../../components/BlockcoinHistory.vue";
+import { useWalletStore } from "../../stores/wallet.js";
 
 export default {
   name: "GameList",
-  props: { mode: String, title: String },
+  components: {
+    GameLauncher: GameLauncher,
+    BlockcoinHistory: BlockcoinHistory,
+  },
+  emits: ["changed"],
+  props: {
+    mode: String,
+    title: String,
+    showLauncher: { type: Boolean, default: true },
+  },
   // 双向绑定数据
   data: function gameListState() {
     return {
@@ -153,13 +154,24 @@ export default {
       notice: "",
       editorNotice: "",
       form: {},
+      updating: "",
     };
   },
   computed: {
+    // 游戏库与顶栏共用当前账户的资金记录，切号时由钱包仓库更新
+    wallet: function readWallet() {
+      return useWalletStore();
+    },
     // 管理员可以维护游戏资料
     admin: function isAdmin() {
       return useAppStore().userInfo.role === "ROLE_ADMIN";
     },
+  },
+  // 常驻资料表在挂载时读取，游戏库等缓存页面继续使用激活流程
+  mounted: function mountGameList() {
+    if (!this.showLauncher) {
+      this.query();
+    }
   },
   // 已加载且没有数据修改时直接显示缓存，不因切换标签再次刷新
   activated: function loadGames() {
@@ -212,6 +224,7 @@ export default {
         }
         this.close();
         await this.query();
+        this.$emit("changed");
       } catch (error) {
         this.editorNotice = "保存失败";
       }
@@ -219,7 +232,9 @@ export default {
     // 删除游戏
     removeGame: async function removeGame(game) {
       const confirmed = await messageConform(
-        "确认删除游戏“" + game.name + "”？",
+        "删除游戏“" +
+          game.name +
+          "”后，将同时清理所有账户对此游戏的游戏库、收藏和游玩记录。确认删除？",
       );
       if (!confirmed) {
         return;
@@ -231,21 +246,36 @@ export default {
           return;
         }
         await this.query();
+        this.$emit("changed");
+        this.notice = "已删除";
       } catch (error) {
         this.notice = "删除失败";
       }
     },
-    // 按指定方式加入或移出游戏库、收藏列表
-    setCollection: async function setCollection(game, mode, added) {
+    // 收藏状态与游戏条目一起显示，写入后同步游戏库、收藏与商城缓存
+    toggleFavorite: async function toggleFavorite(game) {
+      if (this.updating) {
+        return;
+      }
+      this.updating = String(game.gameId);
+      const token = useAppStore().userInfo.token;
       try {
-        const result = await changeCollection(game.gameId, mode, added);
+        const result = await changeFavorite(game.gameId, !game.favorite);
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
         if (result.code !== 0) {
           this.notice = result.msg;
           return;
         }
         await this.query();
+        await useWalletStore().refresh();
       } catch (error) {
-        this.notice = "操作失败";
+        if (token === useAppStore().userInfo.token) {
+          this.notice = "操作失败";
+        }
+      } finally {
+        this.updating = "";
       }
     },
   },

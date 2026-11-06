@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.CsrfConfig
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -42,6 +43,7 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(new DisableCsrf());
         http.cors(new ConfigureCors(corsConfigurationSource()));
+        http.headers(new ConfigureGameHeaders());
         http.authorizeHttpRequests(new ConfigureAccess());
         http.sessionManagement(new ConfigureSessions());
         http.authenticationProvider(authenticationProvider);
@@ -59,6 +61,15 @@ public class SecurityConfiguration {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**",configuration);
         return source;
+    }
+
+    /** 为原 Java 游戏启动页增加同源嵌入规则，认证和服务器连接配置沿用现有设置 */
+    private static class ConfigureGameHeaders implements Customizer<HeadersConfigurer<HttpSecurity>> {
+        /** 将游戏页面规则追加到默认响应头之后，其余页面继续由默认规则保护 */
+        @Override
+        public void customize(HeadersConfigurer<HttpSecurity> configuration) {
+            configuration.addHeaderWriter(new GameFrameHeaders());
+        }
     }
 
     /** JWT 使用请求头传递，关闭基于浏览器会话的 CSRF 校验 */

@@ -1,0 +1,286 @@
+{
+  "background_type": 1,
+  "choosebar_type": 0,
+  "init_sun_value": 975,
+  "sky_sun_interval": 7000,
+  "screenshot": "levels/screenshots/level_0.png",
+  "max_cards": 4,
+  "zombie_list": [
+    {
+      "time": 10000,
+      "map_y": -1,
+      "name": "Imp"
+    },
+    {
+      "time": 10000,
+      "map_y": -1,
+      "name": "Zombie"
+    },
+    {
+      "time": 10000,
+      "map_y": -1,
+      "name": "FlagZombie"
+    },
+    {
+      "time": 10000,
+      "map_y": -1,
+      "name": "NewspaperZombie"
+    },
+    {
+      "time": 27500,
+      "map_y": -1,
+      "name": "FootballZombie"
+    },
+    {
+      "time": 27500,
+      "map_y": -1,
+      "name": "JokerZombie"
+    },
+    {
+      "time": 27500,
+      "map_y": -1,
+      "name": "FootballZombie"
+    },
+    {
+      "time": 27500,
+      "map_y": -1,
+      "name": "NewspaperZombie"
+    },
+    {
+      "time": 45000,
+      "map_y": -1,
+      "name": "ConeheadZombie"
+    },
+    {
+      "time": 45000,
+      "map_y": -1,
+      "name": "FootballZombie"
+    },
+    {
+      "time": 45000,
+      "map_y": -1,
+      "name": "NewspaperZombie"
+    },
+    {
+      "time": 45000,
+      "map_y": -1,
+      "name": "JokerZombie"
+    },
+    {
+      "time": 45000,
+      "map_y": -1,
+      "name": "Zombie"
+    },
+    {
+      "time": 46000,
+      "map_y": -1,
+      "name": "JokerZombie"
+    },
+    {
+      "time": 62500,
+      "map_y": -1,
+      "name": "Gargantuar"
+    },
+    {
+      "time": 62500,
+      "map_y": -1,
+      "name": "FlagZombie"
+    },
+    {
+      "time": 62500,
+      "map_y": -1,
+      "name": "NewspaperZombie"
+    },
+    {
+      "time": 62500,
+      "map_y": -1,
+      "name": "Zombie"
+    },
+    {
+      "time": 80000,
+      "map_y": -1,
+      "name": "Zombie"
+    },
+    {
+      "time": 80000,
+      "map_y": -1,
+      "name": "Zombie"
+    },
+    {
+      "time": 80000,
+      "map_y": -1,
+      "name": "Gargantuar"
+    },
+    {
+      "time": 80000,
+      "map_y": -1,
+      "name": "FlagZombie"
+    },
+    {
+      "time": 80000,
+      "map_y": 4,
+      "name": "Gargantuar"
+    }
+  ],
+  "editor": {
+    "wave_count": 5,
+    "first_wave_delay": 10000,
+    "wave_interval": 17500,
+    "spawn_spacing": 1000,
+    "cells": [
+      {
+        "wave": 0,
+        "row": 0,
+        "name": "Imp",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 0,
+        "row": 1,
+        "name": "Zombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 0,
+        "row": 2,
+        "name": "FlagZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 0,
+        "row": 3,
+        "name": "NewspaperZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 1,
+        "row": 0,
+        "name": "FootballZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 1,
+        "row": 1,
+        "name": "JokerZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 1,
+        "row": 2,
+        "name": "FootballZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 1,
+        "row": 3,
+        "name": "NewspaperZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 2,
+        "row": 0,
+        "name": "ConeheadZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 2,
+        "row": 1,
+        "name": "FootballZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 2,
+        "row": 2,
+        "name": "NewspaperZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 2,
+        "row": 3,
+        "name": "JokerZombie",
+        "count": 2,
+        "random_row": true
+      },
+      {
+        "wave": 2,
+        "row": 4,
+        "name": "Zombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 3,
+        "row": 0,
+        "name": "Gargantuar",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 3,
+        "row": 1,
+        "name": "FlagZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 3,
+        "row": 2,
+        "name": "NewspaperZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 3,
+        "row": 3,
+        "name": "Zombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 4,
+        "row": 0,
+        "name": "Zombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 4,
+        "row": 1,
+        "name": "Zombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 4,
+        "row": 2,
+        "name": "Gargantuar",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 4,
+        "row": 3,
+        "name": "FlagZombie",
+        "count": 1,
+        "random_row": true
+      },
+      {
+        "wave": 4,
+        "row": 4,
+        "name": "Gargantuar",
+        "count": 1
+      }
+    ]
+  }
+}

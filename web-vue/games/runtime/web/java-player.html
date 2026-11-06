@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Java 游戏</title>
+    <link rel="stylesheet" href="./platform-tokens.css" />
+    <link rel="stylesheet" href="./java-player.css" />
+    <script defer src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+    <script type="module" src="./java-player.js"></script>
+  </head>
+  <body class="desktop-shell">
+    <section id="player-feedback" aria-label="运行状态" hidden>
+      <p id="player-status" role="status"></p>
+      <button id="retry-start" type="button" hidden>重试</button>
+    </section>
+    <main id="player-viewport" aria-label="游戏画面">
+      <div id="java-display"></div>
+    </main>
+  </body>
+</html>

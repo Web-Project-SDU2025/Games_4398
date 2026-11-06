@@ -1,0 +1,329 @@
+.store-page {
+  /* 薄荷绿用于筛选与奖励，金色用于字块币，购买按钮沿用侧栏选中颜色 */
+  --store-accent: #8ee6b0;
+  --store-gold: #f4cc74;
+  --store-panel: #202824;
+  /* 商品最小列宽决定每行数量，最大宽度让单个商品保持紧凑 */
+  --store-product-min-width: 340px;
+  --store-product-max-width: 400px;
+  --store-cover-width: 112px;
+  padding: 24px 28px;
+  min-height: 100%;
+  box-sizing: border-box;
+  background: var(--color-paper);
+}
+.store-heading,
+.store-account,
+.store-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.store-heading {
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.store-heading h1 {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 24px;
+  font-weight: 600;
+}
+.store-count {
+  font-size: 13px;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+.store-library-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-ink);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.store-library-link span {
+  width: 18px;
+  height: 18px;
+}
+.store-account {
+  padding: 16px 0;
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+}
+.store-balance {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 250px;
+}
+.blockcoin-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--store-gold);
+  color: #332b18;
+  font-size: 26px;
+  font-weight: 700;
+  box-shadow: 4px 4px 0 #6b5730;
+}
+.store-balance > div > span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.store-balance small {
+  margin-left: 8px;
+}
+.store-balance strong {
+  display: block;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 6px;
+}
+.store-balance strong small {
+  font-size: 14px;
+  color: var(--store-gold);
+}
+.store-earning {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-left: 24px;
+  border-left: 1px solid var(--color-rule);
+}
+.store-earning > span {
+  width: 26px;
+  height: 26px;
+  color: var(--store-gold);
+  flex-shrink: 0;
+}
+.store-earning strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.store-page button,
+.store-page select,
+.store-page input {
+  font: inherit;
+}
+.store-page button {
+  cursor: pointer;
+}
+.store-page .store-refresh {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--color-muted);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+}
+.store-refresh span {
+  width: 18px;
+  height: 18px;
+}
+.store-controls {
+  padding: 16px 0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.store-filters {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+.store-filters button {
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.store-filters button[aria-pressed="true"] {
+  color: var(--store-accent);
+  background: var(--store-panel);
+  border-color: #3c5645;
+}
+.store-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-rule);
+  color: var(--color-muted);
+}
+.store-search span {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.store-search input {
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  min-width: 0;
+  width: 210px;
+  font-size: 13px;
+}
+.store-controls select {
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
+  padding: 9px;
+  border-radius: 4px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.store-page .store-products {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, var(--store-product-min-width)), 1fr)
+  );
+  align-items: start;
+  gap: 24px;
+  padding: 0;
+  border: 0;
+  margin: 0 0 24px;
+}
+.store-products > p {
+  grid-column: 1 / -1;
+}
+.store-products .installed-game {
+  display: grid;
+  grid-template-columns: var(--store-cover-width) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  max-width: var(--store-product-max-width);
+  min-width: 0;
+  padding: 12px 0 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+.store-products .installed-game > img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+}
+.store-products .installed-game-description {
+  display: flex;
+  flex-direction: column;
+}
+.store-product-category {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--store-accent);
+  margin-bottom: 8px;
+}
+.store-product-category > span + span {
+  color: var(--color-muted);
+}
+.store-products .installed-game h3 {
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.store-products .installed-game p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0 12px;
+}
+.store-product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.store-product-price strong {
+  color: var(--store-gold);
+  font-size: 20px;
+}
+.store-product-price small {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.store-product-price > span {
+  font-size: 12px;
+  color: var(--store-accent);
+}
+.store-products .game-actions {
+  gap: 8px;
+}
+.store-products .game-actions button {
+  min-height: 36px;
+  max-width: 100%;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-rule);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.store-products .game-actions > button:first-child {
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+  border-color: var(--color-selected);
+  font-weight: 600;
+}
+.store-products .game-actions button span {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.store-products .game-actions button span:not([aria-hidden]) {
+  width: auto;
+  height: auto;
+}
+.store-notice,
+.store-empty {
+  color: var(--store-gold);
+  line-height: 1.7;
+}
+@media (max-width: 65rem) {
+  .store-earning {
+    border: 0;
+    padding-left: 0;
+  }
+  .store-account {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 47.99rem) {
+  .store-page {
+    --store-cover-width: 96px;
+    padding: 20px 16px;
+  }
+  .store-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .store-search {
+    flex: 1;
+    min-width: 0;
+  }
+  .store-search input {
+    width: 100%;
+  }
+  .workspace-wallet {
+    font-size: 12px;
+  }
+}

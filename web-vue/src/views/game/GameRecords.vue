@@ -4,6 +4,9 @@
     <div class="game-toolbar">
       <button @click="query" :disabled="loading">刷新</button
       ><button @click="open">添加记录</button>
+      <label class="game-checkbox">
+        <input v-model="showHidden" type="checkbox" />显示隐藏记录
+      </label>
     </div>
     <p v-reveal="notice" role="status">{{ notice }}</p>
     <div class="motion-results" :aria-busy="loading">
@@ -13,29 +16,47 @@
             <tr>
               <th>账号</th>
               <th>游戏</th>
-              <th>分数</th>
+              <th>关卡</th>
+              <th>记录</th>
+              <th>奖励（BC）</th>
               <th>时长（秒）</th>
               <th>游玩时间</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="record in records" :key="record.recordId">
+            <tr v-for="record in displayedRecords" :key="record.recordId">
               <td>{{ record.username }}</td>
               <td>{{ record.name }}</td>
-              <td>{{ record.score }}</td>
+              <td>{{ record.levelName || "—" }}</td>
+              <td>{{ describeRecord(record) }}</td>
+              <td>{{ record.reward || 0 }}</td>
               <td>{{ record.durationSeconds }}</td>
               <td>{{ record.playedAt }}</td>
-              <td><button @click="remove(record)">删除</button></td>
+              <td>
+                <button
+                  v-if="record.hidden"
+                  :disabled="updating !== null"
+                  @click="changeVisibility(record, false)"
+                >
+                  恢复显示
+                </button>
+                <button
+                  v-else
+                  :disabled="updating !== null"
+                  @click="changeVisibility(record, true)"
+                >
+                  隐藏
+                </button>
+              </td>
             </tr>
-            <tr v-if="records.length === 0">
-              <td colspan="6">暂无游戏记录</td>
+            <tr v-if="displayedRecords.length === 0">
+              <td colspan="8">暂无游戏记录</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
-    <!-- 对话框显示 -->
     <dialog ref="editor">
       <form class="game-form" @submit.prevent="save">
         <h3>添加游戏记录</h3>
@@ -81,10 +102,16 @@ import {
   getRecords,
   getGames,
   saveRecord,
-  deleteRecord,
+  hideRecord,
+  restoreRecord,
 } from "../../services/gameServ";
 import { messageConform } from "../../tools/messageBox.js";
 import { useAppStore } from "../../stores/app.js";
+import {
+  recordDescription,
+  visibleRecords,
+  recordActionError,
+} from "../../logic/records.js";
 export default {
   name: "GameRecords",
   // 创建独立记录列表和表单，页面缓存按账户分别保存
@@ -98,7 +125,15 @@ export default {
       loaded: false,
       loading: false,
       loadedRevision: -1,
+      showHidden: false,
+      updating: null,
     };
+  },
+  computed: {
+    // 展示开关只筛选原列表，恢复后继续使用原记录和统计
+    displayedRecords: function displayedRecords() {
+      return visibleRecords(this.records, this.showHidden);
+    },
   },
   // 未加载或记录发生修改时才刷新，普通标签切换不重复请求
   activated: function loadRecords() {
@@ -108,6 +143,7 @@ export default {
     }
   },
   methods: {
+    describeRecord: recordDescription,
     // 获取游戏记录
     query: async function query() {
       if (this.loading) {
@@ -165,21 +201,44 @@ export default {
     close: function close() {
       this.$refs.editor.close();
     },
-    // 删除游戏记录
-    remove: async function remove(record) {
-      const confirmed = await messageConform("确认删除这条游戏记录？");
-      if (!confirmed) {
+    // 隐藏和恢复共用请求状态，成功后只更新当前账号的列表与缓存
+    changeVisibility: async function changeVisibility(record, hidden) {
+      if (this.updating !== null) {
         return;
       }
+      const token = useAppStore().userInfo.token;
+      if (hidden) {
+        const confirmed = await messageConform("确认隐藏这条游戏记录？");
+        if (!confirmed) {
+          return;
+        }
+      }
+      if (token !== useAppStore().userInfo.token) {
+        return;
+      }
+      this.updating = record.recordId;
+      this.notice = "";
       try {
-        const result = await deleteRecord(record.recordId);
+        let result;
+        if (hidden) {
+          result = await hideRecord(record.recordId);
+        } else {
+          result = await restoreRecord(record.recordId);
+        }
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
         if (result.code !== 0) {
           this.notice = result.msg;
           return;
         }
         await this.query();
       } catch (error) {
-        this.notice = "删除失败";
+        if (token === useAppStore().userInfo.token) {
+          this.notice = recordActionError(error);
+        }
+      } finally {
+        this.updating = null;
       }
     },
   },

@@ -90,22 +90,6 @@
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
-.pet-greeting {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  width: max-content;
-  max-width: min(220px, calc(100vw - 32px));
-  padding: 10px 14px;
-  margin: 0 0 4px;
-  border: 1px solid var(--color-rule);
-  border-radius: 6px;
-  background: var(--color-header);
-  color: var(--color-ink);
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
 .pet-panel {
   position: fixed;
   inset: auto 16px 48px auto;
@@ -143,17 +127,11 @@
   flex: 0 0 40px;
   height: 34px;
 }
-.pet-panel-heading strong,
-.pet-panel-heading small {
+.pet-panel-heading strong {
   display: block;
 }
 .pet-panel-heading strong {
   font-size: 16px;
-}
-.pet-panel-heading small {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-muted);
 }
 .support-compact {
   padding: 12px 12px 0;
@@ -174,13 +152,12 @@
 .support-compact .support-welcome h1 {
   font-size: 20px;
 }
-.support-compact .support-welcome p,
 .support-compact .support-message {
   font-size: 14px;
 }
 .support-compact .support-suggestions {
   gap: 6px;
-  margin-top: 12px;
+  margin: 8px 0;
 }
 .support-compact .support-suggestions button {
   padding: 6px 10px;
@@ -218,11 +195,6 @@
   border-top: 1px solid var(--color-rule);
   padding: 10px 12px;
   font-size: 12px;
-}
-.pet-panel-footer label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 .pet-panel-footer a {
   color: var(--color-accent);

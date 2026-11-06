@@ -152,10 +152,31 @@
   color: var(--color-selected-ink);
 }
 .desktop-shell .platform-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+.workspace-playing {
+  visibility: hidden;
+  pointer-events: none;
+}
+.workspace-game-return {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--account-control-height);
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  font-size: 13px;
+}
+.workspace-game-return > span {
+  width: 18px;
+  height: 18px;
 }
 .workspace-tabs {
   display: flex;
@@ -231,10 +252,19 @@
   min-height: 32px;
   box-sizing: border-box;
 }
-.workspace-status time {
+.workspace-status-details {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.workspace-team {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  min-width: 0;
 }
 @media (hover: hover) {
   .workspace-tab button:hover {
@@ -332,6 +362,18 @@
   max-width: 100%;
   align-self: center;
 }
+.workspace-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-amber);
+  white-space: nowrap;
+  font-size: 13px;
+}
+.workspace-wallet span {
+  width: 18px;
+  height: 18px;
+}
 .workspace-icon-button {
   display: grid;
   place-items: center;
@@ -365,31 +407,6 @@
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-control);
 }
-.account-center > h1 {
-  margin: 0;
-  padding: var(--space-lg);
-  font-size: 24px;
-  font-weight: 400;
-}
-.admin-tabs {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: 0 var(--space-lg) var(--space-md);
-  border-bottom: 1px solid var(--color-rule);
-}
-.admin-tabs button {
-  background: var(--color-paper-2);
-  color: var(--color-muted);
-  border: 1px solid var(--color-rule);
-  min-height: 40px;
-  padding: 8px 12px;
-}
-.admin-tabs button[aria-pressed="true"] {
-  background: var(--color-paper-3);
-  color: var(--color-accent);
-}
 @media (max-width: 23.99rem) {
   .workspace-user-menu > span {
     display: none;
@@ -409,7 +426,7 @@
   .desktop-shell .platform-header-inner > .workspace-tabs {
     order: 3;
   }
-  .workspace-status > span:first-child {
+  .workspace-team > span:first-child {
     display: none;
   }
   .workspace-status {

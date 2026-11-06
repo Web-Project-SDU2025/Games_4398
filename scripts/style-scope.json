@@ -1,0 +1,29 @@
+{
+  "sourceRoots": [
+    "web-vue/src",
+    "web-vue/scripts",
+    "web-vue/tests",
+    "web-vue/games",
+    "java-server/java-server/src",
+    "scripts"
+  ],
+  "preservedFileList": "scripts/preserved-files.txt",
+  "ignoredDirectories": [
+    "build",
+    "target",
+    "node_modules",
+    ".git",
+    "assets",
+    "lib",
+    "images",
+    "font"
+  ],
+  "generatedFiles": [
+    "web-vue/src/components.d.ts",
+    "web-vue/src/env.d.ts"
+  ],
+  "generatedDirectories": [
+    "web-vue/public/games",
+    "java-server/java-server/src/main/resources/public"
+  ]
+}

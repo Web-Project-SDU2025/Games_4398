@@ -1,0 +1,159 @@
+package pvz.plant;
+
+import java.awt.Rectangle;
+import pvz.world.Assets;
+import pvz.world.Bullet;
+import pvz.world.Sprite;
+import pvz.zombie.Zombie;
+
+/**
+ * 一株种在草坪上的植物
+ *
+ * 除了从父类继承的位置和血量，它还记住自己在第几列、什么时候被种下、
+ * 上一次生效是什么时候，以及各种状态的开关
+ */
+public class Plant extends Sprite {
+    /** 上一次产生阳光或发射子弹的时刻 */
+    public long lastAction;
+
+    /** 被种下的时刻，用来算"种下多久了" */
+    public long placed;
+
+    /** 当前状态（比如咬住、滚动）开始的时刻 */
+    public long stateStart;
+
+    /** 白天是否在睡觉。睡觉的植物不干活 */
+    public boolean sleeping;
+
+    /** 当前是否处于攻击动作中 */
+    public boolean attacking;
+
+    /** 是否已经触发过它的特殊效果（比如窝瓜是否已经跳起来） */
+    public boolean triggered;
+
+    /** 所在的列号，释放种植格时要靠它 */
+    public int column;
+
+    /** 窝瓜或食人花盯上的目标僵尸 */
+    public Zombie target;
+
+    /**
+     * 种下一株植物，并按资料设置血量、位置和初始动画
+     *
+     * 参数：kind 是品种名（如 "Peashooter"）；center 和 bottom 是期望的底边中央位置；
+     *       row 是所在行；column 是所在列；assets 提供图片；
+     *       time 是种下的时刻；day 表示是不是白天关卡
+     */
+    public Plant(String kind, int center, int bottom, int row, int column,
+                 Assets assets, long time, boolean day) {
+        super(kind, center, bottom, row,
+            PlantCatalog.definitionOf(kind).maxHealth, assets);
+        PlantDefinition definition = PlantCatalog.definitionOf(kind);
+        // 父类是按整张图的正中对准格子中心的，根部不在正中的植物要再挪一下
+        x = x + rootShift(kind);
+        y = y + verticalShift(kind);
+        this.column = column;
+        placed = time;
+        stateStart = time;
+        // 种植与动画使用同一游戏时刻，浏览器加载和倍速都保持动作连续
+        animationStart = time;
+
+        // 蘑菇类在白天要睡觉，睡觉时换成带 Sleep 后缀的动画
+        if (day && definition.sleepsAtDay) {
+            sleeping = true;
+            change(kind + "Sleep", assets, time);
+        }
+        // 土豆雷刚种下是埋着的，要用 Init 动画表示还没出土
+        if (kind.equals("PotatoMine")) {
+            change("PotatoMineInit", assets, time);
+        }
+    }
+
+    // TODO【05-植物位置】：根部位置不正时在 PlantCatalog 中设置 rootShift 或 verticalShift
+    // 种植与预览共用资料中的偏移，不要分别修改坐标，否则鼠标预览会与落地位置不一致
+    /**
+     * 这种植物的图要往右挪多少，根部才正好落在格子中心
+     *
+     * 偏移量记在品种资料里，大多数植物是 0
+     * 种植和画落点预览都要用它，两边才对得上
+     *
+     * 参数：kind 是植物名
+     * 返回：向右挪的像素数
+     */
+    public static int rootShift(String kind) {
+        return PlantCatalog.definitionOf(kind).rootShift;
+    }
+
+    /**
+     * 这种植物的图要在纵向上挪多少，底部才正好落在合适位置
+     *
+     * 偏移量记在品种资料里，大多数植物是 0
+     *
+     * 参数：kind 是植物名
+     * 返回：纵坐标偏移量；正数往下挪，负数往上挪
+     */
+    public static int verticalShift(String kind) {
+        return PlantCatalog.definitionOf(kind).verticalShift;
+    }
+
+    /**
+     * 判断这株植物是否正在播放不可被爆炸僵尸打断的攻击动画
+     *
+     * 返回：正在播放资料中登记的攻击动画时返回真，否则返回假
+     */
+    public boolean isProtectedFromExplodingZombie() {
+        PlantDefinition definition = PlantCatalog.definitionOf(name);
+        String attackAnimation = definition.attackAnimation;
+        if (attackAnimation == null) {
+            return false;
+        }
+        return animation.equals(attackAnimation);
+    }
+
+    /**
+     * 算出这株植物的子弹转换区域
+     *
+     * 参数：transformation 是转换资料
+     * 返回：屏幕坐标中的转换区域
+     */
+    public Rectangle transformationBounds(BulletTransformation transformation) {
+        int left = (int) x + transformation.zoneLeft;
+        int top = (int) y + transformation.zoneTop;
+        int width = transformation.zoneWidth;
+        int height = transformation.zoneHeight;
+        return new Rectangle(left, top, width, height);
+    }
+
+    /**
+     * 尝试把经过这株植物的子弹转换成另一种子弹
+     *
+     * 参数：bullet 是正在飞行的子弹；assets 提供图片；time 是当前游戏时刻
+     * 返回：发生转换时返回真，没有碰到转换区域时返回假
+     */
+    public boolean tryTransformBullet(Bullet bullet, Assets assets, long time) {
+        if (!alive || bullet.row != row) {
+            return false;
+        }
+        if (bullet.lastTransformationSource == this) {
+            return false;
+        }
+
+        PlantDefinition definition = PlantCatalog.definitionOf(name);
+        BulletTransformation transformation =
+            definition.transformationFor(bullet.name);
+        if (transformation == null) {
+            return false;
+        }
+
+        Rectangle zone = transformationBounds(transformation);
+        Rectangle bulletBox = bullet.collisionBox(assets, time);
+        if (!zone.intersects(bulletBox)) {
+            return false;
+        }
+
+        bullet.transform(transformation.targetBullet,
+            transformation.damage, assets, time);
+        bullet.lastTransformationSource = this;
+        return true;
+    }
+}

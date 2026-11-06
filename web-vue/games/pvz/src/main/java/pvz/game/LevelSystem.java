@@ -1,0 +1,167 @@
+package pvz.game;
+
+import java.util.Random;
+import java.awt.Rectangle;
+import pvz.plant.Card;
+import pvz.plant.Cards;
+import pvz.world.Assets;
+import pvz.world.Layout;
+import pvz.world.Sprite;
+import pvz.world.Sun;
+import pvz.zombie.Zombie;
+import pvz.zombie.ZombieSpawn;
+
+/**
+ * 负责关卡时间表相关的运行逻辑
+ *
+ * 这里处理出怪、传送带、天空阳光和通关判断
+ * 植物由 PlantActions 更新，僵尸由 ZombieActions 更新，其余碰撞与效果由 CombatSystem 处理
+ */
+public class LevelSystem {
+    /** 当前关卡的所有运行数据 */
+    private final GameState state;
+
+    /** 提供关卡和图片资源 */
+    private final Assets assets;
+
+    /** 用于随机行、天空阳光位置和传送带卡片 */
+    private final Random random;
+
+    /**
+     * 创建关卡系统
+     *
+     * 参数：gameState 是当前游戏状态；originalAssets 是素材管理器；
+     * randomGenerator 是当前游戏使用的随机数对象
+     */
+    public LevelSystem(GameState gameState, Assets originalAssets,
+            Random randomGenerator) {
+        state = gameState;
+        assets = originalAssets;
+        random = randomGenerator;
+    }
+
+    /**
+     * 生成当前时刻应该出现的僵尸、传送带卡片和天空阳光
+     */
+    public void updateSpawnsAndDrops() {
+        spawnDueZombies();
+        refillConveyor();
+        slideConveyorCards();
+        dropSkySun();
+    }
+
+    /** 按出场表放出所有到时间的僵尸 */
+    private void spawnDueZombies() {
+        while (state.nextSpawnIndex < state.schedule.size()) {
+            ZombieSpawn spawn = state.schedule.get(state.nextSpawnIndex);
+            if (state.time - state.playStart < spawn.spawnTime) {
+                return;
+            }
+            int targetRow = spawn.row;
+            if (spawn.row == ZombieSpawn.RANDOM_ROW) {
+                targetRow = random.nextInt(Layout.ROW_COUNT);
+            }
+            int bottom = Layout.ZOMBIE_FOOT_BASE + targetRow * Layout.CELL_HEIGHT;
+            Zombie zombie = new Zombie(spawn.name, targetRow, bottom, assets);
+            // 出场动画从游戏当前时刻开始，战斗倍速与加载停顿共用同一计时来源
+            zombie.animationStart = state.time;
+            state.zombies.add(zombie);
+            state.nextSpawnIndex = state.nextSpawnIndex + 1;
+        }
+    }
+
+    /** 传送带和保龄球模式每六秒补一张卡，位置够放才补 */
+    private void refillConveyor() {
+        if (state.barType == Layout.BAR_NORMAL || state.pool.isEmpty()) {
+            return;
+        }
+        if (state.time - state.lastCardTime <= Layout.CONVEYOR_CARD_INTERVAL) {
+            return;
+        }
+        Card nextCard = Cards.newMovingCard(state.pool, random, state.time, assets);
+        // 使用完整图片宽度检查入口，同时检查停靠队列容量，避免满队列仍不断补卡
+        int nextSlot = Layout.CONVEYOR_FIRST_CARD_X;
+        for (Card card : state.cards) {
+            Rectangle bounds = card.bounds(assets, Layout.CARD_SCALE);
+            nextSlot = nextSlot + bounds.width + Layout.CONVEYOR_CARD_GAP;
+        }
+        if (nextSlot > nextCard.x) {
+            return;
+        }
+        if (!state.cards.isEmpty()) {
+            Card last = state.cards.get(state.cards.size() - 1);
+            Rectangle bounds = last.bounds(assets, Layout.CARD_SCALE);
+            if (bounds.x + bounds.width + Layout.CONVEYOR_CARD_GAP > nextCard.x) {
+                return;
+            }
+        }
+        state.cards.add(nextCard);
+        state.lastCardTime = state.time;
+    }
+
+    /** 传送带上的卡片慢慢往左挪，挪到自己的位置上 */
+    private void slideConveyorCards() {
+        if (state.barType == Layout.BAR_NORMAL) {
+            return;
+        }
+        int targetLeft = Layout.CONVEYOR_FIRST_CARD_X;
+        for (Card card : state.cards) {
+            // 前一张卡尚在移动时，后一张不能越过它的实际右边缘
+            if (card.x < targetLeft) {
+                card.x = targetLeft;
+            }
+            if (card.x > targetLeft
+                    && state.time - card.created > Layout.CONVEYOR_CARD_SHIFT_INTERVAL) {
+                card.x = card.x - 1;
+                card.created = state.time;
+            }
+            Rectangle bounds = card.bounds(assets, Layout.CARD_SCALE);
+            targetLeft = bounds.x + bounds.width + Layout.CONVEYOR_CARD_GAP;
+        }
+    }
+
+    /** 白天的正常选卡关卡每隔一段时间从天上掉一颗阳光 */
+    private void dropSkySun() {
+        if (state.backgroundIndex != 0 || state.barType != Layout.BAR_NORMAL) {
+            return;
+        }
+        if (state.time - state.lastSkySun <= state.skySunInterval) {
+            return;
+        }
+        int column = random.nextInt(Layout.COLUMN_COUNT);
+        int row = random.nextInt(Layout.ROW_COUNT);
+        int center = Layout.SKY_SUN_COLUMN_CENTER + column * Layout.CELL_WIDTH;
+        int bottom = Layout.ZOMBIE_FOOT_BASE + row * Layout.CELL_HEIGHT;
+        Sun sun = new Sun(center, 0, center, bottom, true, assets);
+        sun.animationStart = state.time;
+        state.suns.add(sun);
+        state.lastSkySun = state.time;
+    }
+
+    /**
+     * 判断所有僵尸是否已经处理完毕
+     *
+     * 返回：没有待出场的僵尸、没有敌方僵尸、没有活动特效时返回真
+     */
+    public boolean isVictoryReady() {
+        if (state.nextSpawnIndex != state.schedule.size()) {
+            return false;
+        }
+        for (Zombie zombie : state.zombies) {
+            if (zombie.alive && !zombie.hypno) {
+                return false;
+            }
+        }
+        return !hasActiveEffects();
+    }
+
+    /** 判断是否还有正在播放的场上特效 */
+    private boolean hasActiveEffects() {
+        for (Sprite effect : state.effects) {
+            if (effect.alive) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

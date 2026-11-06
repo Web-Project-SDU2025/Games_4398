@@ -7,13 +7,13 @@
         :key="layer.name"
         class="auth-stars"
         :class="layer.name"
-        :style="layer.style"
+        :style="starLayerStyle(layer)"
       ></div>
     </div>
     <button
       class="auth-motion-toggle"
       type="button"
-      aria-label="暂停背景动画"
+      :aria-label="motionButtonTitle"
       :title="motionButtonTitle"
       :aria-pressed="motionPaused"
       @click="toggleBackgroundMotion"
@@ -25,9 +25,50 @@
       ></span>
       <span v-else class="i-ep-video-pause" aria-hidden="true"></span>
     </button>
+    <button
+      class="auth-settings-toggle"
+      type="button"
+      aria-label="登录背景设置"
+      title="登录背景设置"
+      :aria-expanded="settingsOpen"
+      aria-controls="login-background-settings"
+      @click="toggleSettings"
+    >
+      <span class="i-ep-setting" aria-hidden="true"></span>
+    </button>
+    <section
+      v-if="settingsOpen"
+      id="login-background-settings"
+      class="auth-settings-panel"
+      aria-label="登录背景设置"
+    >
+      <label class="settings-row" for="login-background-motion">
+        <span>播放背景动画</span>
+        <input
+          id="login-background-motion"
+          type="checkbox"
+          :checked="!motionPaused"
+          @change="setBackgroundMotion"
+        />
+      </label>
+      <label class="settings-range" for="login-background-speed">
+        <span>
+          动画速度
+          <output for="login-background-speed">{{ motionSpeed }}×</output>
+        </span>
+        <input
+          id="login-background-speed"
+          type="range"
+          :min="motionSpeedRange.minimum"
+          :max="motionSpeedRange.maximum"
+          :value="motionSpeed"
+          :disabled="motionPaused"
+          @input="setBackgroundSpeed"
+        />
+      </label>
+    </section>
     <div class="auth-layout">
       <section class="auth-panel" aria-labelledby="site-title">
-        <!-- 登录页面上部区域 -->
         <h1 id="site-title">{{ formTitle }}</h1>
         <div class="auth-tabs" role="tablist" aria-label="账户操作">
           <button
@@ -71,7 +112,6 @@
                 :maxlength="limits.USERNAME_LIMIT"
                 required
               />
-              <!-- 用户注册表单内容 -->
               <template v-if="mode === 'register'">
                 <label for="nickname">昵称</label>
                 <input
@@ -90,7 +130,6 @@
                   :maxlength="limits.EMAIL_LIMIT"
                 />
               </template>
-              <!-- 用户登录表单内容 -->
               <label for="account-password">密码</label>
               <input
                 v-if="mode === 'login'"
@@ -177,8 +216,6 @@
           width="772"
           height="528"
         />
-        <h2>你的游戏，尽在这里</h2>
-        <p>回到游戏库，收藏喜欢的游戏，留下每一次游玩的记录。</p>
         <button
           class="platform-secondary-button"
           type="button"
@@ -198,6 +235,10 @@ import * as account from "./logic/account.js";
 import * as auth from "./logic/auth.js";
 import * as limits from "./logic/limits.js";
 import { usePreferencesStore } from "./stores/preferences.js";
+import {
+  LOGIN_MOTION_SPEED,
+  normalizePreferences,
+} from "./logic/preferences.js";
 
 // 三层星点的数量集中维护，小星点较密，大星点较疏
 const STAR_LAYERS = [
@@ -205,6 +246,12 @@ const STAR_LAYERS = [
   { name: "auth-stars-medium", count: 130 },
   { name: "auth-stars-large", count: 55 },
 ];
+// 三层星点的基础循环时间用于按用户选择的倍数计算动画速度
+const STAR_LAYER_DURATIONS = {
+  "auth-stars-small": 150,
+  "auth-stars-medium": 100,
+  "auth-stars-large": 55,
+};
 
 // 创建三层星点的阴影位置，视口单位让窗口缩放后仍铺满背景
 function createStarLayers() {
@@ -232,12 +279,18 @@ export default {
     form.limits = limits;
     form.passwordLimit = account.REGISTER_PASSWORD_LIMIT;
     form.starLayers = createStarLayers();
+    form.settingsOpen = false;
+    form.motionSpeedRange = LOGIN_MOTION_SPEED;
     return form;
   },
   computed: {
     // 登录页与设置窗口共用背景开关，刷新页面后恢复浏览器中的选择
     motionPaused: function motionPaused() {
       return !usePreferencesStore().settings.loginMotion;
+    },
+    // 登录背景速度从偏好存储读取，登录页设置与通用设置保持一致
+    motionSpeed: function motionSpeed() {
+      return usePreferencesStore().settings.loginMotionSpeed;
     },
     // 根据暂停状态返回按钮提示，切换登录和注册时沿用当前选择
     motionButtonTitle: function motionButtonTitle() {
@@ -269,15 +322,38 @@ export default {
     this.refreshCaptcha();
   },
   methods: {
+    // 为每层星点设置循环时间，速度倍数越大移动越快
+    starLayerStyle: function starLayerStyle(layer) {
+      const baseDuration = STAR_LAYER_DURATIONS[layer.name];
+      const duration = baseDuration / this.motionSpeed;
+      return {
+        boxShadow: layer.style.boxShadow,
+        animationDuration: duration + "s",
+      };
+    },
+    // 显示或收起登录页的快捷背景设置
+    toggleSettings: function toggleSettings() {
+      this.settingsOpen = !this.settingsOpen;
+    },
+    // 根据复选框状态保存背景动画开关
+    setBackgroundMotion: function setBackgroundMotion(event) {
+      const store = usePreferencesStore();
+      const settings = normalizePreferences(store.settings);
+      settings.loginMotion = event.target.checked;
+      store.update(settings);
+    },
+    // 保存速度倍数并立即更新三层星点动画
+    setBackgroundSpeed: function setBackgroundSpeed(event) {
+      const store = usePreferencesStore();
+      const settings = normalizePreferences(store.settings);
+      settings.loginMotionSpeed = Number(event.target.value);
+      store.update(settings);
+    },
     // 切换背景动画的暂停状态，CSS 保留暂停时的位置以便继续播放
     toggleBackgroundMotion: function toggleBackgroundMotion() {
       const store = usePreferencesStore();
-      const settings = {
-        trailEnabled: store.settings.trailEnabled,
-        trailDensity: store.settings.trailDensity,
-        trailSize: store.settings.trailSize,
-        loginMotion: this.motionPaused,
-      };
+      const settings = normalizePreferences(store.settings);
+      settings.loginMotion = this.motionPaused;
       store.update(settings);
     },
     // 刷新验证码，同时清空上次填写的验证码

@@ -1,0 +1,784 @@
+package pvz.world;
+
+/**
+ * 存放整个游戏的坐标、时间、血量和伤害常量
+ *
+ * 如果把 80、100、35 这样的数字直接写在逻辑里，读者看不出它们代表什么，
+ * 改一处漏一处还会出难查的错误。所以都集中到这里，起个名字再用
+ */
+public final class Layout {
+    /** 窗口宽度。草坪背景图比窗口宽，绘制时只截取其中 800 像素宽的一段 */
+    public static final int WINDOW_WIDTH = 800;
+
+    /** 窗口高度，和背景图的高度一致（都是 600 像素） */
+    public static final int WINDOW_HEIGHT = 600;
+
+    /**
+     * 平时背景图从这一横坐标开始截取，也就是房子右侧草坪所在的那一段
+     *
+     * 开局演出时镜头会从这个位置往右推，推完再回来，所以它同时也是相机的起始位置
+     */
+    public static final int CAMERA_LEFT_OFFSET = 220;
+
+    /**
+     * 开局演出时镜头推到的最右位置
+     *
+     * 背景图宽 1400，窗口宽 800，所以最多只能推到 1400 - 800 = 600，
+     * 再往右就没有图了，会露出空白
+     */
+    public static final int CAMERA_RIGHT_OFFSET = 1400 - WINDOW_WIDTH;
+
+    /** 开局演出：镜头往右推、扫一遍僵尸用的毫秒数 */
+    public static final long INTRO_PAN_OUT_TIME = 1500;
+
+    /** 开局演出：推到最右之后停住、让玩家看清有哪些僵尸的毫秒数 */
+    public static final long INTRO_HOLD_TIME = 1000;
+
+    /** 开局演出：镜头移回草坪的毫秒数 */
+    public static final long INTRO_PAN_BACK_TIME = 1500;
+
+    /** 开局演出：镜头回来后"准备-安放-开始"倒计时的毫秒数，三张图各占三分之一 */
+    public static final long INTRO_COUNTDOWN_TIME = 3000;
+
+    /**
+     * 开局演出第一段的总时长：镜头推过去 + 停在僵尸那边
+     *
+     * 正常选卡关卡到点就切到选卡界面，玩家在镜头对着僵尸的时候挑卡
+     */
+    public static final long INTRO_CHOOSE_PHASE_TIME = INTRO_PAN_OUT_TIME + INTRO_HOLD_TIME;
+
+    /**
+     * 选卡界面（背包）从画面下方升进位的毫秒数
+     *
+     * 它升起来的时候镜头正停在最右、对着那排僵尸，
+     * 玩家一眼就能看到"这关有哪些僵尸"再决定带什么卡
+     */
+    public static final long CHOOSER_RISE_TIME = 500;
+
+    /**
+     * 选卡界面收回去的毫秒数
+     *
+     * 玩家点了"开始战斗"，背包先照着来路沉回画面下方，
+     * 沉完之后镜头才开始往草坪移。这样不会出现"面板啪一下消失"的突兀感
+     */
+    public static final long CHOOSER_EXIT_TIME = 500;
+
+    /**
+     * 选卡界面升降时的滑动距离
+     *
+     * 取窗口高度，开始时整个界面停在窗口下沿之外，一点都看不见，
+     * 升到位才完全露出来；收回去时反向走完这一段
+     */
+    public static final int CHOOSER_RISE_DISTANCE = WINDOW_HEIGHT;
+
+    /** 开局演出中传送带或保龄球卡槽从屏幕上方落下的毫秒数 */
+    public static final long INTRO_BAR_DROP_TIME = 500;
+
+    /**
+     * 开局演出里，展示用僵尸的第一个横坐标
+     *
+     * 这些僵尸只是摆出来给玩家看的，站在草坪右侧外面；
+     * 镜头推到最右时，它们会出现在屏幕中部偏右的位置
+     */
+    public static final int INTRO_ZOMBIE_X = 860;
+
+    /**
+     * 展示用僵尸分几批摆时，批次之间隔多少像素
+     *
+     * 关卡里的僵尸种类多于 5 种时，多出来的种类从右边另起一批，
+     * 同一行的两批之间就靠这个间距分开，不会叠在一起
+     */
+    public static final int INTRO_ZOMBIE_BANK_SPACING = 100;
+
+    /** 草坪一共 5 行 */
+    public static final int ROW_COUNT = 5;
+
+    /** 草坪一共 9 列 */
+    public static final int COLUMN_COUNT = 9;
+
+    /** 草坪左边界：第 0 列的左沿 */
+    public static final int GRID_LEFT = 35;
+
+    /** 草坪上边界：第 0 行的上沿 */
+    public static final int GRID_TOP = 100;
+
+    /**
+     * 背景图上草坪第 0 行真正的上沿
+     *
+     * 背景里每一行草皮的实际范围是 80+100×行号 到 180+100×行号，
+     * 比 GRID_TOP 高 20 像素。判断鼠标点在哪一行必须用这个值，
+     * 否则点在某格上部时植物会种到上一行去
+     */
+    public static final int LAWN_TOP = 80;
+
+    /** 每个格子的宽度 */
+    public static final int CELL_WIDTH = 80;
+
+    /** 每个格子的高度 */
+    public static final int CELL_HEIGHT = 100;
+
+    /** 植物绘制时相对格子中心向右偏移的像素 */
+    public static final int PLANT_CENTER_OFFSET = 40;
+
+    /** 植物绘制时相对格子上沿向下偏移的像素 */
+    public static final int PLANT_BOTTOM_OFFSET = 60;
+
+    /**
+     * 僵尸脚下踩的那条基准线，也就是第 0 行的落脚点
+     *
+     * 出怪、开场演出摆位和掉落的僵尸头都用它算纵坐标：
+     * 第 row 行的位置就是 ZOMBIE_FOOT_BASE + row * CELL_HEIGHT
+     */
+    public static final int ZOMBIE_FOOT_BASE = GRID_TOP + PLANT_BOTTOM_OFFSET;
+
+    /**
+     * 小推车车轮落在的基准线，也就是第 0 行草皮的底边
+     *
+     * 小推车沿草皮下方的道路行驶，车轮基线比僵尸的落脚基线低二十像素
+     * 第 row 行的位置是 CAR_FOOT_BASE + row * CELL_HEIGHT
+     */
+    public static final int CAR_FOOT_BASE = LAWN_TOP + CELL_HEIGHT;
+
+    /**
+     * 小推车没有启动时车头停在的横坐标
+     *
+     * 取负数表示停在屏幕左边外面，平时看不见；等僵尸走到跟前才开进来
+     * 启动之后的行驶位置也从它算起，两处必须是同一个值
+     */
+    public static final int CAR_START_X = -25;
+
+    /**
+     * 大嘴花的图要往右挪多少像素
+     * 它的图宽 130 像素，根部却在从左数第 37 像素左右，比正中（65）偏左 28 像素
+     */
+    public static final int CHOMPER_ROOT_SHIFT = 28;
+
+    /**
+     * 窝瓜的图要往上挪多少像素
+     * 窝瓜的图比其他植物高，用默认的 PLANT_BOTTOM_OFFSET 会让它底部超出格子
+     */
+    public static final int SQUASH_VERTICAL_SHIFT = -20;
+
+    /** 僵尸碰撞盒从前面（脸朝的那一边）去掉可见宽度的百分之几，把探出去的脑袋和手臂排除掉 */
+    public static final int ZOMBIE_FRONT_TRIM_PERCENT = 30;
+
+    /** 僵尸碰撞盒从后面去掉可见宽度的百分之几，把甩在身后的脚跟排除掉 */
+    public static final int ZOMBIE_BACK_TRIM_PERCENT = 20;
+
+    // TODO【01-共用数值】：新增共用血量、伤害和时间参数时在对应区域定义常量，由资料表和行为代码引用
+    // 修改平衡数值后同步核对 CombatTest 中的预期数值和实际战斗检查
+    /** 普通植物的初始血量，直接使用游戏内部数值 */
+    public static final int DEFAULT_PLANT_HEALTH = 50;
+
+    /** 坚果的初始血量，直接使用游戏内部数值 */
+    public static final int WALL_NUT_HEALTH = 300;
+
+    /** 魅惑菇和保龄球的初始血量，直接使用游戏内部数值 */
+    public static final int FRAGILE_PLANT_HEALTH = 10;
+
+    /** 普通僵尸总血量：正常阶段 200，掉头阶段 70 */
+    public static final int NORMAL_ZOMBIE_HEALTH = 270;
+
+    /** 僵尸失去头盔或报纸时的血量阈值 */
+    public static final int ZOMBIE_HELMET_LOST_HEALTH = 270;
+
+    /** 坚果进入第一种裂纹状态时的血量阈值 */
+    public static final int WALL_NUT_FIRST_CRACK_HEALTH = 200;
+
+    /** 坚果进入第二种裂纹状态时的血量阈值 */
+    public static final int WALL_NUT_SECOND_CRACK_HEALTH = 100;
+
+    /** 路障总血量：路障 370，加本体 200 和掉头阶段 70 */
+    public static final int CONEHEAD_ZOMBIE_HEALTH = 640;
+
+    /** 铁桶总血量：铁桶 1100，加本体 200 和掉头阶段 70 */
+    public static final int BUCKETHEAD_ZOMBIE_HEALTH = 1370;
+
+    /** 读报总血量：报纸 150，加本体 200 和掉头阶段 70 */
+    public static final int NEWSPAPER_ZOMBIE_HEALTH = 420;
+
+    /** 橄榄球总血量：防具 1400，加本体 200 和掉头阶段 70 */
+    public static final int FOOTBALL_ZOMBIE_HEALTH = 1670;
+
+    /** 小丑没有饰品，按普通僵尸的总血量设计；死亡仍使用开盒流程 */
+    public static final int JOKER_ZOMBIE_HEALTH = 270;
+
+    /** 巨人总血量，不使用普通僵尸的掉头流程；所需子弹数见战斗数值文档 */
+    public static final int GARGANTUAR_HEALTH = 3000;
+
+    /** 小鬼落地后的初始血量 */
+    public static final int IMP_HEALTH = 150;
+
+    /** 巨人每次移动的像素数 */
+    public static final double GARGANTUAR_SPEED = 0.8;
+
+    /** 小鬼每次移动的像素数 */
+    public static final double IMP_SPEED = 1.5;
+
+    /** 巨人砸击敌方僵尸时造成的伤害；砸植物则直接清除 */
+    public static final int GARGANTUAR_SMASH_DAMAGE = 150;
+
+    /** 樱桃炸弹、辣椒、土豆雷或窝瓜命中巨人时的伤害，两次才能击倒满血巨人 */
+    public static final int GARGANTUAR_INSTANT_DAMAGE = 1800;
+
+    /** 巨人动画的统一播放间隔，素材加载时按原时长展开 */
+    public static final int GARGANTUAR_FRAME_INTERVAL = 10;
+
+    /** 巨人所有动作统一缩到原图的四分之三，稍微放大体型并避免动作切换时大小不一致 */
+    public static final double GARGANTUAR_SCALE = 0.75;
+
+    /** 小鬼脱手所在的原图帧，之前的帧里小鬼仍画在巨人身上 */
+    public static final int GARGANTUAR_RELEASE_FRAME = 28;
+
+    /** 巨人挥棒后，等待这段游戏时间才结算砸击 */
+    public static final long GARGANTUAR_SMASH_DELAY = 2200;
+
+    /** 小鬼向前投出的距离 */
+    public static final int IMP_THROW_DISTANCE = CELL_WIDTH * 3;
+
+    /** 小鬼离手时距离地面的高度 */
+    public static final int IMP_RELEASE_HEIGHT = 130;
+
+    /** 小鬼飞行抛物线额外抬高的高度 */
+    public static final int IMP_FLIGHT_HEIGHT = 60;
+
+    /** 小鬼从离手到落地所需的游戏毫秒数 */
+    public static final long IMP_FLIGHT_DURATION = 1000;
+
+    /** 普通、冰冻和蘑菇子弹每次命中的伤害 */
+    public static final int BULLET_DAMAGE = 25;
+
+    /** 火焰豌豆每次命中的伤害 */
+    public static final int FIRE_PEA_DAMAGE = 50;
+
+    /** 僵尸每次啃咬造成的伤害 */
+    public static final int ZOMBIE_BITE_DAMAGE = 10;
+
+    /** 僵尸掉头后的持续流血伤害 */
+    public static final int ZOMBIE_BLEED_DAMAGE = 10;
+
+    /** 地刺每次扎出的伤害 */
+    public static final int SPIKEWEED_DAMAGE = 10;
+
+    /** 坚果保龄球每次撞击的伤害 */
+    public static final int BOWLING_DAMAGE = 100;
+
+    /** 小丑爆炸对魅惑僵尸造成的伤害 */
+    public static final int JOKER_EXPLOSION_DAMAGE = 100;
+
+    // TODO【07-植物出射高度】：新增射手需要不同嘴部高度时，在下面补充偏移常量并让 ShooterActions.muzzleOffset 使用它
+    /**
+     * 各种射手的嘴（炮管开口）比身体可见范围的上沿低多少像素
+     *
+     * 子弹要从嘴里射出来，而嘴长在头的中下部，不是头顶
+     * 直接拿身体上沿当子弹高度的话，看起来就像从头顶冒出来，所以要按品种各量一个偏移
+     * 数值是量图片里炮管开口的中心位置得到的
+     */
+    public static final int PEA_SHOOTER_MUZZLE_OFFSET = 14;
+
+    /** 寒冰射手的嘴比身体上沿低多少像素 */
+    public static final int SNOW_PEA_MUZZLE_OFFSET = 16;
+
+    /** 双发射手的嘴比身体上沿低多少像素 */
+    public static final int REPEATER_MUZZLE_OFFSET = 17;
+
+    /** 三线射手的嘴比身体上沿低多少像素；它的三根炮管里只有右下那根最靠前 */
+    public static final int THREEPEATER_MUZZLE_OFFSET = 46;
+
+    /** 小喷菇的嘴比身体上沿低多少像素 */
+    public static final int PUFF_SHROOM_MUZZLE_OFFSET = 16;
+
+    /** 胆小菇的嘴比身体上沿低多少像素 */
+    public static final int SCAREDY_SHROOM_MUZZLE_OFFSET = 37;
+
+    /** 天空阳光统一降落在这一列的中心 */
+    public static final int SKY_SUN_COLUMN_CENTER = 75;
+
+    /** 僵尸从屏幕右侧这个横坐标出现 */
+    public static final int ZOMBIE_START_X = 850;
+
+    /** 卡槽排布的横向基准点；第一张卡的左沿是它再加一个卡间距 */
+    public static final int CARD_BAR_START = 32;
+
+    /** 卡槽中相邻两张卡的水平间距 */
+    public static final int CARD_BAR_SPACING = 55;
+
+    /** 卡槽中卡片的纵坐标 */
+    public static final int CARD_BAR_TOP = 8;
+
+    /**
+     * 卡槽底板左沿的横坐标
+     *
+     * 选卡界面和游戏中用的是同一张底板图，位置也必须一样：
+     * 两边各画各的话，镜头一移回草坪卡槽就会往右跳一下
+     */
+    public static final int CARD_BAR_LEFT = 10;
+
+    /** 卡槽上阳光数字框的左沿横坐标，正好落在底板左边的阳光图标上 */
+    public static final int CARD_BAR_SUN_LEFT = 31;
+
+    /** 卡槽上阳光数字框的上沿纵坐标 */
+    public static final int CARD_BAR_SUN_TOP = 66;
+
+    /** 卡槽上阳光数字框的宽度 */
+    public static final int CARD_BAR_SUN_WIDTH = 32;
+
+    /** 卡槽上阳光数字框的高度 */
+    public static final int CARD_BAR_SUN_HEIGHT = 17;
+
+    /** 阳光数字固定字号，沿用修改前的显示样式 */
+    public static final int SUN_NUMBER_FONT_SIZE = 19;
+
+    /** 数字使用原来的固定基线，不再按字形改变垂直位置 */
+    public static final int CARD_BAR_SUN_BASELINE = 15;
+
+    /**
+     * 阳光被收走之后飞向的终点：阳光数字框的中心
+     *
+     * 之前这个终点是在 Sun 里写死的 (50, 50)，和数字框的真实位置对不上，
+     * 阳光会飞过头到框上方 24 像素左右才消失。改成从数字框的位置和尺寸算出来，
+     * 以后挪动卡槽或改框的大小，终点会自动跟着走，不会再各走各的
+     */
+    public static final int CARD_BAR_SUN_CENTER_X = CARD_BAR_SUN_LEFT + CARD_BAR_SUN_WIDTH / 2;
+
+    /** 阳光数字框中心的纵坐标，同上 */
+    public static final int CARD_BAR_SUN_CENTER_Y = CARD_BAR_SUN_TOP + CARD_BAR_SUN_HEIGHT / 2;
+
+    /** 铲子卡槽左沿的横坐标，紧接在普通卡槽右边 */
+    public static final int SHOVEL_SLOT_LEFT = 540;
+
+    /** 铲子卡槽的上沿纵坐标 */
+    public static final int SHOVEL_SLOT_TOP = 7;
+
+    /** 铲子卡槽的宽度 */
+    public static final int SHOVEL_SLOT_WIDTH = 68;
+
+    /** 铲子卡槽的高度 */
+    public static final int SHOVEL_SLOT_HEIGHT = 72;
+
+    /** 铲子图标左上角相对卡槽左上角的横向偏移 */
+    public static final int SHOVEL_IMAGE_OFFSET_X = -1;
+
+    /** 铲子图标左上角相对卡槽左上角的纵向偏移 */
+    public static final int SHOVEL_IMAGE_OFFSET_Y = -1;
+
+    /** 铲子挥动动画的时长 */
+    public static final long SHOVEL_SWING_DURATION = 220;
+
+    /** 卡槽数量最少也得有 1 张，否则玩家一张卡都带不了 */
+    public static final int MIN_CARD_SLOTS = 1;
+
+    /**
+     * 卡槽数量最多 8 张，和原版一致
+     *
+     * 这个上限是底板图定的：卡槽底板（ChooserBackground.png）宽 522，
+     * 从 CARD_BAR_LEFT 起按原尺寸画，右沿落在 532。第 8 张卡的左沿是 472、
+     * 右沿约 523，正好压在底板里；第 9 张左沿 527 就会伸到底板外面盖住草坪，
+     * 所以卡槽数量只能往少里调
+     */
+    public static final int MAX_CARD_SLOTS = 8;
+
+    /** 关卡没写卡槽数量时用这个值，和原版一致 */
+    public static final int DEFAULT_CARD_SLOTS = MAX_CARD_SLOTS;
+
+    /**
+     * 卡槽模式：正常选卡，左边有一排固定卡片
+     *
+     * 这个值和下面两个，就是关卡文件里 choosebar_type 字段能填的全部取值
+     * 它们和上面的卡槽数量常量放在一起，因为说的都是"这一关的卡槽长什么样"
+     *
+     * 为什么不放在 GameState 里：它们是关卡配置，不是"一局游戏里会变的东西"
+     * 放在 GameState 里的时候，Level、LevelLoader、LevelDesign 为了读这三个数字
+     * 都得 import 整个 GameState，让关卡和编辑器平白反过来依赖游戏运行时
+     * 放在 Layout 则不会给任何包增加新依赖——Layout 谁都不依赖，而大家都依赖它
+     */
+    public static final int BAR_NORMAL = 0;
+
+    /** 卡槽模式：传送带，卡片从右边慢慢送过来 */
+    public static final int BAR_CONVEYOR = 1;
+
+    /** 卡槽模式：坚果保龄球，通过传送带取得球卡后在允许的草坪区域投球 */
+    public static final int BAR_BOWLING = 2;
+
+    /** 传送带区域的左边界 */
+    public static final int CONVEYOR_LEFT = 90;
+
+    /** 传送带上卡片的纵坐标 */
+    public static final int CONVEYOR_CARD_Y = 6;
+
+    /** 传送带卡片可见边缘之间的留空，宽度由 Card.bounds 按实际图片计算 */
+    public static final int CONVEYOR_CARD_GAP = 4;
+
+    /** 传送带第一张卡的横坐标 */
+    public static final int CONVEYOR_FIRST_CARD_X = 98;
+
+    /** 卡片绘制的默认缩放比例 */
+    public static final double CARD_SCALE = 0.78;
+
+    /** 选卡界面里卡片的缩放比例 */
+    public static final double CHOOSER_CARD_SCALE = 0.75;
+
+    /** 选卡界面里卡片区的左边界 */
+    public static final int CHOOSER_LEFT = 22;
+
+    /** 选卡界面里卡片区的上边界 */
+    public static final int CHOOSER_TOP = 130;
+
+    /** 选卡界面里卡片区的列间距 */
+    public static final int CHOOSER_COLUMN_SPACING = 53;
+
+    /** 选卡界面里卡片区的行间距 */
+    public static final int CHOOSER_ROW_SPACING = 74;
+
+    /** 点击种植时，纵坐标小于它就算点到右上角卡槽了 */
+    public static final int PLAY_CARD_BAR_BOTTOM = 62;
+
+    /**
+     * 战斗逻辑的固定步长，单位毫秒
+     *
+     * 战斗不是"来多少毫秒就一次性推进多少"，而是攒够了就走一步、每步都是这么长，
+     * 这样不同帧率和不同倍速下，僵尸的移动、射击和啃食规则完全一致
+     * 桌面版按这个间隔刷新画面，浏览器版单独安排绘制频率
+     *
+     * 小推车和阳光收集动画都是"每一步走固定距离"，换算成时长时要用这个值
+     * （见 Car.update 和 Sun.updateFlyingToCounter），所以必须是同一个数，
+     * 否则改了刷新率而这两处没跟着改，车速和阳光飞行速度就会悄悄变样
+     */
+    public static final int FIXED_STEP_MS = 16;
+
+    /** 一帧最多按多少毫秒推进游戏时钟，防止窗口卡顿后僵尸瞬间冲过去 */
+    public static final long MAX_FRAME_ELAPSED = 50;
+
+    /** 加速按钮的左上角坐标和尺寸 */
+    public static final int SPEED_BUTTON_LEFT = 620;
+
+    public static final int SPEED_BUTTON_TOP = 4;
+
+    public static final int SPEED_BUTTON_WIDTH = 60;
+
+    public static final int SPEED_BUTTON_HEIGHT = 22;
+
+    /** 返回选关按钮靠右上角放置，绘制与点击共用坐标以免错位 */
+    public static final int RETURN_SELECTION_LEFT = WINDOW_WIDTH - 112;
+    public static final int RETURN_SELECTION_TOP = 4;
+    public static final int RETURN_SELECTION_WIDTH = 108;
+    public static final int RETURN_SELECTION_HEIGHT = 32;
+
+    /**
+     * 游戏内部实际使用的速度倍率，按按钮时在这几个值之间轮换
+     *
+     * 原来的 2 倍速现在作为新的 1 倍速，所以新的三个选项对应旧速度的 2、3、4 倍
+     */
+    public static final int[] SPEED_MULTIPLIERS = {2, 3, 4};
+
+    /** 和 SPEED_MULTIPLIERS 一一对应的按钮文字 */
+    public static final String[] SPEED_LABELS = {"1x", "1.5x", "2x"};
+
+    /**
+     * 游戏画面右下角作者水印的位置
+     *
+     * 水印画在草坪下方的石路条上，那里本来没有别的东西，不挡视线；
+     * 而且每局游戏都看得见，别人截图或录屏时会跟着带上
+     */
+    public static final int WATERMARK_RIGHT = 790;
+
+    public static final int WATERMARK_BOTTOM = 592;
+
+    /** 水印文字 */
+    public static final String WATERMARK_TEXT = "Windy-Field / Octorange";
+
+    /** 水印字号 */
+    public static final int WATERMARK_FONT_SIZE = 12;
+
+    /** 通关或失败画面停留的毫秒数 */
+    public static final long ENDING_SCREEN_DURATION = 3000;
+
+    /** 主菜单按钮闪光切换的毫秒数 */
+    public static final long MENU_BLINK_INTERVAL = 200;
+
+    /**
+     * 主菜单里"冒险模式"按钮的位置和大小
+     *
+     * 绘制和点击判定共用同一区域，调整位置后两者同步更新
+     */
+    public static final int MENU_BUTTON_LEFT = 435;
+
+    public static final int MENU_BUTTON_TOP = 75;
+
+    public static final int MENU_BUTTON_WIDTH = 280;
+
+    public static final int MENU_BUTTON_HEIGHT = 131;
+
+    /** 图鉴书本入口放在主菜单右下方，坐标供绘制和点击共用以免系统缩放后错位 */
+    public static final int ALMANAC_BUTTON_LEFT = 630;
+    public static final int ALMANAC_BUTTON_TOP = 398;
+    public static final int ALMANAC_BUTTON_WIDTH = 100;
+    public static final int ALMANAC_BUTTON_HEIGHT = 100;
+
+    /** 选卡界面"开始战斗"按钮的左沿横坐标 */
+    public static final int START_BUTTON_LEFT = 155;
+
+    /** 选卡界面"开始战斗"按钮的上沿纵坐标 */
+    public static final int START_BUTTON_TOP = 547;
+
+    /** 选卡界面背包面板顶部的纵坐标 */
+    public static final int CHOOSER_PANEL_TOP = 87;
+
+    /** 点击冒险模式后等多久进入关卡，用于播放切换动画 */
+    public static final long MENU_START_DELAY = 1300;
+
+    /** 传送带每隔多久送出一张新卡 */
+    public static final long CONVEYOR_CARD_INTERVAL = 6000;
+
+    /** 传送带上卡片逐帧左移一格所需的时间 */
+    public static final long CONVEYOR_CARD_SHIFT_INTERVAL = 60;
+
+    /** 天空每隔多久掉一颗阳光 */
+    public static final long SKY_SUN_INTERVAL = 7000;
+
+    /** 游戏和编辑器共用天空阳光间隔的最小值，低于该值时采用此间隔 */
+    public static final long MIN_SKY_SUN_INTERVAL = 500;
+
+    /** 阳光落地后停留多久消失 */
+    public static final long SUN_STAY_DURATION = 7000;
+
+    /** 子弹爆炸图播放多久后移除 */
+    public static final long BULLET_EXPLODE_DURATION = 500;
+
+    /** 向日葵和阳光菇第一次产阳光前的等待时间 */
+    public static final long SUN_PRODUCE_FIRST_DELAY = 6000;
+
+    /** 向日葵和阳光菇两次产阳光之间的间隔 */
+    public static final long SUN_PRODUCE_INTERVAL = 22000;
+
+    /** 阳光菇长成大阳光菇所需的毫秒数 */
+    public static final long SUN_SHROOM_GROW_TIME = 25000;
+
+    /** 普通射手两次射击之间的间隔 */
+    public static final long SHOOT_INTERVAL = 2000;
+
+    /** 小喷菇两次射击之间的间隔，其他现有射手使用 SHOOT_INTERVAL */
+    public static final long SHROOM_SHOOT_INTERVAL = 3000;
+
+    /** 地刺每次扎伤僵尸之后的间隔 */
+    public static final long SPIKEWEED_DAMAGE_INTERVAL = 2000;
+
+    /** 土豆雷埋好后需要多久才能出土 */
+    public static final long POTATO_MINE_ARM_TIME = 15000;
+
+    /** 僵尸吃植物的间隔（毫秒）：减速状态下乘 2 */
+    public static final long ZOMBIE_ATTACK_INTERVAL = 1000;
+
+    /** 僵尸走一步的毫秒间隔；减速状态下乘 2 */
+    public static final long ZOMBIE_STEP_INTERVAL = 50;
+
+    /** 僵尸掉了头之后，每隔多久流掉一点血 */
+    public static final long ZOMBIE_BLEED_INTERVAL = 1000;
+
+    /** 寒冰射手让僵尸减速持续的毫秒数 */
+    public static final long ZOMBIE_SLOW_DURATION = 2000;
+
+    /** 寒冰菇让全场僵尸冻结的毫秒数 */
+    public static final long ZOMBIE_FREEZE_DURATION = 7500;
+
+    /** 普通动画每帧的默认游戏时间，单位毫秒；战斗倍速同时影响动画推进 */
+    public static final long DEFAULT_ANIMATION_INTERVAL = 100;
+
+    /** 僵尸行走动画每帧的默认游戏时间，比植物慢一些 */
+    public static final long ZOMBIE_ANIMATION_INTERVAL = 150;
+
+    /** 僵尸攻击动画帧的间隔 */
+    public static final long ZOMBIE_ATTACK_ANIMATION_INTERVAL = 100;
+
+    /** 僵尸死亡动画帧的间隔 */
+    public static final long ZOMBIE_DIE_ANIMATION_INTERVAL = 200;
+
+    /** 本体正常阶段损失一半时掉臂：剩余 100 正常血量，加掉头阶段 70 */
+    public static final int ZOMBIE_ARM_LOST_HEALTH = 170;
+
+    /** 剩余 70 时掉头，此后继续使用原来的持续流血规则 */
+    public static final int ZOMBIE_HEAD_LOST_HEALTH = 70;
+
+    /**
+     * 独臂素材的帧间隔
+     *
+     * 这套图是按 80 毫秒一帧导出的，而原版僵尸是 150 毫秒，
+     * 直接套用原版的间隔会让独臂僵尸慢将近一倍
+     */
+    public static final int ZOMBIE_NO_ARM_ANIMATION_INTERVAL = 80;
+
+    /** "独臂且掉头后继续啃"那张图的帧间隔，它是按 40 毫秒一帧导出的，比别的快一倍 */
+    public static final int ZOMBIE_NO_ARM_FAST_INTERVAL = 40;
+
+    /**
+     * 独臂素材的缩放倍数
+     *
+     * no_hand 那几组图的画布比原来的僵尸图大得多：独臂走路图里僵尸站立高 774 像素，
+     * 而原版僵尸只有 122 像素。四个大图（走路、啃食、倒地、掉头后走）是同一个
+     * 分辨率导出的，所以共用同一个倍数——各用各的会让僵尸在"走 → 啃 → 倒地"
+     * 之间切换时体型跳一下
+     *
+     * 倍数按站立高度算：122 / 774 ≈ 0.1576
+     */
+    public static final double ZOMBIE_NO_ARM_SCALE = 0.1576;
+
+    /**
+     * "独臂且掉头后继续啃"那张图的缩放倍数
+     *
+     * 它的导出分辨率比别人小得多（画布 138x149，别的四张都在 500x600 以上），
+     * 所以得单独一个倍数，同样是按站立高度算：103 / 141 ≈ 0.7305
+     */
+    public static final double ZOMBIE_NO_ARM_SMALL_SCALE = 0.7305;
+
+    /** 窝瓜压下去之后多久砸中目标 */
+    public static final long SQUASH_HIT_DELAY = 1300;
+
+    /** 食人花咬住僵尸之后多久吞下去 */
+    public static final long CHOMPER_SWALLOW_DELAY = 1000;
+
+    /** 食人花消化一只要多久，之后才能再咬 */
+    public static final long CHOMPER_DIGEST_TIME = 16000;
+
+    /** 坚果保龄球滚动时多久移动一次 */
+    public static final long BOWLING_MOVE_INTERVAL = 70;
+
+    /** 坚果保龄球每次移动的像素 */
+    public static final int BOWLING_MOVE_STEP = 13;
+
+    /** 坚果保龄球撞到僵尸后造成伤害的间隔 */
+    public static final long BOWLING_HIT_INTERVAL = 700;
+
+    /** 爆炸坚果保龄球撞到僵尸后多久炸开 */
+    public static final long RED_BOWLING_EXPLODE_DELAY = 500;
+
+    /** 单帧或较短的一次性植物特效至少保留的游戏时间 */
+    public static final long SHORT_EFFECT_DURATION = 500;
+
+    /** 原版子弹的横向飞行速度，单位是像素每帧 */
+    public static final int BULLET_SPEED = 4;
+    /** 小推车的横向行驶速度，单位是像素每帧 */
+    public static final int CAR_SPEED = 4;
+    /** 阳光每帧移动的像素 */
+    public static final int SUN_SPEED = 1;
+    /** 阳光被点击收集后飞向数字框的速度，单位是像素每帧 */
+    public static final double SUN_COLLECT_SPEED = 8.0;
+    /** 飞行前段按此比例匀速，剩余路程采用缓出曲线 */
+    public static final double FLY_UNIFORM_RATIO = 0.8;
+
+    /** 这个类只提供坐标、时间、血量和伤害常量，不允许创建对象 */
+    private Layout() {
+    }
+
+    /** 根据卡槽模式返回倒计时等待时间，传送带先完成卡槽滑入 */
+    public static long introCountdownDelay(int barType) {
+        long delay = INTRO_PAN_BACK_TIME;
+        if (barType != BAR_NORMAL) {
+            delay = delay + INTRO_BAR_DROP_TIME;
+        }
+        return delay;
+    }
+
+    /** 返回第 position 张卡的左沿位置，选卡绘制与飞行落点共用此计算 */
+    public static int cardSlotLeft(int position) {
+        return CARD_BAR_START + (position + 1) * CARD_BAR_SPACING;
+    }
+
+    /** 判断鼠标坐标是否落入铲子卡槽，边界外返回 false */
+    public static boolean insideShovelSlot(int x, int y) {
+        if (x < SHOVEL_SLOT_LEFT || x >= SHOVEL_SLOT_LEFT + SHOVEL_SLOT_WIDTH) {
+            return false;
+        }
+        if (y < SHOVEL_SLOT_TOP || y >= SHOVEL_SLOT_TOP + SHOVEL_SLOT_HEIGHT) {
+            return false;
+        }
+        return true;
+    }
+
+    /** 将关卡卡槽数量限制到允许范围，越界时采用最近的有效边界 */
+    public static int clampCardSlots(int value) {
+        if (value < MIN_CARD_SLOTS) {
+            return MIN_CARD_SLOTS;
+        }
+        if (value > MAX_CARD_SLOTS) {
+            return MAX_CARD_SLOTS;
+        }
+        return value;
+    }
+
+    /** 根据内部倍率返回按钮文字，未知倍率使用第一档的说明 */
+    public static String speedLabelFor(int multiplier) {
+        for (int index = 0; index < SPEED_MULTIPLIERS.length; index = index + 1) {
+            if (SPEED_MULTIPLIERS[index] == multiplier) {
+                return SPEED_LABELS[index];
+            }
+        }
+        return SPEED_LABELS[0];
+    }
+
+    /** 把鼠标横坐标换算成草坪列号；可能返回负数或越界值，调用方需自行判断 */
+    public static int columnAt(int x) {
+        int distanceFromLawn = x - GRID_LEFT;
+        // 这里不用普通的 "/"：Java 的整数除法会把 -10 / 80 算成 0，
+        // 草坪左边外面一点点也会被当成第 0 列；floorDiv 向下取整，得到 -1，才能被判为越界
+        return Math.floorDiv(distanceFromLawn, CELL_WIDTH);
+    }
+
+    /** 把鼠标纵坐标换算成草坪行号；可能返回负数或越界值，调用方需自行判断 */
+    public static int rowAt(int y) {
+        int distanceFromLawn = y - LAWN_TOP;
+        // 和 columnAt 一样用 floorDiv，草坪上方一点点的位置会得到 -1 而不是 0
+        return Math.floorDiv(distanceFromLawn, CELL_HEIGHT);
+    }
+
+    /** 由列号算出该列格子的中心横坐标，用于放置植物 */
+    public static int columnCenter(int column) {
+        return GRID_LEFT + column * CELL_WIDTH + PLANT_CENTER_OFFSET;
+    }
+
+    /** 由行号算出该行格子的底部纵坐标，用于放置植物 */
+    public static int rowBottom(int row) {
+        return GRID_TOP + row * CELL_HEIGHT + PLANT_BOTTOM_OFFSET;
+    }
+
+    /** 判断行号和列号是否都落在草坪范围内 */
+    public static boolean insideGrid(int row, int column) {
+        if (row < 0 || row >= ROW_COUNT) {
+            return false;
+        }
+        if (column < 0 || column >= COLUMN_COUNT) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 算出飞行动画此刻已经走完了全程的百分之几
+     *
+     * 前段匀速、末段减速，卡片飞入卡槽和阳光收集共用这条曲线
+     *
+     * 参数：elapsed 是已经飞了多久；duration 是全程要多久
+     * 返回：0 到 1 之间的行进比例，超过 1 按 1 算
+     */
+    public static double flyProgress(long elapsed, double duration) {
+        if (duration <= 0) {
+            return 1.0;
+        }
+        double progress = elapsed / duration;
+        if (progress <= 0) {
+            return 0;
+        }
+        if (progress >= 1.0) {
+            return 1.0;
+        }
+
+        // 前一段匀速，线性推进
+        if (progress <= FLY_UNIFORM_RATIO) {
+            return progress;
+        }
+
+        // 后一段三次缓出：越接近终点越慢
+        double slowProgress = (progress - FLY_UNIFORM_RATIO) / (1.0 - FLY_UNIFORM_RATIO);
+        double slowCurve = 1 - (1 - slowProgress) * (1 - slowProgress) * (1 - slowProgress);
+        return FLY_UNIFORM_RATIO + (1.0 - FLY_UNIFORM_RATIO) * slowCurve;
+    }
+}

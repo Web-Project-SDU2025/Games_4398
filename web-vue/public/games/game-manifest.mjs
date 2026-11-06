@@ -9,7 +9,6 @@ export const PLAYER_DEFAULTS = {
   javaVersion: 17,
   // 独立游戏页采用原始像素比例，主平台继续使用浏览器自己的屏幕比例
   pixelRatio: 1,
-  downloadReleaseDelay: 1000,
 };
 export const IMPORT_DEFAULTS = {
   minimum: 0,
@@ -22,6 +21,7 @@ export const DEFAULT_CAPABILITIES = {
   editor: false,
   importData: false,
   exportData: false,
+  gameplayEvents: false,
 };
 export const MANIFEST_LIMITS = {
   nameLength: 50,
@@ -35,6 +35,8 @@ export const MANIFEST_LIMITS = {
   maximumImportNumber: 1000000,
   maximumImportBytes: 2097152,
   importLabelLength: 120,
+  // 单游戏通关奖励与服务器允许的配置上限对应
+  maximumLevelReward: 1000,
 };
 
 // 检查相对资源路径，所有文件都应位于当前游戏目录，编码和跳目录写法按错误配置处理
@@ -135,6 +137,7 @@ export function normalizeManifest(source, address) {
       editor: capabilities.editor === true,
       importData: capabilities.importData === true,
       exportData: capabilities.exportData === true,
+      gameplayEvents: capabilities.gameplayEvents === true,
     },
     display: { width: PLAYER_DEFAULTS.width, height: PLAYER_DEFAULTS.height },
     imports: {
@@ -147,6 +150,7 @@ export function normalizeManifest(source, address) {
     preservedPaths: [],
     dataDirectory: "data",
     resources: {},
+    gameplay: {},
   };
   if (
     !Array.isArray(source.classpath) ||
@@ -177,6 +181,9 @@ export function normalizeManifest(source, address) {
   if (source.adapter) {
     result.adapter = className(source.adapter, "适配器");
   } else {
+    if (result.capabilities.gameplayEvents) {
+      throw new Error("关卡事件需要提供游戏适配器");
+    }
     result.mainClass = className(source.mainClass, "游戏入口");
     if (result.capabilities.editor) {
       result.editorMainClass = className(source.editorMainClass, "编辑器入口");
@@ -238,6 +245,36 @@ export function normalizeManifest(source, address) {
     "虚拟桌面高度",
   );
   const imports = source.imports || {};
+  if (source.gameplay !== undefined) {
+    const gameplay = source.gameplay;
+    if (!gameplay || typeof gameplay !== "object" || Array.isArray(gameplay)) {
+      throw new Error("游戏记录规则应为配置对象");
+    }
+    result.gameplay.reward = number(
+      gameplay.reward,
+      0,
+      0,
+      MANIFEST_LIMITS.maximumLevelReward,
+      "通关奖励",
+    );
+    if (gameplay.levelDirectory) {
+      result.gameplay.levelDirectory = relativePath(
+        gameplay.levelDirectory,
+        "关卡目录",
+      );
+    }
+    for (const name of ["levelPrefix", "timeArray", "timeField"]) {
+      if (gameplay[name] !== undefined) {
+        if (
+          typeof gameplay[name] !== "string" ||
+          !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(gameplay[name])
+        ) {
+          throw new Error("关卡字段应使用英文、数字和下划线");
+        }
+        result.gameplay[name] = gameplay[name];
+      }
+    }
+  }
   result.imports.minimum = number(
     imports.minimum,
     IMPORT_DEFAULTS.minimum,

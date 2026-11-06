@@ -1,11 +1,6 @@
 <template>
-  <!-- 最外层区域表单 -->
   <section class="base_form password-page">
-    <!-- 区域顶部标题 -->
     <div class="base_header"><h2 class="base_title">修改密码</h2></div>
-    <!-- 页面提示 -->
-    <p class="base_prompt">新密码最长为{{ passwordLimit }}位。</p>
-    <!-- 表单内容 -->
     <form
       class="motion-results"
       :aria-busy="saving"

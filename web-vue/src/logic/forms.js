@@ -41,40 +41,7 @@ export function createAccountForm(account) {
   return form;
 }
 
-// 复制树节点的可编辑字段，子节点继续由树保存，取消时保留原树
-export function createNodeForm(node) {
-  const form = {
-    pid: null,
-    id: null,
-    value: "",
-    title: "",
-    parentTitle: "",
-    userTypeIds: "",
-  };
-  if (node) {
-    form.pid = node.pid;
-    form.id = node.id;
-    form.value = node.value;
-    form.title = node.title;
-    form.parentTitle = node.parentTitle;
-    form.userTypeIds = node.userTypeIds;
-  }
-  return form;
-}
-
-// 将勾选角色整理为编号字符串，全部取消时返回空字符串
-export function createRoleIds(admin, gameUser) {
-  const roles = [];
-  if (admin) {
-    roles.push("1");
-  }
-  if (gameUser) {
-    roles.push("2");
-  }
-  return roles.join(",");
-}
-
-// 独立复制记录表单，两个管理视图共用字段，取消时不改变原记录
+// 独立复制记录表单，取消编辑时保留原记录的分数、时长与时间
 export function createRecordForm(record) {
   const form = {
     userId: "",

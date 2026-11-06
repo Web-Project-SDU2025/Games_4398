@@ -1,6 +1,27 @@
 import { CHANGE_PASSWORD_LIMIT } from "./limits.js";
 export { REGISTER_PASSWORD_LIMIT, CHANGE_PASSWORD_LIMIT } from "./limits.js";
 
+// 概览展示的基础资料和顺序，登录时间沿用后端北京时间文字
+const PROFILE_FIELDS = [
+  { name: "email", label: "邮箱" },
+  { name: "phone", label: "电话" },
+  { name: "createTime", label: "注册时间" },
+  { name: "lastLoginTime", label: "最近登录" },
+];
+
+// 返回固定顺序的个人资料字段，空值使用统一符号，原资料保留独立
+export function profileDetails(profile) {
+  const details = [];
+  for (const field of PROFILE_FIELDS) {
+    let value = "—";
+    if (profile && profile[field.name]) {
+      value = String(profile[field.name]);
+    }
+    details.push({ label: field.label, value: value });
+  }
+  return details;
+}
+
 /** 根据账户资料返回昵称；没有昵称时使用账号 */
 export function getDisplayName(user) {
   if (user.perName) {

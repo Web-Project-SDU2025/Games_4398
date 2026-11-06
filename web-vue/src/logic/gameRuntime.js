@@ -1,21 +1,18 @@
+import { GAME_ID_PATTERN } from "../../games/runtime/web/game-manifest.mjs";
 import {
-  GAME_REGISTRY,
-  GAME_ID_PATTERN,
-  normalizeManifest,
-} from "../../games/runtime/web/game-manifest.mjs";
+  gameOwner,
+  PLAYER_PAGE,
+} from "../../games/runtime/web/game-session.mjs";
 
-export { GAME_REGISTRY, GAME_ID_PATTERN };
-
-// 将配置文件转换成统一游戏资料，入口固定交给站内 Java 启动器
-export function normalizeGame(configuration, manifestPath) {
-  const game = normalizeManifest(configuration, manifestPath);
+// 已校验的配置转换成列表资料，启动器与列表读取共用字段映射
+export function installedGameInfo(game) {
   return {
     id: game.id,
     name: game.name,
     num: game.number,
     category: game.category,
     description: game.description,
-    gamePath: manifestPath,
+    gamePath: "/games/" + game.id + "/game.json",
     cover: "/games/" + game.id + "/" + game.cover,
     capabilities: game.capabilities,
   };
@@ -31,6 +28,38 @@ export function findInstalledGame(games, path) {
   return null;
 }
 
+// 游戏库与收藏合并安装资料和账户状态，每个游戏只展示一次，未安装游戏仍保留资料
+export function launcherGames(catalog, installedGames) {
+  const result = [];
+  for (const record of catalog) {
+    const installed = findInstalledGame(installedGames, record.gamePath);
+    const entry = {
+      gameId: record.gameId,
+      id: "",
+      gamePath: record.gamePath,
+      name: record.name,
+      category: record.category,
+      description: record.description,
+      cover: "/favicon.svg",
+      capabilities: { editor: false },
+      installed: false,
+      owned: record.owned === true,
+      favorite: record.favorite === true,
+      price: record.price,
+      reward: record.reward,
+    };
+    if (installed) {
+      entry.id = installed.id;
+      entry.cover = installed.cover;
+      entry.capabilities = installed.capabilities;
+      entry.description = installed.description;
+      entry.installed = true;
+    }
+    result.push(entry);
+  }
+  return result;
+}
+
 // 生成当前账户的游戏入口，用户目录与游戏目录分别使用独立参数
 export function gameAddress(game, owner, editor) {
   if (!game || !GAME_ID_PATTERN.test(game.id)) {
@@ -38,12 +67,12 @@ export function gameAddress(game, owner, editor) {
   }
   const parameters = new URLSearchParams();
   parameters.set("game", game.id);
-  parameters.set("owner", String(owner));
+  parameters.set("owner", gameOwner(owner));
   if (editor) {
     if (!game.capabilities || !game.capabilities.editor) {
       throw new Error("此游戏尚未提供编辑器入口");
     }
     parameters.set("mode", "editor");
   }
-  return "/games/java-player.html?" + parameters.toString();
+  return PLAYER_PAGE + "?" + parameters.toString();
 }

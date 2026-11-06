@@ -30,9 +30,15 @@ public class AdminRecordController {
         return service.save(request);
     }
 
-    /** 删除指定记录，分数与游玩记录使用同一个编号 */
-    @PostMapping("/delete")
-    public DataResponse delete(@RequestBody DataRequest request) {
-        return service.delete(request);
+    /** 隐藏管理员当前视图中的记录，旧地址沿用同一处理 */
+    @PostMapping({"/hide", "/delete"})
+    public DataResponse hide(@RequestBody DataRequest request) {
+        return service.hide(request);
+    }
+
+    /** 恢复当前管理员隐藏的记录，其他账户的展示单独维护 */
+    @PostMapping("/restore")
+    public DataResponse restore(@RequestBody DataRequest request) {
+        return service.restore(request);
     }
 }

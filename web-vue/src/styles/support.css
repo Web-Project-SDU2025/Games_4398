@@ -77,6 +77,10 @@
   overflow: hidden;
 }
 .support-chat {
+  /* 图片草稿和历史缩略图共用固定显示尺寸 */
+  --support-attachment-width: 80px;
+  --support-attachment-height: 60px;
+  --support-history-image-width: 160px;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -120,10 +124,6 @@
   font-size: 18px;
   font-weight: 600;
 }
-.support-heading > span {
-  color: var(--color-muted);
-  font-size: 13px;
-}
 .support-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -158,15 +158,12 @@
   font-weight: 600;
   margin: 0 0 var(--space-md);
 }
-.support-welcome p {
-  color: var(--color-muted);
-  line-height: 1.7;
-}
 .support-suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  margin-top: var(--space-lg);
+  margin: var(--space-sm) 0;
+  flex-shrink: 0;
 }
 .support-suggestions button {
   min-height: 40px;
@@ -257,6 +254,66 @@
   font-size: 12px;
   gap: 12px;
   padding-top: 8px;
+}
+.support-composer-footer > span:first-child {
+  margin-right: auto;
+}
+.support-image-input {
+  display: none;
+}
+.support-attachments,
+.support-message-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.support-attachments {
+  margin-bottom: var(--space-sm);
+  max-height: 160px;
+  overflow: auto;
+}
+.support-attachments figure,
+.support-message-images figure {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+}
+.support-attachments img {
+  display: block;
+  width: var(--support-attachment-width);
+  height: var(--support-attachment-height);
+  object-fit: contain;
+  background: var(--color-paper);
+  border-radius: 4px;
+}
+.support-message-images figure {
+  width: var(--support-history-image-width);
+  max-width: 100%;
+}
+.support-message-images img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+.support-message-images figcaption {
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+.support-chat .support-composer .support-attachments button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  background: var(--color-header);
+}
+.support-chat .support-composer .support-upload {
+  background: transparent;
+  color: var(--color-muted);
 }
 .support-chat .support-composer button {
   display: grid;

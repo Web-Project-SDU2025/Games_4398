@@ -59,7 +59,6 @@ export async function loadGameResources(
   fetchResource,
   addFile,
   removeFile,
-  report,
 ) {
   const base = "/games/" + configuration.id + "/";
   const memoryFiles = [];
@@ -81,7 +80,6 @@ export async function loadGameResources(
         relative = configuration.resources[name].path;
         expectedBytes = configuration.resources[name].bytes;
       }
-      report("正在自动加载游戏资源 " + (index + 1) + " / " + names.length);
       const bytes = await readResource(
         base + relative,
         fetchResource,

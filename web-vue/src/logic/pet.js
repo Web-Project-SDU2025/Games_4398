@@ -2,20 +2,10 @@
 export const PET_MARGIN = 12;
 // 指针移动达到此像素距离后进入拖动状态
 export const DRAG_THRESHOLD = 6;
-// 游戏提示的显示间隔，单位为毫秒
-export const GREETING_INTERVAL = 13000;
-// 单条提示的持续时间，单位为毫秒
-export const GREETING_DURATION = 5000;
 // 宠物初始纵向位置在可移动高度中的比例
-export const DEFAULT_VERTICAL_POSITION = 0.85;
-// 宠物轮流显示的游戏提示文字
-export const GREETINGS = [
-  "今天想挑战哪个游戏？",
-  "规则没看懂？我们一起研究",
-  "卡关了可以来聊聊玩法",
-  "别忘了保存这一局的分数",
-  "玩得开心，也记得休息一下",
-];
+export const DEFAULT_VERTICAL_POSITION = 1;
+// 旧版默认位置仅用于迁移，手动拖动保存的其他位置继续保留
+const PREVIOUS_VERTICAL_POSITION = 0.85;
 // 宠物各状态使用的本地图片
 export const PET_IMAGES = {
   idle: "/images/pet/idling.png",
@@ -40,11 +30,10 @@ export function clampPosition(
   };
 }
 
-// 每个账号分别保存位置和提示开关，损坏的数据使用默认设置
+// 每个账号分别保存位置和显示开关，损坏的数据使用默认设置
 export function readSettings(userId) {
   const defaults = {
     visible: true,
-    greetings: true,
     horizontal: 1,
     vertical: DEFAULT_VERTICAL_POSITION,
   };
@@ -58,12 +47,12 @@ export function readSettings(userId) {
     if (typeof saved.visible === "boolean") {
       defaults.visible = saved.visible;
     }
-    if (typeof saved.greetings === "boolean") {
-      defaults.greetings = saved.greetings;
-    }
     if (Number.isFinite(saved.horizontal) && Number.isFinite(saved.vertical)) {
       defaults.horizontal = Math.max(0, Math.min(saved.horizontal, 1));
       defaults.vertical = Math.max(0, Math.min(saved.vertical, 1));
+      if (saved.horizontal === 1 && saved.vertical === PREVIOUS_VERTICAL_POSITION) {
+        defaults.vertical = DEFAULT_VERTICAL_POSITION;
+      }
     }
   } catch (error) {
     return defaults;

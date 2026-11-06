@@ -10,25 +10,10 @@
     <script type="module" src="./java-player.js"></script>
   </head>
   <body class="desktop-shell">
-    <header class="player-toolbar">
-      <strong id="game-title">Java 游戏</strong>
+    <section id="player-feedback" aria-label="运行状态" hidden>
+      <p id="player-status" role="status"></p>
       <button id="retry-start" type="button" hidden>重试</button>
-      <button id="open-game" type="button" disabled>打开游戏</button>
-      <button id="open-editor" type="button" disabled>关卡编辑器</button>
-      <button id="export-levels" type="button" disabled>导出关卡</button>
-      <label id="import-number-label"
-        >关卡编号
-        <input id="level-number" type="number" min="0" max="99" value="0"
-      /></label>
-      <label id="import-file-label" class="file-button"
-        >导入关卡<input
-          id="import-level"
-          type="file"
-          accept=".json,application/json"
-          disabled
-      /></label>
-    </header>
-    <p id="player-status" role="status">正在准备 Java 运行环境</p>
+    </section>
     <main id="player-viewport" aria-label="游戏画面">
       <div id="java-display"></div>
     </main>

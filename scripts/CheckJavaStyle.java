@@ -8,6 +8,7 @@ import com.sun.source.tree.CompoundAssignmentTree;
 import com.sun.source.tree.ConditionalExpressionTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.UnaryTree;
+import com.sun.source.tree.VariableTree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
@@ -15,6 +16,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,18 +24,35 @@ import java.util.ArrayList;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 import com.sun.source.util.TreePath;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** 使用 JDK 语法树检查手写 Java，字符串和注解内容按原样解析 */
 public class CheckJavaStyle {
-    // 从项目根目录运行时，检查后端全部源码和测试
-    private static final Path SOURCE_ROOT = Path.of("java-server/java-server/src");
+    // 从项目根目录运行时，检查后端以及游戏的手写 Java 源码和测试
+    private static final List<Path> SOURCE_ROOTS = List.of(
+        Path.of("java-server/java-server/src"),
+        Path.of("web-vue/games"),
+        Path.of("web-vue/tests/fixtures"),
+        Path.of("scripts")
+    );
+    /** 原服务器连接文件沿用用户指定风格，目录清单是跨语言检查的共同依据 */
+    private static final Path PRESERVED_FILES = Path.of("scripts/preserved-files.txt");
+    private static final List<String> IGNORED_DIRECTORIES = List.of("build", "assets", "lib", "target");
+    /** 先分开字符串与注释，再检查注释文字，示例代码和路径字符串保持原义 */
+    private static final Pattern SOURCE_TOKENS = Pattern.compile(
+        "\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/");
+    private static final Pattern COMMENT_END = Pattern.compile("[。.]+\\s*(?:\\*/|$)", Pattern.MULTILINE);
+    private static final Pattern DEFENSIVE_COMMENT = Pattern.compile("兜底|万一|免得|不值得|不用担心|只好|不是笔误|收摊|攥着");
 
     /** 收集指定目录下的 Java 文件，子目录递归检查 */
     private static void collectFiles(Path directory, List<Path> files) throws IOException {
         try (java.nio.file.DirectoryStream<Path> entries = Files.newDirectoryStream(directory)) {
             for (Path entry : entries) {
                 if (Files.isDirectory(entry)) {
-                    collectFiles(entry, files);
+                    if (!IGNORED_DIRECTORIES.contains(entry.getFileName().toString())) {
+                        collectFiles(entry, files);
+                    }
                 } else if (entry.toString().endsWith(".java")) {
                     files.add(entry);
                 }
@@ -44,7 +63,16 @@ public class CheckJavaStyle {
     /** 解析全部 Java 文件并检查，失败时返回非零退出码 */
     public static void main(String[] arguments) throws IOException {
         List<Path> files = new ArrayList<>();
-        collectFiles(SOURCE_ROOT, files);
+        for (Path root : SOURCE_ROOTS) {
+            collectFiles(root, files);
+        }
+        List<String> preserved = Files.readAllLines(PRESERVED_FILES, StandardCharsets.UTF_8);
+        for (int index = files.size() - 1; index >= 0; index = index - 1) {
+            String file = files.get(index).toString().replace('\\', '/');
+            if (preserved.contains(file)) {
+                files.remove(index);
+            }
+        }
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         try (StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8)) {
             Iterable<? extends JavaFileObject> sources = manager.getJavaFileObjectsFromPaths(files);
@@ -56,6 +84,7 @@ public class CheckJavaStyle {
             for (CompilationUnitTree unit : units) {
                 String source = unit.getSourceFile().getCharContent(true).toString();
                 StyleScanner scanner = new StyleScanner(unit, trees, source);
+                scanner.checkComments();
                 scanner.scan(unit, null);
                 errorCount = errorCount + scanner.errorCount;
             }
@@ -78,6 +107,27 @@ public class CheckJavaStyle {
             this.unit = unit;
             this.trees = trees;
             this.source = source;
+        }
+
+        /** 注释保留真实功能边界，句尾和自我辩护词组按同一规则检查 */
+        private void checkComments() {
+            Matcher tokens = SOURCE_TOKENS.matcher(source);
+            while (tokens.find()) {
+                String text = tokens.group();
+                if (text.startsWith("//") || text.startsWith("/*")) {
+                    String message = "";
+                    if (COMMENT_END.matcher(text).find()) {
+                        message = "注释行末不加句号";
+                    } else if (DEFENSIVE_COMMENT.matcher(text).find()) {
+                        message = "注释应直接说明功能、设计或边界";
+                    }
+                    if (!message.isEmpty()) {
+                        long line = unit.getLineMap().getLineNumber(tokens.start());
+                        System.out.println(unit.getSourceFile().getName() + ":" + line + " " + message);
+                        errorCount = errorCount + 1;
+                    }
+                }
+            }
         }
 
         /** 输出语法节点位置和说明，同时累计错误数量 */
@@ -127,6 +177,18 @@ public class CheckJavaStyle {
         public Void visitClass(ClassTree node, Void unused) {
             if (!node.getSimpleName().toString().isEmpty()) {
                 checkExplanation(node);
+            }
+            boolean methodsStarted = false;
+            for (Tree member : node.getMembers()) {
+                if (member instanceof MethodTree) {
+                    methodsStarted = true;
+                } else if (methodsStarted && member instanceof VariableTree) {
+                    VariableTree field = (VariableTree) member;
+                    if (field.getModifiers().getFlags().contains(Modifier.STATIC)
+                            && field.getModifiers().getFlags().contains(Modifier.FINAL)) {
+                        report(field, "可配置常量应放在所属类的方法之前");
+                    }
+                }
             }
             return super.visitClass(node, unused);
         }

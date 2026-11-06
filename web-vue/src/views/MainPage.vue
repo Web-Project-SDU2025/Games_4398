@@ -7,7 +7,6 @@
     <header class="workspace-home-heading">
       <div>
         <h1 id="home-title">游戏概览</h1>
-        <p>欢迎回来，{{ displayName }}</p>
       </div>
       <div class="dashboard-heading-actions">
         <span v-if="updatedAt" class="dashboard-updated"
@@ -25,7 +24,7 @@
         </button>
         <RouterLink class="dashboard-primary-link" to="/GameCatalog"
           ><span class="i-ep-grid" aria-hidden="true"></span
-          >浏览游戏</RouterLink
+          >浏览游戏商城</RouterLink
         >
       </div>
     </header>
@@ -42,7 +41,7 @@
           <span class="dashboard-stat-label">{{ stat.title }}</span
           ><strong
             >{{ stat.value }}<small>{{ stat.unit }}</small></strong
-          ><span class="dashboard-stat-detail">{{ stat.detail }}</span>
+          >
         </div>
         <span
           :class="stat.icon"
@@ -52,78 +51,7 @@
       </RouterLink>
     </div>
     <div class="dashboard-main-grid">
-      <section class="dashboard-section" aria-labelledby="library-title">
-        <header class="dashboard-section-heading">
-          <h2 id="library-title">
-            <span class="i-ep-folder" aria-hidden="true"></span>我的游戏库
-          </h2>
-          <RouterLink to="/GameLibrary"
-            >查看游戏库<span class="i-ep-arrow-right" aria-hidden="true"></span
-          ></RouterLink>
-        </header>
-        <div class="dashboard-library-summary">
-          <div>
-            <span>已加入游戏</span
-            ><strong>{{ metric("libraryCount") }}<small>款</small></strong>
-          </div>
-          <span class="dashboard-account-role">{{ roleName }}</span>
-        </div>
-        <div class="dashboard-progress-row">
-          <span>游戏库 / 全部游戏</span
-          ><strong
-            >{{ metric("libraryCount") }} / {{ metric("catalogCount") }}</strong
-          >
-        </div>
-        <progress
-          :value="libraryPercent"
-          max="100"
-          aria-label="游戏库占已收录游戏的比例"
-        ></progress>
-        <div class="dashboard-progress-row">
-          <span>收藏 / 全部游戏</span
-          ><strong
-            >{{ metric("favoriteCount") }} /
-            {{ metric("catalogCount") }}</strong
-          >
-        </div>
-        <progress
-          class="dashboard-favorite-progress"
-          :value="favoritePercent"
-          max="100"
-          aria-label="收藏占已收录游戏的比例"
-        ></progress>
-        <ul
-          v-if="summary && summary.libraryPreview.length"
-          class="dashboard-library-list"
-        >
-          <li v-for="game in summary.libraryPreview" :key="game.gameId">
-            <span class="i-ep-monitor" aria-hidden="true"></span
-            ><strong>{{ game.name }}</strong
-            ><span>{{ game.category || "未分类" }}</span>
-          </li>
-        </ul>
-        <div v-else class="dashboard-inline-empty">
-          <span class="i-ep-folder-opened" aria-hidden="true"></span>
-          <p>{{ emptyLibraryText }}</p>
-          <RouterLink to="/GameCatalog"
-            >浏览游戏<span class="i-ep-arrow-right" aria-hidden="true"></span
-          ></RouterLink>
-        </div>
-      </section>
-      <section class="dashboard-section" aria-labelledby="activity-title">
-        <header class="dashboard-section-heading">
-          <h2 id="activity-title">
-            <span class="i-ep-data-line" aria-hidden="true"></span>游玩活动
-          </h2>
-          <span>最近 7 天</span>
-        </header>
-        <div class="dashboard-chart-caption">
-          <strong>{{ metric("hours") }}<small>小时</small></strong
-          ><span>累计游玩时长</span>
-        </div>
-        <DashboardActivity v-if="summary" :activity="summary.activity" />
-        <div v-else class="dashboard-chart-placeholder">{{ pendingText }}</div>
-      </section>
+      <DashboardAccount />
       <section
         class="dashboard-section dashboard-records"
         aria-labelledby="records-title"
@@ -137,25 +65,24 @@
           ></RouterLink>
         </header>
         <div
-          v-if="summary && summary.recentRecords.length"
+          v-if="summary && recentRecords.length"
           class="dashboard-table-wrap"
         >
           <table>
             <thead>
               <tr>
                 <th>游戏</th>
-                <th>分数</th>
+                <th>结果</th>
                 <th>时长</th>
                 <th>游玩时间</th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="record in summary.recentRecords"
-                :key="record.recordId"
-              >
+              <tr v-for="record in recentRecords" :key="record.recordId">
                 <td>{{ record.name }}</td>
-                <td>{{ record.score }}</td>
+                <td :title="describeRecord(record)">
+                  {{ outcomeName(record) }} {{ record.levelName }}
+                </td>
                 <td>{{ recordMinutes(record) }} 分钟</td>
                 <td>{{ recordTime(record.playedAt) }}</td>
               </tr>
@@ -180,37 +107,53 @@
           </div>
         </div>
       </section>
-      <section class="dashboard-section" aria-labelledby="account-title">
+      <section class="dashboard-section" aria-labelledby="activity-title">
         <header class="dashboard-section-heading">
-          <h2 id="account-title">
-            <span class="i-ep-user" aria-hidden="true"></span>我的账户
+          <h2 id="activity-title">
+            <span class="i-ep-data-line" aria-hidden="true"></span>游玩活动
           </h2>
+          <span>最近 7 天</span>
         </header>
-        <div class="dashboard-profile">
-          <span class="dashboard-profile-avatar" aria-hidden="true">{{
-            avatarLetter
-          }}</span>
-          <div>
-            <strong>{{ displayName }}</strong
-            ><span>{{ userInfo.username }} · {{ roleName }}</span>
-          </div>
-        </div>
-        <nav class="dashboard-account-links" aria-label="账户功能">
-          <RouterLink to="/GameUserProfile"
-            ><span class="i-ep-postcard" aria-hidden="true"></span>个人资料<span
-              class="i-ep-arrow-right"
-              aria-hidden="true"
-            ></span></RouterLink
-          ><RouterLink to="/Password"
-            ><span class="i-ep-lock" aria-hidden="true"></span>修改密码<span
-              class="i-ep-arrow-right"
-              aria-hidden="true"
-            ></span></RouterLink
-          ><RouterLink to="/AiSupport"
-            ><span class="i-ep-chat-dot-round" aria-hidden="true"></span>AI
-            客服<span class="i-ep-arrow-right" aria-hidden="true"></span
+        <DashboardActivity
+          v-if="summary"
+          :records="summary.records"
+          :generated-at="summary.generatedAt"
+          :total-hours="summary.hours"
+        />
+        <div v-else class="dashboard-chart-placeholder">{{ pendingText }}</div>
+      </section>
+      <section
+        class="dashboard-section dashboard-library"
+        aria-labelledby="library-title"
+      >
+        <header class="dashboard-section-heading">
+          <h2 id="library-title">
+            <span class="i-ep-folder" aria-hidden="true"></span>我的游戏库
+          </h2>
+          <RouterLink to="/GameLibrary"
+            >查看游戏库<span class="i-ep-arrow-right" aria-hidden="true"></span
           ></RouterLink>
-        </nav>
+        </header>
+        <ul v-if="libraryGames.length" class="dashboard-library-list">
+          <li v-for="game in libraryGames" :key="game.gameId">
+            <RouterLink to="/GameLibrary">
+              <img
+                v-if="game.cover"
+                :src="game.cover"
+                :alt="game.name"
+                width="160"
+                height="120"
+              />
+              <span v-else class="dashboard-cover-empty" aria-hidden="true">
+                <span class="i-ep-monitor"></span>
+              </span>
+              <strong>{{ game.name }}</strong>
+            </RouterLink>
+          </li>
+        </ul>
+        <div v-else class="dashboard-inline-empty">
+          <p>{{ emptyLibraryText }}</p>
+        </div>
       </section>
     </div>
   </section>
@@ -222,11 +165,20 @@ import * as account from "../logic/account.js";
 import * as dashboard from "../logic/dashboard.js";
 import { getGames, getRecords } from "../services/gameServ.js";
 import DashboardActivity from "../components/DashboardActivity.vue";
+import DashboardAccount from "../components/DashboardAccount.vue";
+import { getInstalledGames } from "../services/gameRuntime.js";
+import { findInstalledGame } from "../logic/gameRuntime.js";
+import {
+  outcomeName,
+  recordDescription,
+  visibleRecords,
+} from "../logic/records.js";
 
 // 返回首页的数据状态，请求编号用于阻止旧请求覆盖新账户
 function homeState() {
   return {
     summary: null,
+    installedGames: [],
     loading: false,
     error: "",
     updatedAt: "",
@@ -239,21 +191,6 @@ function homeState() {
 // 读取当前账户，作为首页汇总和显示身份的依据
 function readUserInfo() {
   return useAppStore().userInfo;
-}
-
-// 返回账户昵称，没有昵称时使用账号
-function readDisplayName() {
-  return account.getDisplayName(this.userInfo);
-}
-
-// 返回账户角色的中文名称
-function readRoleName() {
-  return account.getRoleName(this.userInfo.role);
-}
-
-// 返回昵称首字符作为头像，完整昵称由相邻文字显示
-function readAvatarLetter() {
-  return this.displayName.substring(0, 1);
 }
 
 // 读取指定统计值，未成功读取时返回占位文字
@@ -271,7 +208,6 @@ function readStatistics() {
       title: "已收录游戏",
       value: this.metric("catalogCount"),
       unit: "款",
-      detail: "全部游戏",
       icon: "i-ep-grid",
       path: "/GameCatalog",
       tone: "dashboard-stat-blue",
@@ -280,7 +216,6 @@ function readStatistics() {
       title: "我的游戏库",
       value: this.metric("libraryCount"),
       unit: "款",
-      detail: "已加入游戏库",
       icon: "i-ep-folder",
       path: "/GameLibrary",
       tone: "dashboard-stat-green",
@@ -289,7 +224,6 @@ function readStatistics() {
       title: "我的收藏",
       value: this.metric("favoriteCount"),
       unit: "款",
-      detail: "已收藏游戏",
       icon: "i-ep-star",
       path: "/GameFavorites",
       tone: "dashboard-stat-amber",
@@ -298,7 +232,6 @@ function readStatistics() {
       title: "游玩记录",
       value: this.metric("recordCount"),
       unit: "次",
-      detail: "当前账户的记录",
       icon: "i-ep-document",
       path: "/GameRecords",
       tone: "dashboard-stat-neutral",
@@ -306,26 +239,30 @@ function readStatistics() {
   ];
 }
 
-// 返回游戏库在全部收录游戏中的比例
-function readLibraryPercent() {
+// 通过游戏入口匹配安装封面，外部游戏保留名称和图标入口
+function readLibraryGames() {
+  const result = [];
   if (!this.summary) {
-    return 0;
+    return result;
   }
-  return dashboard.collectionPercent(
-    this.summary.libraryCount,
-    this.summary.catalogCount,
-  );
+  for (const game of this.summary.libraryPreview) {
+    const installed = findInstalledGame(this.installedGames, game.gamePath);
+    let cover = "";
+    if (installed) {
+      cover = installed.cover;
+    }
+    result.push({ gameId: game.gameId, name: game.name, cover: cover });
+  }
+  return result;
 }
 
-// 返回收藏在全部收录游戏中的比例
-function readFavoritePercent() {
-  if (!this.summary) {
-    return 0;
+// 安装配置读取失败时保留游戏名称，其他概览数据继续显示
+async function readGameCovers() {
+  try {
+    return await getInstalledGames();
+  } catch (error) {
+    return [];
   }
-  return dashboard.collectionPercent(
-    this.summary.favoriteCount,
-    this.summary.catalogCount,
-  );
 }
 
 // 返回尚无可用数据时的提示，区别请求中和读取失败
@@ -349,13 +286,22 @@ function readEmptyRecordText() {
   if (!this.summary) {
     return this.pendingText;
   }
-  return "还没有游玩记录";
+  return "暂无游玩记录";
+}
+
+// 最近游玩共用隐藏选择，统计继续读取概览中的完整记录
+function readRecentRecords() {
+  if (!this.summary) {
+    return [];
+  }
+  const records = visibleRecords(this.summary.records);
+  return records.slice(0, dashboard.RECENT_RECORD_LIMIT);
 }
 
 // 将记录时长换算为分钟，record 是接口返回的一条记录
 function recordMinutes(record) {
   const seconds = Math.max(0, Number(record.durationSeconds) || 0);
-  return (seconds / 60).toFixed(1);
+  return (seconds / 60).toFixed(dashboard.DURATION_DECIMALS);
 }
 
 // 同时读取游戏和记录，成功后一次更新概览，旧账户的响应直接丢弃
@@ -372,16 +318,21 @@ async function loadDashboard() {
   this.loading = true;
   this.error = "";
   try {
-    const results = await Promise.all([getGames("catalog", ""), getRecords()]);
+    const results = await Promise.all([
+      getGames("catalog", ""),
+      getRecords(),
+      readGameCovers(),
+    ]);
     if (requestId !== this.requestId || token !== store.userInfo.token) {
       return;
     }
-    for (const result of results) {
+    for (const result of results.slice(0, 2)) {
       if (result.code !== 0 || !Array.isArray(result.data)) {
         throw new Error(result.msg || "游戏概览读取失败");
       }
     }
     const now = new Date();
+    this.installedGames = results[2];
     this.summary = dashboard.summarizeDashboard(
       results[0].data,
       results[1].data,
@@ -427,16 +378,16 @@ function invalidateRequest() {
 
 export default {
   name: "MainPage",
-  components: { DashboardActivity: DashboardActivity },
+  components: {
+    DashboardActivity: DashboardActivity,
+    DashboardAccount: DashboardAccount,
+  },
   data: homeState,
   computed: {
     userInfo: readUserInfo,
-    displayName: readDisplayName,
-    roleName: readRoleName,
-    avatarLetter: readAvatarLetter,
     statistics: readStatistics,
-    libraryPercent: readLibraryPercent,
-    favoritePercent: readFavoritePercent,
+    recentRecords: readRecentRecords,
+    libraryGames: readLibraryGames,
     pendingText: readPendingText,
     emptyLibraryText: readEmptyLibraryText,
     emptyRecordText: readEmptyRecordText,
@@ -444,6 +395,8 @@ export default {
   activated: activateDashboard,
   beforeUnmount: invalidateRequest,
   methods: {
+    outcomeName: outcomeName,
+    describeRecord: recordDescription,
     metric: metric,
     recordMinutes: recordMinutes,
     recordTime: dashboard.formatRecordTime,

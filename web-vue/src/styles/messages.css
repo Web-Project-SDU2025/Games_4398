@@ -1,0 +1,270 @@
+.desktop-shell {
+  --message-badge-size: 18px;
+}
+.message-page {
+  /* 列表宽度和正文阅读宽度分开维护，小屏切换为上下排列 */
+  --message-list-width: 360px;
+  --message-reading-width: 760px;
+  --message-content-height: 360px;
+}
+.message-bell {
+  position: relative;
+  flex-shrink: 0;
+}
+.message-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: var(--message-badge-size);
+  height: var(--message-badge-size);
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  color: var(--color-selected-ink);
+  background: var(--color-selected);
+  font-size: 10px;
+  line-height: 1;
+}
+.message-heading,
+.message-heading > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+.message-heading {
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+.platform-main .message-heading h2 {
+  margin: 0;
+}
+.message-heading > div > span,
+.message-detail-meta,
+.message-row-meta {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.message-heading .i-ep-refresh {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.message-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, var(--message-list-width)) minmax(0, 1fr);
+  margin-top: var(--space-lg);
+  min-height: var(--message-content-height);
+}
+.message-list {
+  min-width: 0;
+  border-right: 1px solid var(--color-rule);
+  padding-right: var(--space-lg);
+}
+.message-list ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.message-list li {
+  border-bottom: 1px solid var(--color-rule);
+}
+.message-page .message-list button {
+  border: 0;
+  border-radius: 0;
+  background: var(--color-clear);
+}
+.message-list li button {
+  width: 100%;
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md) 12px;
+  text-align: left;
+  white-space: normal;
+}
+.message-list strong {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.message-list .is-unread strong {
+  font-weight: 700;
+}
+.message-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+.message-list .is-selected {
+  box-shadow: inset 3px 0 var(--color-accent);
+  background: var(--color-paper-3);
+}
+.message-page .message-list .is-selected {
+  background: var(--color-paper-3);
+}
+.message-list .admin-pagination {
+  justify-content: flex-start;
+  gap: var(--space-sm);
+  font-size: 12px;
+}
+.message-detail {
+  padding: var(--space-md) var(--space-lg);
+  min-width: 0;
+}
+.message-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-sm) var(--space-md);
+  margin: var(--space-md) 0;
+}
+.message-title-row h3 {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 1.5;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.message-edit-button {
+  flex: 0 0 auto;
+}
+.message-detail-meta {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+.message-content {
+  max-width: var(--message-reading-width);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.message-feedback-status {
+  max-width: var(--message-reading-width);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
+}
+.message-feedback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+.message-feedback-meta time,
+.message-no-reply {
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}
+.message-feedback-response {
+  max-width: var(--message-reading-width);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
+}
+.message-empty {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.message-notice {
+  color: var(--color-amber);
+}
+.message-composer-dialog textarea {
+  min-height: 180px;
+}
+.message-composer-dialog .game-form {
+  gap: var(--space-md);
+}
+.message-composer-dialog .game-form h3 {
+  margin: 0 0 var(--space-sm);
+  font-size: 20px;
+  font-weight: 600;
+}
+.message-composer-dialog .game-form label {
+  gap: var(--space-sm);
+  color: var(--color-ink);
+}
+.message-composer-dialog .game-form input,
+.message-composer-dialog .game-form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-field);
+  color: var(--color-ink);
+}
+.message-composer-dialog .game-form input {
+  min-height: 42px;
+}
+.message-composer-dialog .game-form textarea {
+  resize: vertical;
+}
+.message-composer-dialog .game-form input:focus-visible,
+.message-composer-dialog .game-form textarea:focus-visible {
+  border-color: var(--color-accent);
+}
+.message-composer-dialog .game-actions {
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+.message-composer-dialog .game-actions button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-clear);
+  color: var(--color-ink);
+}
+.message-composer-dialog .game-actions button:first-child {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+}
+.message-composer-dialog .game-actions button:disabled {
+  opacity: 0.55;
+}
+.message-composer-dialog .game-form [role="status"] {
+  margin: 0;
+  color: var(--color-error);
+}
+.message-markdown-hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-small);
+}
+@media (hover: hover) {
+  .message-composer-dialog .game-actions button:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    background: var(--color-paper-3);
+  }
+  .message-composer-dialog .game-actions button:first-child:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}
+@media (max-width: 65rem) {
+  .message-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .message-list {
+    border-right: 0;
+    padding-right: 0;
+  }
+  .message-detail {
+    padding: var(--space-lg) 0;
+    border-top: 1px solid var(--color-rule);
+    margin-top: var(--space-lg);
+  }
+}

@@ -61,15 +61,70 @@
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: var(--auth-control-size);
+  height: var(--auth-control-size);
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-control);
   color: var(--color-muted);
   background: var(--color-workspace-background);
 }
-.auth-motion-toggle span {
+.auth-settings-toggle {
+  position: fixed;
+  top: var(--space-md);
+  right: calc(
+    var(--space-md) + var(--auth-control-size) * 2 + var(--space-sm) * 2
+  );
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: var(--auth-control-size);
+  height: var(--auth-control-size);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  background: var(--color-workspace-background);
+}
+.auth-motion-toggle span,
+.auth-settings-toggle span {
   font-size: 20px;
+}
+.auth-settings-panel {
+  position: fixed;
+  top: calc(var(--space-md) + var(--auth-control-size) + var(--space-sm));
+  right: var(--space-md);
+  z-index: 3;
+  width: 280px;
+  max-width: calc(100vw - var(--space-lg) * 2);
+  box-sizing: border-box;
+  padding: var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+.auth-settings-panel .settings-row {
+  min-height: 36px;
+}
+.auth-settings-panel .settings-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-accent);
+}
+.auth-settings-panel .settings-range {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+.auth-settings-panel .settings-range > span {
+  display: flex;
+  justify-content: space-between;
+}
+.auth-settings-panel .settings-range output {
+  color: var(--color-muted);
+}
+.auth-settings-panel .settings-range input {
+  width: 100%;
+  accent-color: var(--color-accent);
 }
 .auth-layout {
   max-width: 940px;
@@ -173,15 +228,9 @@
   max-width: 320px;
   height: auto;
 }
-.auth-introduction h2 {
-  font-size: 22px;
-  font-weight: 400;
-}
-.auth-introduction p {
-  color: var(--color-muted);
-  line-height: 1.8;
-  max-width: 300px;
-  margin: 0 auto var(--space-lg);
+.auth-introduction button {
+  display: block;
+  margin: var(--space-md) auto 0;
 }
 @media (min-width: 48rem) {
   .auth-layout {

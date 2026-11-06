@@ -12,6 +12,10 @@ public interface GameRecordRepository extends JpaRepository<GameRecord, Integer>
     List<GameRecord> findByUserUserIdOrderByPlayedAtDesc(Integer userId);
     /** 检查游戏是否存在记录，删除游戏前据此检查关联 */
     boolean existsByGameGameId(Integer gameId);
+    /** 删除管理员已确认清理的游戏记录，与游戏及收藏关系在同一事务提交 */
+    void deleteByGameGameId(Integer gameId);
     /** 删除指定账户的记录，与账户删除事务一起提交 */
     void deleteByUserUserId(Integer userId);
+    /** 查询账户的游戏记录条数，账户列表按此展示活动数量 */
+    long countByUserUserId(Integer userId);
 }

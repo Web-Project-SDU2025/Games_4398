@@ -1,15 +1,6 @@
-/* 星点按远近设置循环时间，近处的大星点移动较快 */
-.auth-page {
-  --dur-auth-star-small: 150s;
-  --dur-auth-star-medium: 100s;
-  --dur-auth-star-large: 55s;
-}
-
 /* 页面内容执行淡化过渡，导航和背景保持原位 */
 .page-enter-active,
-.page-leave-active,
-.panel-enter-active,
-.panel-leave-active {
+.page-leave-active {
   transition: opacity var(--dur-short) var(--ease-out);
 }
 .tab-enter-active,
@@ -31,20 +22,8 @@
   position: relative;
 }
 .page-enter-from,
-.page-leave-to,
-.panel-enter-from,
-.panel-leave-to {
+.page-leave-to {
   opacity: 0;
-}
-.admin-content {
-  position: relative;
-  min-height: 320px;
-}
-.admin-content > .panel-leave-active {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  pointer-events: none;
 }
 .page-leave-active {
   pointer-events: none;
@@ -57,7 +36,6 @@
   inset: 0;
   width: 100%;
 }
-.workspace-page > .system-page,
 .workspace-page > .game-page,
 .workspace-page > .base_form {
   min-height: 100%;
@@ -204,13 +182,21 @@ body dialog[open]::backdrop {
   color: var(--color-ink);
   border-color: var(--color-rule);
 }
+/* 提示框按钮按页面顺序排列，左侧确认，右侧取消 */
+.el-message-box__btns {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+.el-message-box__btns .el-button + .el-button {
+  margin-left: 0;
+}
 
 /* 减少动态效果时不移动内容，保留短淡化以说明状态变化 */
 @media (prefers-reduced-motion: reduce) {
   .page-enter-active,
   .page-leave-active,
-  .panel-enter-active,
-  .panel-leave-active,
   .tab-enter-active,
   .tab-leave-active,
   .motion-results,
@@ -277,14 +263,6 @@ body dialog[open]::backdrop {
     transform: translateY(8px);
   }
 }
-.pet-greeting-enter-active,
-.pet-greeting-leave-active {
-  transition: opacity var(--dur-panel) var(--ease-out);
-}
-.pet-greeting-enter-from,
-.pet-greeting-leave-to {
-  opacity: 0;
-}
 @media (hover: hover) and (pointer: fine) {
   .pet-hide:hover,
   .pet-restore:hover,
@@ -300,9 +278,7 @@ body dialog[open]::backdrop {
     transition-duration: var(--dur-reduced);
   }
   .pet-toggle img,
-  .pet-avatar img,
-  .pet-greeting-enter-active,
-  .pet-greeting-leave-active {
+  .pet-avatar img {
     transition-duration: var(--dur-reduced);
   }
   @starting-style {
@@ -316,15 +292,6 @@ body dialog[open]::backdrop {
   animation-name: auth-star-fall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-}
-.auth-stars-small {
-  animation-duration: var(--dur-auth-star-small);
-}
-.auth-stars-medium {
-  animation-duration: var(--dur-auth-star-medium);
-}
-.auth-stars-large {
-  animation-duration: var(--dur-auth-star-large);
 }
 .auth-page.is-motion-paused .auth-stars {
   animation-play-state: paused;
@@ -341,7 +308,8 @@ body dialog[open]::backdrop {
   .auth-stars {
     animation: none;
   }
-  .auth-motion-toggle {
+  .auth-motion-toggle,
+  .auth-settings-toggle {
     display: none;
   }
 }

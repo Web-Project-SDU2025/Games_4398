@@ -4,17 +4,35 @@ export const PREFERENCES_KEY = "4398-interface-preferences";
 export const TRAIL_DENSITY = { minimum: 5, maximum: 80, defaultValue: 40 };
 // 尾迹大小以像素为单位，限制范围便于保持页面清晰
 export const TRAIL_SIZE = { minimum: 3, maximum: 24, defaultValue: 10 };
-// 单个像素的保留时间与页面中的像素数量上限
+// 单个尾迹像素的保留时间，单位为毫秒
 export const TRAIL_LIFETIME = 450;
+// 页面中同时显示的尾迹像素数量上限
 export const TRAIL_PARTICLE_LIMIT = 48;
+// 背景音乐滑块按百分比保存，实际输出统一乘以音频模块的响度倍率
+export const MUSIC_VOLUME = { minimum: 0, maximum: 100, defaultValue: 30 };
+// 登录星点速度按原速度倍数保存，速度范围为 1 到 8 倍
+export const LOGIN_MOTION_SPEED = {
+  minimum: 1,
+  maximum: 8,
+  defaultValue: 4,
+};
+// 界面开关的初始值，表单和恢复默认共用
+const DEFAULT_SWITCHES = {
+  trailEnabled: true,
+  loginMotion: true,
+  musicEnabled: true,
+};
 
 // 返回一份独立的默认设置，恢复默认时同时重置各个选项
 export function defaultPreferences() {
   return {
-    trailEnabled: true,
+    trailEnabled: DEFAULT_SWITCHES.trailEnabled,
     trailDensity: TRAIL_DENSITY.defaultValue,
     trailSize: TRAIL_SIZE.defaultValue,
-    loginMotion: true,
+    loginMotion: DEFAULT_SWITCHES.loginMotion,
+    loginMotionSpeed: LOGIN_MOTION_SPEED.defaultValue,
+    musicEnabled: DEFAULT_SWITCHES.musicEnabled,
+    musicVolume: MUSIC_VOLUME.defaultValue,
   };
 }
 
@@ -39,8 +57,16 @@ export function normalizePreferences(saved) {
   if (typeof saved.loginMotion === "boolean") {
     settings.loginMotion = saved.loginMotion;
   }
+  settings.loginMotionSpeed = normalizeNumber(
+    saved.loginMotionSpeed,
+    LOGIN_MOTION_SPEED,
+  );
+  if (typeof saved.musicEnabled === "boolean") {
+    settings.musicEnabled = saved.musicEnabled;
+  }
   settings.trailDensity = normalizeNumber(saved.trailDensity, TRAIL_DENSITY);
   settings.trailSize = normalizeNumber(saved.trailSize, TRAIL_SIZE);
+  settings.musicVolume = normalizeNumber(saved.musicVolume, MUSIC_VOLUME);
   return settings;
 }
 

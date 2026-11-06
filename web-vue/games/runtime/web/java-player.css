@@ -1,0 +1,111 @@
+:root {
+  /* 画面留白独立于 Java 原始画布尺寸 */
+  --player-gap: 12px;
+  --player-window-radius: 6px;
+  color-scheme: dark;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+body {
+  margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+/* 运行页文字不可拖选，页面内的表单仍可正常编辑 */
+body,
+body * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+[hidden] {
+  display: none !important;
+}
+#player-feedback {
+  position: absolute;
+  top: var(--player-gap);
+  left: var(--player-gap);
+  right: var(--player-gap);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  color: var(--color-ink);
+  background: var(--color-paper-3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+}
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+#player-status {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+#player-viewport {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  place-items: safe center;
+  padding: var(--player-gap);
+  overflow: auto;
+}
+#java-display {
+  position: relative;
+  overflow: hidden;
+}
+#java-display > #cheerpjDisplay {
+  position: absolute;
+  box-shadow: none;
+}
+#java-display .cjWindow {
+  border-radius: var(--player-window-radius);
+  box-shadow: 0 0 0 1px var(--color-rule);
+}
+#java-display .cjWindow > .cjTitleBar {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  border-radius: var(--player-window-radius) var(--player-window-radius) 0 0;
+}
+#java-display .cjControls {
+  stroke: var(--color-ink);
+}
+#java-display.editor-active .cjWindow:not(:has(.cjTitleBar)) {
+  visibility: hidden;
+}
+/* 社区版原署名随可见画面定位，窗口尺寸变化时保持完整显示 */
+#java-display .cheerpjNC:before {
+  left: var(--credit-left);
+  top: var(--credit-top);
+  bottom: auto;
+  right: auto;
+  width: var(--credit-width);
+  box-sizing: border-box;
+  background: var(--color-paper-2);
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-rule);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 400;
+  z-index: 1;
+}

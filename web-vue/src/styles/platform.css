@@ -1,9 +1,21 @@
-@import "../../../tokens.css";
+@import "./tokens.css";
 
 html,
 body {
   margin: 0;
   overflow-x: clip;
+}
+/* 页面文字默认不可拖选，表单内容仍允许选择、复制和编辑 */
+body,
+body * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 html,
 body,
@@ -73,12 +85,13 @@ h3 {
   --el-text-color-primary: var(--color-ink);
   --el-text-color-regular: var(--color-muted);
   --el-border-color: var(--color-rule);
-  --el-tree-node-hover-bg-color: var(--color-paper-3);
   --el-fill-color-light: var(--color-paper-3);
   --el-color-primary: var(--color-accent);
 }
 /* 登录框架使用统一背景，内容较短时由主体补齐高度，长表单随页面滚动 */
 .auth-shell {
+  /* 登录顶栏的音乐、动画和设置按钮共用尺寸，校标避开三个按钮 */
+  --auth-control-size: 44px;
   display: flex;
   flex-direction: column;
   background: var(--color-workspace-background);
@@ -89,8 +102,10 @@ h3 {
 .auth-shell .platform-header-inner {
   width: 100%;
   box-sizing: border-box;
-  /* 顶栏右侧为固定的动画开关预留位置，小屏校标随布局换行 */
-  padding-right: calc(var(--space-md) * 2 + 44px);
+  /* 为三个快捷开关预留宽度，小屏校标随布局换行 */
+  padding-right: calc(
+    var(--space-md) * 2 + var(--auth-control-size) * 3 + var(--space-sm) * 2
+  );
 }
 .platform-university {
   display: block;
@@ -205,8 +220,7 @@ h3 {
 }
 .game-page input,
 .game-page select,
-.game-page textarea,
-.platform-main .commInput {
+.game-page textarea {
   background: var(--color-field);
   border: 1px solid var(--color-rule);
   color: var(--color-ink);
@@ -232,7 +246,8 @@ h3 {
   color: var(--color-muted);
   font-weight: normal;
 }
-.platform-main dialog {
+.platform-main dialog,
+.message-composer-dialog {
   position: fixed;
   inset: 0;
   margin: auto;
@@ -248,7 +263,8 @@ h3 {
   color: var(--color-ink);
   padding: var(--space-lg);
 }
-.platform-main dialog::backdrop {
+.platform-main dialog::backdrop,
+.message-composer-dialog::backdrop {
   background: var(--color-overlay);
 }
 .platform-main .base_title {
@@ -256,63 +272,9 @@ h3 {
   margin: 0 0 var(--space-lg);
   font-size: 24px;
 }
-.platform-main .base_prompt {
-  margin: 0 0 var(--space-lg);
-  color: var(--color-muted);
-}
 .base_header {
   display: flex;
   align-items: center;
-}
-.platform-main .base_query_oneLine,
-.platform-main .query_left {
-  display: flex;
-  align-items: center;
-  margin: 0 0 var(--space-md);
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-.platform-main .el-tree {
-  background: var(--color-clear);
-  color: var(--color-ink);
-}
-.platform-main .custom-tree-node {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 14px;
-  padding-right: 8px;
-  margin-top: 5px;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-.platform-main .dialog-content {
-  width: 100%;
-  max-width: 100%;
-  border-spacing: var(--space-sm);
-}
-.platform-main .dialog-content td:first-child {
-  white-space: nowrap;
-}
-.platform-main .dialog-content td {
-  padding: var(--space-xs) 0;
-}
-.platform-main .dialog-content tr:last-child td {
-  text-align: right;
-}
-.platform-main .dialog-content input:not([type="checkbox"]) {
-  width: 100%;
-  min-height: 36px;
-}
-.platform-main .dialog-content td:last-child > button {
-  margin-right: var(--space-sm);
-}
-.platform-main .dialog-content input {
-  max-width: 100%;
-  background: var(--color-field);
-  color: var(--color-ink);
 }
 .game-table-wrap {
   max-width: 100%;

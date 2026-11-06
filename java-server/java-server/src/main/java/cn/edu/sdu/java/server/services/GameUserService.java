@@ -19,14 +19,53 @@ public class GameUserService {
     private final UserTypeRepository userTypeRepository;
     private final GameRecordRepository gameRecordRepository;
     private final PasswordEncoder encoder;
+    private final BlockcoinWalletRepository walletRepository;
+    private final MessageService messages;
 
     /** 保存账户、角色和记录仓库，密码操作复用同一编码器 */
     public GameUserService(UserRepository userRepository, UserTypeRepository userTypeRepository,
-                           GameRecordRepository gameRecordRepository, PasswordEncoder encoder) {
+                           GameRecordRepository gameRecordRepository, PasswordEncoder encoder,
+                           BlockcoinWalletRepository walletRepository, MessageService messages) {
         this.userRepository = userRepository;
         this.userTypeRepository = userTypeRepository;
         this.gameRecordRepository = gameRecordRepository;
         this.encoder = encoder;
+        this.walletRepository = walletRepository;
+        this.messages = messages;
+    }
+
+    /** 比较资料字段后只记录发生变化的字段名，通知正文保留联系方式隐私 */
+    private List<String> profileChanges(User user, DataRequest request) {
+        List<String> changes = new ArrayList<String>();
+        if (!Objects.equals(user.getName(), request.getString("name"))) {
+            changes.add("昵称");
+        }
+        if (!Objects.equals(user.getEmail(), request.getString("email"))) {
+            changes.add("邮箱");
+        }
+        if (!Objects.equals(user.getPhone(), request.getString("phone"))) {
+            changes.add("电话");
+        }
+        if (!Objects.equals(user.getSignature(), request.getString("signature"))) {
+            changes.add("个性签名");
+        }
+        return changes;
+    }
+
+    /** 一次资料保存只发送一条通知，重复保存相同字段时保持消息列表原值 */
+    private void notifyChanges(User user, List<String> changes) {
+        if (changes.isEmpty()) {
+            return;
+        }
+        String content = "已更新：" + String.join("、", changes);
+        if (changes.contains("账户身份")) {
+            String role = "游戏用户";
+            if ("ROLE_ADMIN".equals(user.getUserType().getName())) {
+                role = "管理员";
+            }
+            content = content + "\n当前身份：" + role;
+        }
+        messages.notifyAccount("profile:" + UUID.randomUUID(), user.getUserId(), "账户资料变更", content);
     }
 
     /**
@@ -43,23 +82,36 @@ public class GameUserService {
         info.put("phone", user.getPhone());
         info.put("role", user.getUserType().getName());
         info.put("signature", user.getSignature());
+        info.put("createTime", user.getCreateTime());
+        info.put("lastLoginTime", user.getLastLoginTime());
+        info.put("loginCount", user.getLoginCount());
         return info;
     }
 
-    // 查询游戏用户和管理员的资料，返回账户列表
+    /** 查询账户资料及余额、游戏和记录数量，读取列表时保持钱包原值 */
+    @Transactional(readOnly = true)
     public DataResponse getGameUserList(DataRequest request) {
         String search = request.getString("search");
         if (search == null) {
             search = "";
         }
         List<Map<String, Object>> accounts = new ArrayList<>();
+        Map<Integer, Long> balances = new HashMap<Integer, Long>();
+        for (BlockcoinWallet wallet : walletRepository.findAll()) {
+            balances.put(wallet.getUserId(), wallet.getBalance());
+        }
         for (User user : userRepository.findAll()) {
             String name = user.getName();
             if (name == null) {
                 name = "";
             }
             if (user.getUserName().contains(search) || name.contains(search)) {
-                accounts.add(getAccountInfo(user));
+                Map<String, Object> info = getAccountInfo(user);
+                info.put("balance", balances.get(user.getUserId()));
+                info.put("gameCount", user.getGames().size());
+                info.put("favoriteCount", user.getFavorites().size());
+                info.put("recordCount", gameRecordRepository.countByUserUserId(user.getUserId()));
+                accounts.add(info);
             }
         }
         return CommonMethod.getReturnData(accounts);
@@ -112,6 +164,8 @@ public class GameUserService {
         user.setCreateTime(DateTimeTool.parseDateTime(new Date()));
         user.setLoginCount(0);
         userRepository.save(user);
+        messages.notifyAccount("welcome:" + user.getUserId(), user.getUserId(),
+            "账户通知", "欢迎使用 4398 游戏平台");
         return CommonMethod.getReturnMessageOK();
     }
 
@@ -129,11 +183,13 @@ public class GameUserService {
             userId = request.getInteger("userId");
         }
         User user = userRepository.findById(userId).orElseThrow();
+        List<String> changes = profileChanges(user, request);
         user.setName(request.getString("name"));
         user.setEmail(request.getString("email"));
         user.setPhone(request.getString("phone"));
         user.setSignature(request.getString("signature"));
         userRepository.save(user);
+        notifyChanges(user, changes);
         return CommonMethod.getReturnMessageOK();
     }
 
@@ -183,12 +239,17 @@ public class GameUserService {
                 && !"ROLE_ADMIN".equals(role)) {
             return CommonMethod.getReturnMessageError("不能取消系统 admin 或当前账号的管理员身份");
         }
+        List<String> changes = profileChanges(user, request);
+        if (!user.getUserType().getName().equals(role)) {
+            changes.add("账户身份");
+        }
         user.setName(request.getString("name"));
         user.setEmail(request.getString("email"));
         user.setPhone(request.getString("phone"));
         user.setSignature(request.getString("signature"));
         user.setUserType(userTypeRepository.findByName(role));
         userRepository.save(user);
+        notifyChanges(user, changes);
         return CommonMethod.getReturnMessageOK();
     }
 }

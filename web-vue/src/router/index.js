@@ -2,14 +2,21 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useAppStore } from "../stores/app";
 import { ElMessage } from "element-plus";
 
-// 游戏列表、游戏库和收藏共用一个页面，打开时才读取组件
+// 游戏库和收藏共用列表页面，商城按商品布局单独维护
 function loadGameList() {
   return import("../views/game/GameList.vue");
 }
 
-// 路由表，游戏列表、游戏库和收藏复用同一个页面
+// 页面地址保留原项目约定，商城沿用原 GameCatalog 地址
 const routes = [
   { path: "/", redirect: "/Login" },
+  {
+    path: "/Messages",
+    // 消息中心按需加载，所有登录角色共用同一阅读页面
+    component: function loadMessages() {
+      return import("../views/Messages.vue");
+    },
+  },
   {
     path: "/Login",
     // 打开对应页面时再加载组件，减少启动时的等待
@@ -33,25 +40,18 @@ const routes = [
   },
   {
     path: "/MenuManage",
-    meta: { adminOnly: true },
-    // 打开对应页面时再加载组件，减少启动时的等待
-    component: function loadMenu() {
-      return import("../views/system/MenuManage.vue");
-    },
+    redirect: "/AccountManage",
   },
   {
     path: "/DictionaryManage",
-    meta: { adminOnly: true },
-    // 打开对应页面时再加载组件，减少启动时的等待
-    component: function loadDictionary() {
-      return import("../views/system/DictionaryManage.vue");
-    },
+    redirect: "/BlockcoinManage",
   },
   {
     path: "/GameCatalog",
     // 打开对应页面时再加载组件，减少启动时的等待
-    component: loadGameList,
-    props: { mode: "catalog", title: "游戏列表" },
+    component: function loadGameStore() {
+      return import("../views/game/GameStore.vue");
+    },
   },
   {
     path: "/GameLibrary",
@@ -89,6 +89,22 @@ const routes = [
     // 打开对应页面时再加载组件，减少启动时的等待
     component: function loadAccounts() {
       return import("../views/account/AccountManage.vue");
+    },
+  },
+  {
+    path: "/BlockcoinManage",
+    meta: { adminOnly: true },
+    // 收支页面独立加载，账户选择由查询参数传入
+    component: function loadBlockcoin() {
+      return import("../views/account/BlockcoinManage.vue");
+    },
+  },
+  {
+    path: "/RecordManage",
+    meta: { adminOnly: true },
+    // 管理员记录页面复用原有增删改查
+    component: function loadRecordManagement() {
+      return import("../views/account/RecordManage.vue");
     },
   },
   {

@@ -1,29 +1,37 @@
-import {
-  GAME_REGISTRY,
-  GAME_ID_PATTERN,
-  normalizeManifest,
-  PLAYER_DEFAULTS,
-} from "./game-manifest.mjs";
+import { PLAYER_DEFAULTS } from "./game-manifest.mjs";
 import { loadGameResources } from "./game-resources.mjs";
 import { centerGameDisplay } from "./game-display.mjs";
+import {
+  PLAYER_MESSAGES,
+  MAIN_ADAPTER,
+  EDITOR_LEVEL_PROPERTY,
+  gameOwner,
+  playerMessage,
+  editorLevel,
+  EDITOR_ACCESS_PROPERTY,
+} from "./game-session.mjs";
+import { readRegisteredGame } from "./game-registry.mjs";
+import { gameIdentity, economyRequest } from "./game-economy.mjs";
+import { createGameplayTracker } from "./game-play.mjs";
 
-// 网页按游戏能力启动 Java，游戏规则与编辑器由自己的入口提供
+// 网页加载原 Java 入口，游戏与原编辑器共用素材目录和运行环境
 (function startJavaPlayer() {
-  // 运行版本、虚拟桌面尺寸和文件体积限制集中维护
-  const MAIN_ADAPTER = "platform.runtime.MainGame";
-  let adapter = null;
-  let files = null;
   let directory = "";
   let configuration = null;
-  let busy = true;
   let phase = "读取游戏配置";
+  let runtimeLibrary = null;
+  let busy = false;
+  let editorRequested = false;
+  let editorAllowed = false;
+  let tracker = null;
 
-  // 显示启动步骤或文件操作结果，Java 内部窗口单独在虚拟桌面显示
+  // 仅在操作失败时显示提示，正常加载由游戏画面自行显示
   function status(message) {
+    document.getElementById("player-feedback").hidden = false;
     document.getElementById("player-status").textContent = message;
   }
 
-  // 普通网页异常读取原消息，Java 异常由具体适配方法返回可显示的文字
+  // 读取网页或 Java 异常中的消息，便于识别具体失败阶段
   async function errorMessage(error) {
     if (error && typeof error.message === "string") {
       return error.message;
@@ -38,70 +46,20 @@ import { centerGameDisplay } from "./game-display.mjs";
         console.error("读取 Java 异常详情失败", conversionError);
       }
     }
-    return "Java 运行过程遇到异常，请刷新后重试";
+    return "游戏运行遇到异常，请重试";
   }
 
-  // 按当前任务锁定启动与文件按钮，耗时操作完成后恢复操作
-  function controls(disabled) {
-    busy = disabled;
-    for (const id of [
-      "open-game",
-      "open-editor",
-      "export-levels",
-      "import-level",
-    ]) {
-      document.getElementById(id).disabled = disabled;
-    }
-    if (configuration) {
-      document.getElementById("open-editor").hidden =
-        !configuration.capabilities.editor;
-      document.getElementById("export-levels").hidden =
-        !configuration.capabilities.exportData;
-      document.getElementById("import-number-label").hidden =
-        !configuration.capabilities.importData;
-      document.getElementById("import-file-label").hidden =
-        !configuration.capabilities.importData;
-    }
-  }
-
-  // 从明确登记的配置加载游戏，运行时只读取站内目录中的类和资源
+  // 按站内注册表校验游戏配置，用户目录按账户独立保存
   async function loadConfiguration() {
     const parameters = new URLSearchParams(location.search);
     const id = parameters.get("game");
-    if (!id || !GAME_ID_PATTERN.test(id)) {
-      throw new Error("游戏编号格式不正确");
-    }
-    const registryResponse = await fetch(GAME_REGISTRY, { cache: "no-store" });
-    if (!registryResponse.ok) {
-      throw new Error("游戏清单读取失败");
-    }
-    const registry = await registryResponse.json();
-    const address = "/games/" + id + "/game.json";
-    if (!Array.isArray(registry) || !registry.includes(address)) {
-      throw new Error("此游戏尚未登记");
-    }
-    const response = await fetch(address, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("游戏配置读取失败");
-    }
-    const source = await response.json();
-    const game = normalizeManifest(source, address);
-    let owner = parameters.get("owner") || "standalone";
-    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(owner)) {
-      owner = "standalone";
-    }
+    const game = await readRegisteredGame(id, window.fetch.bind(window));
+    const owner = gameOwner(parameters.get("owner"));
     directory = "/files/4398/" + id + "/" + owner + "/assets";
-    const number = document.getElementById("level-number");
-    number.min = game.imports.minimum;
-    number.max = game.imports.maximum;
-    number.value = game.imports.minimum;
-    document.getElementById("import-level").accept = game.imports.accept;
-    document.getElementById("import-number-label").firstChild.textContent =
-      game.imports.label + " ";
     return game;
   }
 
-  // 普通 main 参数可引用账户素材目录，每项独立展开后传入 Java 入口
+  // 展开普通 Java main 的素材与数据路径，各参数保持独立
   function mainArguments(editorMode) {
     let source = configuration.arguments;
     if (editorMode) {
@@ -119,7 +77,7 @@ import { centerGameDisplay } from "./game-display.mjs";
     return values.join("\n");
   }
 
-  // 根据完整类名逐层读取 Java 代理，配置中填写的适配器共用同一入口
+  // 根据完整类名逐层查找 Java 类，普通入口与专用适配器共用查找过程
   async function javaClass(library, name) {
     let current = library;
     for (const part of name.split(".")) {
@@ -128,126 +86,150 @@ import { centerGameDisplay } from "./game-display.mjs";
     return await current;
   }
 
-  // 打开原 Java 游戏或编辑器，首次加载素材较慢时保持明确的等待提示
-  async function open(editorMode) {
-    if (busy || !adapter) {
+  // 标题按钮复用当前 Java 实例，首次准备期间的请求在游戏就绪后处理
+  async function openCurrentEditor() {
+    if (!editorAllowed) {
       return;
     }
-    controls(true);
-    status("正在加载原 Java 素材和窗口");
+    if (!runtimeLibrary) {
+      editorRequested = true;
+      return;
+    }
+    if (busy || !configuration.capabilities.editor) {
+      return;
+    }
+    busy = true;
     try {
-      if (editorMode && !configuration.capabilities.editor) {
-        throw new Error("此游戏尚未提供编辑器");
-      }
-      if (configuration.adapter) {
-        await adapter.open(directory, editorMode);
-      } else {
-        let entry = configuration.mainClass;
-        if (editorMode) {
-          entry = configuration.editorMainClass;
-        }
-        const result = await adapter.open(entry, mainArguments(editorMode));
-        if (result !== "") {
-          throw new Error(result);
-        }
-      }
-      status("Java 游戏已就绪");
+      await open(runtimeLibrary, true);
     } catch (error) {
-      status("窗口打开失败：" + (await errorMessage(error)));
+      status("编辑器打开失败：" + (await errorMessage(error)));
     } finally {
-      controls(false);
+      busy = false;
     }
   }
 
-  // 工具栏游戏入口复用统一窗口启动过程
-  function openGame() {
-    open(false);
-  }
-
-  // 工具栏编辑入口复用统一窗口启动过程
-  function openEditor() {
-    open(true);
-  }
-
-  // 导出关卡与封面为 ZIP，下载由浏览器完成
-  async function exportLevels() {
-    if (busy) {
+  // 仅关闭原编辑器，试玩和时钟由原编辑器自己的清理方法结束
+  async function closeCurrentEditor() {
+    if (!runtimeLibrary || busy) {
       return;
     }
-    controls(true);
+    busy = true;
     try {
-      const encoded = await files.exportData(
-        directory,
-        configuration.dataDirectory,
-      );
-      const content = atob(encoded);
-      const bytes = new Uint8Array(content.length);
-      for (let index = 0; index < content.length; index = index + 1) {
-        bytes[index] = content.charCodeAt(index);
-      }
-      const url = URL.createObjectURL(
-        new Blob([bytes], { type: "application/zip" }),
-      );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = configuration.id + "-levels.zip";
-      link.click();
-      // 浏览器取得下载地址后释放临时对象
-      function releaseDownload() {
-        URL.revokeObjectURL(url);
-      }
-      setTimeout(releaseDownload, PLAYER_DEFAULTS.downloadReleaseDelay);
-      status("关卡备份已导出");
+      const adapter = await javaClass(runtimeLibrary, configuration.adapter);
+      await adapter.closeEditor();
     } catch (error) {
-      status("关卡导出失败：" + (await errorMessage(error)));
+      status("编辑器关闭失败：" + (await errorMessage(error)));
     } finally {
-      controls(false);
+      busy = false;
     }
   }
 
-  // 导入单个 JSON 关卡，先验证大小和编号，再由原 Java 编辑器校验内容
-  async function importLevel(event) {
-    const file = event.target.files[0];
-    const input = document.getElementById("level-number");
-    if (!file || busy) {
+  // 只接收同源平台发送的窗口指令，游戏内按钮继续走原 Java 编辑器入口
+  async function receiveCommand(event) {
+    const message = playerMessage(event, window.parent, location.origin);
+    if (!message) {
       return;
     }
-    if (!input.reportValidity() || file.size > configuration.imports.maxBytes) {
-      status("请检查文件体积与" + configuration.imports.label + "范围");
-      return;
+    if (message.type === PLAYER_MESSAGES.openEditor) {
+      openCurrentEditor();
+    } else if (message.type === PLAYER_MESSAGES.closeEditor) {
+      closeCurrentEditor();
+    } else if (message.type === PLAYER_MESSAGES.stopGame) {
+      try {
+        if (runtimeLibrary && configuration.adapter) {
+          const adapter = await javaClass(
+            runtimeLibrary,
+            configuration.adapter,
+          );
+          await adapter.close();
+        }
+        if (tracker) {
+          await tracker.stop();
+        }
+      } finally {
+        window.parent.postMessage(
+          { type: PLAYER_MESSAGES.gameStopped },
+          location.origin,
+        );
+      }
     }
-    controls(true);
-    try {
-      const text = await file.text();
-      const result = await adapter.importData(
-        directory,
-        Number(input.value),
-        text,
+  }
+
+  // 将 Java 桌面中的编辑器状态交给平台，原 iframe 保持挂载并继续使用同一运行环境
+  function editorModeChanged(opened) {
+    if (tracker) {
+      tracker.pause(opened);
+    }
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        { type: PLAYER_MESSAGES.editorState, open: opened },
+        location.origin,
       );
+    }
+  }
+
+  // 启动原 Java 游戏或编辑器，文件读写与关卡操作继续由原程序完成
+  async function open(library, editorMode) {
+    if (editorMode && (!configuration.capabilities.editor || !editorAllowed)) {
+      throw new Error("关卡编辑器仅管理员可用");
+    }
+    let adapterClass = MAIN_ADAPTER;
+    if (configuration.adapter) {
+      adapterClass = configuration.adapter;
+    }
+    const adapter = await javaClass(library, adapterClass);
+    if (configuration.adapter) {
+      await adapter.open(directory, editorMode);
+    } else {
+      let entry = configuration.mainClass;
+      if (editorMode) {
+        entry = configuration.editorMainClass;
+      }
+      const result = await adapter.open(entry, mainArguments(editorMode));
       if (result !== "") {
         throw new Error(result);
       }
-      status("关卡已导入，请在编辑器中重新载入该编号");
-    } catch (error) {
-      status("关卡导入失败：" + (await errorMessage(error)));
-    } finally {
-      event.target.value = "";
-      controls(false);
     }
   }
 
-  // 初始化 Java 十七环境并安装素材包，后续打开窗口复用这一个运行实例
+  // 自动安装素材并打开游戏，正常加载保持无文字提示，失败时显示具体原因
   async function initialize() {
     try {
       configuration = await loadConfiguration();
-      document.getElementById("game-title").textContent = configuration.name;
-      if (typeof cheerpjInit !== "function") {
-        throw new Error("Java 运行环境尚未加载，请检查网络后刷新");
+      const parameters = new URLSearchParams(location.search);
+      const editorMode = parameters.get("mode") === "editor";
+      const identity = gameIdentity(localStorage);
+      const authorization = await economyRequest(
+        "authorize",
+        {
+          gamePath: "/games/" + configuration.id + "/game.json",
+          editor: editorMode,
+        },
+        identity,
+        window.fetch.bind(window),
+      );
+      if (authorization.code !== 0) {
+        throw new Error(authorization.msg);
       }
-      phase = "自动加载浏览器运行环境";
-      status("正在自动准备游戏运行环境，无需安装");
+      directory =
+        "/files/4398/" +
+        configuration.id +
+        "/" +
+        authorization.data.userId +
+        "/assets";
+      editorAllowed = authorization.data.editorAllowed === true;
+      document.title = configuration.name;
+      if (editorMode) {
+        document.title = configuration.name + " · 关卡编辑器";
+      }
+      if (typeof cheerpjInit !== "function") {
+        throw new Error("游戏运行环境尚未加载，请检查网络后重试");
+      }
+      phase = "准备游戏运行环境";
       configurePixelRatio();
-      await cheerpjInit({ version: PLAYER_DEFAULTS.javaVersion });
+      await cheerpjInit({
+        version: PLAYER_DEFAULTS.javaVersion,
+      });
       cheerpjCreateDisplay(
         configuration.display.width,
         configuration.display.height,
@@ -256,19 +238,18 @@ import { centerGameDisplay } from "./game-display.mjs";
       centerGameDisplay(
         configuration.display.width,
         configuration.display.height,
+        editorModeChanged,
       );
-      phase = "自动加载游戏资源";
+      phase = "加载游戏资源";
       const resources = await loadGameResources(
         configuration,
         window.fetch.bind(window),
         cheerpOSAddStringFile,
         cheerpOSRemoveStringFile,
-        status,
       );
-      phase = "加载 Java 游戏类";
+      phase = "加载游戏";
       const library = await cheerpjRunLibrary(resources.classpath.join(":"));
-      status("正在安装游戏素材");
-      files = await library.platform.runtime.GameFiles;
+      const files = await library.platform.runtime.GameFiles;
       if (configuration.assets) {
         phase = "安装游戏素材";
         await files.install(
@@ -281,22 +262,40 @@ import { centerGameDisplay } from "./game-display.mjs";
       } else {
         await files.prepare(directory);
       }
-      let adapterClass = MAIN_ADAPTER;
-      if (configuration.adapter) {
-        adapterClass = configuration.adapter;
+      const level = editorLevel(parameters.get("level"), configuration.imports);
+      const system = await library.java.lang.System;
+      await system.setProperty(EDITOR_LEVEL_PROPERTY, String(level));
+      await system.setProperty(EDITOR_ACCESS_PROPERTY, String(editorAllowed));
+      phase = "打开窗口";
+      await open(library, editorMode);
+      runtimeLibrary = library;
+      let eventAdapter = null;
+      if (configuration.capabilities.gameplayEvents) {
+        eventAdapter = await javaClass(library, configuration.adapter);
       }
-      adapter = await javaClass(library, adapterClass);
-      controls(false);
-      const parameters = new URLSearchParams(location.search);
-      await open(parameters.get("mode") === "editor");
+      if (eventAdapter || !editorMode) {
+        tracker = createGameplayTracker(
+          eventAdapter,
+          configuration,
+          identity,
+          window.fetch.bind(window),
+          window,
+        );
+      }
+      document.getElementById("player-feedback").hidden = true;
+      document.body.dataset.ready = "true";
+      if (editorRequested) {
+        editorRequested = false;
+        await openCurrentEditor();
+      }
     } catch (error) {
-      console.error("Java 游戏启动失败阶段：" + phase, error);
+      console.error("游戏启动失败阶段：" + phase, error);
       status("启动失败（" + phase + "）：" + (await errorMessage(error)));
       document.getElementById("retry-start").hidden = false;
     }
   }
 
-  // 当前运行环境直接读取设备像素比，固定独立游戏页的比例，让画布按原始尺寸绘制
+  // 固定独立游戏页的绘制像素比，高分屏继续使用原始画布大小
   function configurePixelRatio() {
     Object.defineProperty(window, "devicePixelRatio", {
       value: PLAYER_DEFAULTS.pixelRatio,
@@ -304,19 +303,12 @@ import { centerGameDisplay } from "./game-display.mjs";
     });
   }
 
-  // 重建当前运行页面并复用浏览器缓存，重新执行环境与资源加载
+  // 重建当前运行环境并复用浏览器缓存，重新执行启动过程
   function retryStart() {
     location.reload();
   }
 
   document.getElementById("retry-start").addEventListener("click", retryStart);
-  document.getElementById("open-game").addEventListener("click", openGame);
-  document.getElementById("open-editor").addEventListener("click", openEditor);
-  document
-    .getElementById("export-levels")
-    .addEventListener("click", exportLevels);
-  document
-    .getElementById("import-level")
-    .addEventListener("change", importLevel);
+  window.addEventListener("message", receiveCommand);
   initialize();
 })();

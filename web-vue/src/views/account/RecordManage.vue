@@ -1,12 +1,15 @@
 <template>
   <section class="game-page">
-    <h2>{{ title }}</h2>
+    <h2>游戏记录管理</h2>
     <form class="game-toolbar" @submit.prevent="query">
       <label>账号或游戏<input v-model.trim="search" /></label>
       <button type="submit" :disabled="loading">查询</button>
       <button type="button" :disabled="loading" @click="edit(null)">
         新增
       </button>
+      <label class="game-checkbox">
+        <input v-model="showHidden" type="checkbox" />显示隐藏记录
+      </label>
     </form>
     <p v-reveal="notice" role="status">{{ notice }}</p>
     <div class="game-table-wrap motion-results" :aria-busy="loaded && loading">
@@ -15,35 +18,60 @@
           <tr>
             <th>账号</th>
             <th>游戏</th>
+            <th>记录</th>
+            <th>奖励（BC）</th>
             <th>分数</th>
-            <th v-if="!scoreOnly">时长（秒）</th>
+            <th>时长（秒）</th>
             <th>游玩时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="record in records" :key="record.recordId">
+          <tr v-for="record in displayedRecords" :key="record.recordId">
             <td>{{ record.username }}</td>
             <td>{{ record.name }}</td>
+            <td>{{ describeRecord(record) }}</td>
+            <td>{{ record.reward || 0 }}</td>
             <td>{{ record.score }}</td>
-            <td v-if="!scoreOnly">{{ record.durationSeconds }}</td>
+            <td>{{ record.durationSeconds }}</td>
             <td>{{ record.playedAt }}</td>
             <td>
               <div class="game-actions">
-                <button type="button" @click="edit(record)">修改</button
-                ><button type="button" @click="remove(record)">删除</button>
+                <button
+                  v-if="!record.automatic"
+                  type="button"
+                  @click="edit(record)"
+                >
+                  修改
+                </button>
+                <button
+                  v-if="record.hidden"
+                  type="button"
+                  :disabled="updating !== null"
+                  @click="changeVisibility(record, false)"
+                >
+                  恢复显示
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  :disabled="updating !== null"
+                  @click="changeVisibility(record, true)"
+                >
+                  隐藏
+                </button>
               </div>
             </td>
           </tr>
-          <tr v-if="records.length === 0">
-            <td :colspan="columnCount">暂无数据</td>
+          <tr v-if="displayedRecords.length === 0">
+            <td colspan="8">暂无数据</td>
           </tr>
         </tbody>
       </table>
     </div>
     <dialog ref="editor">
       <form class="game-form" @submit.prevent="save">
-        <h3>{{ title }}</h3>
+        <h3>游戏记录</h3>
         <label
           >账号<select v-model.number="form.userId" aria-label="账号" required>
             <option value="">请选择账号</option>
@@ -105,7 +133,8 @@
 import {
   getAdminRecords,
   saveAdminRecord,
-  deleteAdminRecord,
+  hideAdminRecord,
+  restoreAdminRecord,
 } from "../../services/adminServ.js";
 import { getAccounts } from "../../services/gameUserServ.js";
 import { getGames } from "../../services/gameServ.js";
@@ -113,10 +142,16 @@ import { createRecordForm } from "../../logic/forms.js";
 import { messageConform } from "../../tools/messageBox.js";
 import { getErrorMessage } from "../../logic/account.js";
 import { RECORD_NUMBER_LIMIT } from "../../logic/limits.js";
+import { useAppStore } from "../../stores/app.js";
+import {
+  recordDescription,
+  visibleRecords,
+  recordActionError,
+} from "../../logic/records.js";
 
 export default {
-  props: { scoreOnly: Boolean },
-  // 分数和记录显示同一份数据，只改变列表展示的列
+  name: "RecordManage",
+  // 记录的分数、时长与时间在同一表单维护
   data: function recordManagementState() {
     return {
       recordNumberLimit: RECORD_NUMBER_LIMIT,
@@ -130,22 +165,14 @@ export default {
       saving: false,
       notice: "",
       editorNotice: "",
+      showHidden: false,
+      updating: null,
     };
   },
   computed: {
-    // 按当前管理分类显示标题
-    title: function recordTitle() {
-      if (this.scoreOnly) {
-        return "游戏分数管理";
-      }
-      return "游戏记录管理";
-    },
-    // 空列表单元格覆盖当前所有表格列
-    columnCount: function columnCount() {
-      if (this.scoreOnly) {
-        return 5;
-      }
-      return 6;
+    // 管理员查看完整或可见记录时使用同一份原始结果
+    displayedRecords: function displayedRecords() {
+      return visibleRecords(this.records, this.showHidden);
     },
   },
   // 进入管理视图时读取列表
@@ -153,6 +180,7 @@ export default {
     this.query();
   },
   methods: {
+    describeRecord: recordDescription,
     // 使用现有请求格式查询，等待时保留旧内容
     query: async function query() {
       if (this.loading) {
@@ -160,15 +188,21 @@ export default {
       }
       this.loading = true;
       this.notice = "";
+      const token = useAppStore().userInfo.token;
       try {
         const result = await getAdminRecords(this.search);
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
         if (result.code !== 0) {
           throw new Error(result.msg);
         }
         this.records = result.data;
         this.loaded = true;
       } catch (error) {
-        this.notice = getErrorMessage(error, "读取记录失败");
+        if (token === useAppStore().userInfo.token) {
+          this.notice = getErrorMessage(error, "读取记录失败");
+        }
       } finally {
         this.loading = false;
       }
@@ -219,20 +253,43 @@ export default {
     close: function close() {
       this.$refs.editor.close();
     },
-    // 删除整条游玩记录，分数与记录视图同步更新
-    remove: async function remove(record) {
-      const confirmed = await messageConform("删除这次游玩记录及其分数？");
-      if (!confirmed) {
+    // 隐藏与恢复按当前管理员保存，确认期间切号则结束本次操作
+    changeVisibility: async function changeVisibility(record, hidden) {
+      if (this.updating !== null) {
         return;
       }
+      const token = useAppStore().userInfo.token;
+      if (hidden) {
+        const confirmed = await messageConform("确认隐藏这条游戏记录？");
+        if (!confirmed) {
+          return;
+        }
+      }
+      if (token !== useAppStore().userInfo.token) {
+        return;
+      }
+      this.updating = record.recordId;
+      this.notice = "";
       try {
-        const result = await deleteAdminRecord(record.recordId);
+        let result;
+        if (hidden) {
+          result = await hideAdminRecord(record.recordId);
+        } else {
+          result = await restoreAdminRecord(record.recordId);
+        }
+        if (token !== useAppStore().userInfo.token) {
+          return;
+        }
         if (result.code !== 0) {
           throw new Error(result.msg);
         }
         await this.query();
       } catch (error) {
-        this.notice = getErrorMessage(error, "删除失败");
+        if (token === useAppStore().userInfo.token) {
+          this.notice = recordActionError(error);
+        }
+      } finally {
+        this.updating = null;
       }
     },
   },

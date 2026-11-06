@@ -8,6 +8,18 @@ import * as forms from "../src/logic/forms.js";
 import * as support from "../src/logic/support.js";
 import * as limits from "../src/logic/limits.js";
 import * as dashboard from "../src/logic/dashboard.js";
+import { coinAmount } from "../src/logic/store.js";
+import {
+  outcomeName,
+  recordDescription,
+  visibleRecords,
+  recordActionError,
+} from "../src/logic/records.js";
+import {
+  ADMIN_PAGE_SIZES,
+  ADMIN_SEARCH_LIMIT,
+  blockcoinFilters,
+} from "../src/logic/admin.js";
 
 // 提问只创建用户消息，真实回答由接口成功后添加，编辑记录不修改原对象
 test("客服不再使用本地问答，消息和记录编辑保持独立", function testSupportAndRecords() {
@@ -106,6 +118,17 @@ test("刷新动画支持取消、卸载和减少动态效果", function testMoti
 // 读取列表页面的普通脚本，接口使用测试替身，不访问数据库
 function loadListComponent(filename, services) {
   services.limits = limits;
+  services.GameLauncher = {};
+  services.GamePlayer = {};
+  services.BlockcoinHistory = {};
+  services.DashboardAccount = {};
+  services.MessageBell = {};
+  services.BlockcoinAdjustment = {};
+  services.AccountGameLibrary = {};
+  services.outcomeName = outcomeName;
+  services.recordDescription = recordDescription;
+  services.visibleRecords = visibleRecords;
+  services.recordActionError = recordActionError;
   const url = new URL(filename, import.meta.url);
   const source = fs.readFileSync(url, "utf8");
   const start = source.indexOf("<script>") + "<script>".length;
@@ -126,6 +149,8 @@ test("切号期间按新角色阻止重建管理员页面", function testRoleRen
     Octorange: {},
     PointerTrail: {},
     InterfaceSettings: {},
+    BackgroundMusic: {},
+    MessageComposer: {},
   });
   const state = {
     $route: { meta: { adminOnly: true } },
@@ -141,12 +166,52 @@ test("切号期间按新角色阻止重建管理员页面", function testRoleRen
   assert.equal(component.computed.canViewCurrentPage.call(state), false);
 });
 
-// 管理树请求在切号后返回时保留原数据，当前账号请求失败仍显示提示
-test("切号后丢弃管理员菜单与字典的迟到响应", async function testTreeAccountRace() {
+// 顶栏快捷入口打开反馈表单，提交成功后显示状态
+test(
+  "顶栏快捷反馈直接打开反馈弹窗",
+  function testQuickFeedbackEntry() {
+    const component = loadListComponent("../src/components/Navi.vue", {
+      AccountSwitcher: {},
+      Octorange: {},
+      PointerTrail: {},
+      InterfaceSettings: {},
+      BackgroundMusic: {},
+      MessageComposer: {},
+    });
+    let closedMenu = false;
+    let openedKind = "";
+    const state = {
+      switchNotice: "",
+      // 记录顶栏反馈入口收起菜单的行为
+      closeMenu: function closeMenu() {
+        closedMenu = true;
+      },
+      $refs: {
+        quickFeedback: {
+          // 记录共用反馈弹窗收到的消息类型
+          open: function open(kind) {
+            openedKind = kind;
+          },
+        },
+      },
+    };
+
+    component.methods.openQuickFeedback.call(state);
+    assert.equal(closedMenu, true);
+    assert.equal(openedKind, "feedback");
+    component.methods.feedbackSent.call(state, {
+      kind: "feedback",
+      editing: false,
+    });
+    assert.equal(state.switchNotice, "问题反馈已发送");
+  },
+);
+
+// 管理列表在切号后丢弃迟到响应，当前账号请求失败时保留列表并反馈结果
+test("切号后丢弃账户和游戏记录的迟到响应", async function testManagementAccountRace() {
   const store = { userInfo: { token: "admin-token" } };
   let complete;
   let reject;
-  const notices = [];
   // 返回测试当前身份，令牌由测试控制切换时间
   function useAppStore() {
     return store;
@@ -156,45 +221,95 @@ test("切号后丢弃管理员菜单与字典的迟到响应", async function te
     complete = resolve;
     reject = rejectRequest;
   }
-  // 创建等待中的树读取请求，原列表在等待期间继续保留
-  function readTree() {
+  // 创建等待中的管理请求，原列表在等待期间继续保留
+  function readList() {
     return new Promise(holdRequest);
   }
-  // 记录当前账户的错误提示，供断言检查
-  function message(page, text) {
-    notices.push(text);
-  }
-  for (const filename of [
-    "../src/views/system/MenuManage.vue",
-    "../src/views/system/DictionaryManage.vue",
+  for (const page of [
+    { filename: "../src/views/account/AccountManage.vue", field: "accounts" },
+    { filename: "../src/views/account/RecordManage.vue", field: "records" },
   ]) {
-    const component = loadListComponent(filename, {
+    const component = loadListComponent(page.filename, {
       useAppStore: useAppStore,
-      getMenuTreeNodeList: readTree,
-      getDictionaryTreeNodeList: readTree,
-      message: message,
+      getAccounts: readList,
+      getAdminRecords: readList,
+      getErrorMessage: account.getErrorMessage,
+      coinAmount: coinAmount,
+      RECORD_NUMBER_LIMIT: limits.RECORD_NUMBER_LIMIT,
     });
     const state = component.data();
-    state.nodes = [{ id: 1 }];
+    state[page.field] = [{ id: 1 }];
     store.userInfo.token = "admin-token";
     const failed = component.methods.query.call(state);
     store.userInfo.token = "player-token";
     reject(new Error("Forbidden"));
     await failed;
-    assert.equal(notices.length, 0);
+    assert.equal(state.notice, "");
     assert.equal(state.loading, false);
     store.userInfo.token = "next-admin-token";
     const delayed = component.methods.query.call(state);
     store.userInfo.token = "player-token";
-    complete([{ id: 2 }]);
+    complete({ code: 0, data: [{ id: 2 }] });
     await delayed;
-    assert.equal(state.nodes[0].id, 1);
+    assert.equal(state[page.field][0].id, 1);
     const currentFailure = component.methods.query.call(state);
     reject(new Error("network failure"));
     await currentFailure;
-    assert.equal(notices.length, 1);
-    notices.length = 0;
+    assert.notEqual(state.notice, "");
   }
+});
+
+// 筛选快速变更与账户切换都丢弃旧流水，查询过程使用独立参数副本
+test("收支管理保留最新筛选并隔离账户响应", async function testLedgerRequestRace() {
+  const store = { userInfo: { token: "admin-token" } };
+  const pending = [];
+  // 返回当前令牌，测试按响应顺序模拟切号
+  function useAppStore() {
+    return store;
+  }
+  // 为每次请求保存独立完成入口，模拟后发请求先返回
+  function getAdminBlockcoin(filters) {
+    // Promise 执行器只登记本次请求，响应时机由测试指定
+    function rememberRequest(resolve) {
+      pending.push({ resolve: resolve, filters: filters });
+    }
+    return new Promise(rememberRequest);
+  }
+  const component = loadListComponent(
+    "../src/views/account/BlockcoinManage.vue",
+    {
+      useAppStore: useAppStore,
+      getAdminBlockcoin: getAdminBlockcoin,
+      blockcoinFilters: blockcoinFilters,
+      ADMIN_PAGE_SIZES: ADMIN_PAGE_SIZES,
+      ADMIN_SEARCH_LIMIT: ADMIN_SEARCH_LIMIT,
+      coinAmount: coinAmount,
+      // 时间格式由独立逻辑测试负责，此处保留输入便于验证请求顺序
+      transactionTime: function testTime(value) {
+        return value;
+      },
+    },
+  );
+  const state = component.data();
+  const first = component.methods.query.call(state);
+  state.filters.userId = 12;
+  const second = component.methods.query.call(state);
+  assert.equal(pending[0].filters.userId, "");
+  assert.equal(pending[1].filters.userId, 12);
+  const response = {
+    code: 0,
+    data: { entries: [{ entryId: "latest" }], total: 1, page: 1, pageSize: 20 },
+  };
+  pending[1].resolve(response);
+  await second;
+  pending[0].resolve({ code: 0, data: { entries: [] } });
+  await first;
+  assert.equal(state.entries[0].entryId, "latest");
+  const third = component.methods.query.call(state);
+  store.userInfo.token = "another-admin";
+  pending[2].resolve({ code: 0, data: { entries: [] } });
+  await third;
+  assert.equal(state.entries[0].entryId, "latest");
 });
 
 // 手动控制请求完成时间，检查等待期间旧列表是否仍然存在
@@ -308,6 +423,10 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
     }
     return { code: 0, data: [] };
   }
+  // 安装清单独立于后端统计请求，空清单按游戏名称展示预览
+  async function readInstalledGames() {
+    return [];
+  }
   const component = loadListComponent("../src/views/MainPage.vue", {
     useAppStore: useAppStore,
     getGames: readList,
@@ -315,6 +434,8 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
     dashboard: dashboard,
     account: account,
     DashboardActivity: {},
+    getInstalledGames: readInstalledGames,
+    coinAmount: coinAmount,
   });
   const state = component.data();
   state.userInfo = store.userInfo;
@@ -339,8 +460,8 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
   assert.equal(state.loadedGameRevision, 1);
 });
 
-// 侧栏保持后端原菜单，账户管理在系统管理下只出现一次，缺少分组时创建管理分组
-test("账户管理按角色归入管理分组且保持原菜单", function testSidebarManagement() {
+// 管理菜单替换旧入口并按固定顺序显示，普通用户的侧栏只保留个人功能
+test("管理区按账户、收支和记录顺序排列", function testSidebarManagement() {
   const original = [
     {
       id: 1,
@@ -357,11 +478,13 @@ test("账户管理按角色归入管理分组且保持原菜单", function testS
     },
   ];
   const admin = navigation.createSidebarGroups(original, true);
-  assert.equal(admin[1].sList.length, 2);
-  assert.equal(admin[1].sList[1].name, "AccountManage");
+  assert.equal(admin[1].sList.length, 3);
+  assert.equal(admin[1].sList[0].name, "AccountManage");
+  assert.equal(admin[1].sList[1].name, "BlockcoinManage");
+  assert.equal(admin[1].sList[2].name, "RecordManage");
   assert.equal(original[1].sList[1].name, "GameUserManage");
   const ordinary = navigation.createSidebarGroups(original, false);
-  assert.equal(ordinary[1].sList.length, 1);
+  assert.equal(ordinary.length, 1);
   const fallback = navigation.createSidebarGroups([], true);
   assert.equal(fallback[0].sList[0].name, "AccountManage");
 });
@@ -427,7 +550,7 @@ test("密码只检查必要规则和最大长度", function testPasswords() {
 });
 
 // 编辑表单必须与原对象分开，否则点击取消也可能改变列表文字
-test("游戏、账户和树节点编辑不修改原对象", function testCopies() {
+test("游戏和账户编辑不修改原对象", function testCopies() {
   const original = {
     gameId: 1,
     userId: 1,
@@ -437,14 +560,85 @@ test("游戏、账户和树节点编辑不修改原对象", function testCopies(
   };
   const game = forms.createGameForm(original);
   const user = forms.createAccountForm(original);
-  const node = forms.createNodeForm(original);
   game.name = "已修改";
   user.name = "已修改";
-  node.title = "已修改";
   assert.equal(original.name, "原名称");
   assert.equal(original.title, "原标题");
-  assert.equal(forms.createRoleIds(true, true), "1,2");
-  assert.equal(forms.createRoleIds(false, false), "");
+});
+
+// 资料字段保留固定顺序与空值，长签名由组件按原文字展示
+test("账户概览整理基本资料并保留原字段", function testProfileDetails() {
+  const profile = {
+    email: "player@example.test",
+    phone: "",
+    signature: "草坪守卫",
+    createTime: "2026-11-06 10:00:00",
+  };
+  const details = account.profileDetails(profile);
+  assert.equal(details[0].label, "邮箱");
+  assert.equal(details[0].value, "player@example.test");
+  assert.equal(details[1].value, "—");
+  assert.equal(details[2].value, "2026-11-06 10:00:00");
+  assert.equal(details[3].value, "—");
+  assert.equal(profile.signature, "草坪守卫");
+});
+
+// 两个记录页面都保留隐藏项，开关决定显示范围，恢复请求由各自权限接口处理
+test("记录列表显示隐藏项并恢复显示", async function testRestoreRecordDisplay() {
+  const store = { userInfo: { token: "current" } };
+  const restored = [];
+  let records = [
+    { recordId: 4, hidden: true },
+    { recordId: 5, hidden: false },
+  ];
+  // 模拟当前登录账户，测试全过程保持同一令牌
+  function useAppStore() {
+    return store;
+  }
+  // 记录恢复请求并改变后端返回的显示标记
+  async function restore(recordId) {
+    restored.push(recordId);
+    records[0].hidden = false;
+    return { code: 0 };
+  }
+  // 返回包括隐藏项的完整列表，统计层和界面筛选各自读取
+  async function readRecords() {
+    return { code: 0, data: records };
+  }
+  for (const filename of [
+    "../src/views/game/GameRecords.vue",
+    "../src/views/account/RecordManage.vue",
+  ]) {
+    records = [
+      { recordId: 4, hidden: true },
+      { recordId: 5, hidden: false },
+    ];
+    const component = loadListComponent(filename, {
+      useAppStore: useAppStore,
+      getRecords: readRecords,
+      getAdminRecords: readRecords,
+      restoreRecord: restore,
+      restoreAdminRecord: restore,
+      RECORD_NUMBER_LIMIT: limits.RECORD_NUMBER_LIMIT,
+    });
+    const state = component.data();
+    state.query = component.methods.query.bind(state);
+    await state.query();
+    assert.equal(component.computed.displayedRecords.call(state).length, 1);
+    state.showHidden = true;
+    assert.equal(component.computed.displayedRecords.call(state).length, 2);
+    await component.methods.changeVisibility.call(
+      state,
+      state.records[0],
+      false,
+    );
+    state.showHidden = false;
+    assert.equal(component.computed.displayedRecords.call(state).length, 2);
+    assert.equal(state.updating, null);
+  }
+  assert.deepEqual(restored, [4, 4]);
+  assert.match(recordActionError({ response: { status: 404 } }), /重启后端/);
+  assert.match(recordActionError({ response: { status: 403 } }), /重新登录/);
 });
 
 // 在内存中提供接口替身，验证验证码和注册流程，不创建真实账户

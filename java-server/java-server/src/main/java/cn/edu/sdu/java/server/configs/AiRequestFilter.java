@@ -1,5 +1,6 @@
 package cn.edu.sdu.java.server.configs;
 
+import cn.edu.sdu.java.server.util.AiImageRules;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -89,7 +90,11 @@ public class AiRequestFilter extends OncePerRequestFilter {
             reject(response, 405, "此接口只接受 POST 请求");
             return;
         }
-        if (request.getContentLengthLong() > bodyLimit) {
+        int requestLimit = bodyLimit;
+        if ("/api/ai/image-chat".equals(request.getRequestURI())) {
+            requestLimit = AiImageRules.MAX_REQUEST_BYTES;
+        }
+        if (request.getContentLengthLong() > requestLimit) {
             reject(response, 413, "AI 请求内容过大");
             return;
         }
@@ -106,8 +111,8 @@ public class AiRequestFilter extends OncePerRequestFilter {
             }
         }
         // 即使没有 Content-Length，也只读取上限加一个字节
-        byte[] body = request.getInputStream().readNBytes(bodyLimit + 1);
-        if (body.length > bodyLimit) {
+        byte[] body = request.getInputStream().readNBytes(requestLimit + 1);
+        if (body.length > requestLimit) {
             reject(response, 413, "AI 请求内容过大");
             return;
         }

@@ -10,6 +10,9 @@ import "element-plus/dist/index.css";
 import "uno.css";
 import "~/styles/platform.css";
 import "~/styles/game.css";
+import "~/styles/game-runtime.css";
+import "~/styles/store.css";
+import "~/styles/blockcoin-history.css";
 import "~/styles/auth.css";
 // 提前加载工作区和首页样式，首次切换页面时不用临时改变布局
 import "~/styles/workspace.css";
@@ -17,6 +20,8 @@ import "~/styles/home.css";
 import "~/styles/support.css";
 import "~/styles/pet.css";
 import "~/styles/settings.css";
+import "~/styles/music.css";
+import "~/styles/messages.css";
 import "~/styles/motion.css";
 import { revealDirective } from "./tools/motion.js";
 import { markdownDirective } from "./tools/markdown.js";

@@ -1,4 +1,8 @@
 /* 游戏与账户共用表格布局，颜色和控件外观统一由 platform.css 管理 */
+.platform-main {
+  /* 游戏库弹窗宽度，小屏沿用公共对话框的视口约束 */
+  --admin-library-width: 760px;
+}
 .game-toolbar,
 .game-actions {
   display: flex;
@@ -6,12 +10,48 @@
   gap: var(--space-sm);
   align-items: center;
 }
+.game-toolbar .game-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.game-toolbar .game-checkbox input {
+  width: auto;
+  margin: 0;
+}
 .game-actions > button,
 .game-toolbar > button {
   flex: 0 0 auto;
 }
 .game-table .game-actions {
   flex-wrap: nowrap;
+}
+.account-management .game-table {
+  /* 账户字段保持单行，宽度不足时由表格容器横向滚动 */
+  white-space: nowrap;
+}
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+}
+.admin-pagination > span:first-child {
+  margin-right: auto;
+}
+.admin-income {
+  color: var(--color-success);
+}
+.admin-expense {
+  color: var(--color-amber);
+}
+.platform-main .game-maintenance {
+  margin-top: var(--space-lg);
+  border-top: 1px solid var(--color-rule);
+  padding: var(--space-lg) 0 0;
+  background: var(--color-clear);
 }
 .game-page label {
   display: flex;
@@ -47,6 +87,51 @@
 .game-form textarea {
   min-height: 70px;
   resize: vertical;
+}
+.game-form .admin-operation-modes {
+  display: flex;
+  gap: var(--space-lg);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.admin-operation-modes legend {
+  margin-bottom: var(--space-sm);
+}
+.game-form .admin-operation-modes label,
+.game-form .admin-revocation-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.game-form .admin-operation-modes input,
+.game-form .admin-revocation-confirm input {
+  width: auto;
+  flex-shrink: 0;
+}
+.platform-main .admin-library-dialog {
+  width: var(--admin-library-width);
+}
+.admin-library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.admin-library-heading h3 {
+  margin: 0;
+  min-width: 0;
+}
+.admin-library-heading button > span {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.admin-revocation-form {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-rule);
 }
 .game-form input,
 .game-form select,

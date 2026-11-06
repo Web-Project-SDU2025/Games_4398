@@ -57,6 +57,12 @@ public class AuthService {
         }
         UserDetailsImpl details = (UserDetailsImpl) authentication.getPrincipal();
         User user = userRepository.findById(details.getId()).orElseThrow();
+        recordSuccessfulLogin(user);
+        return ResponseEntity.ok(createSession(user));
+    }
+
+    /** 更新成功登录时间和次数，并保存账户资料 */
+    public void recordSuccessfulLogin(User user) {
         user.setLastLoginTime(DateTimeTool.parseDateTime(new Date()));
         Integer count = user.getLoginCount();
         if (count == null) {
@@ -64,7 +70,6 @@ public class AuthService {
         }
         user.setLoginCount(count + 1);
         userRepository.save(user);
-        return ResponseEntity.ok(createSession(user));
     }
 
     /** 根据数据库账户签发登录信息，本地检查切号与普通登录共用同一格式 */

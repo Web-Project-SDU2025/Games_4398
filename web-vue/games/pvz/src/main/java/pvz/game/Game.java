@@ -1,0 +1,1240 @@
+package pvz.game;
+
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import javax.swing.JPanel;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import pvz.browser.BrowserAccess;
+import pvz.browser.BrowserGameplay;
+import pvz.editor.LevelEditor;
+import pvz.level.Level;
+import pvz.level.LevelLoader;
+import pvz.plant.Card;
+import pvz.plant.Cards;
+import pvz.plant.Plant;
+import pvz.plant.PlantActions;
+import pvz.plant.PlantCatalog;
+import pvz.plant.PlantDefinition;
+import pvz.world.Assets;
+import pvz.world.Car;
+import pvz.world.Layout;
+import pvz.world.Sun;
+import pvz.zombie.Zombie;
+import pvz.zombie.ZombieSpawn;
+
+/**
+ * 游戏总控：处理鼠标输入，并按每一帧推进关卡里的所有东西
+ *
+ * 这个类负责"游戏怎么运行"，不负责"画面长什么样"（那是 GameRenderer 的事），
+ * 也不负责"数据存在哪"（那是 GameState 的事）
+ */
+public class Game extends JPanel {
+    /** 浏览器内每三十三毫秒绘制一次，战斗仍按原固定步长推进 */
+    private static final int BROWSER_FRAME_INTERVAL = 33;
+    /** 累计游玩时长每隔这些毫秒生成一次同步事件 */
+    private static final int GAMEPLAY_PROGRESS_INTERVAL = 5000;
+    /** 单调时钟的纳秒值转换成毫秒 */
+    private static final long NANOSECONDS_PER_MILLISECOND = 1000000;
+    /** 正式游戏参与平台结算，编辑器试玩与测试分别沿用独立流程 */
+    private final boolean rewardEligible;
+    private String playRun = "";
+    private long activePlayMilliseconds;
+    private long lastProgressMilliseconds;
+    private long lastGameplaySample;
+    /** 提供图片素材 */
+    private final Assets assets;
+
+    /** 这一局的所有数据 */
+    private final GameState state = new GameState();
+
+    /** 负责把 state 画出来 */
+    private final GameRenderer renderer;
+
+    /** 是否在这个试玩窗口显示开发者调试信息 */
+    private final boolean developerMode;
+
+    /** 负责出怪、传送带、天空阳光和通关判断 */
+    private final LevelSystem levelSystem;
+
+    /** 负责僵尸、子弹、阳光、小推车和特效的更新 */
+    private final CombatSystem combatSystem;
+
+    /** 负责把关卡 JSON 读成 Level 对象 */
+    private final LevelLoader levelLoader;
+
+    /** 选关页独立管理布局和封面，避免把界面资料放进战斗状态 */
+    private final LevelSelection levelSelection;
+
+    /** 图鉴单独管理浏览与动画，不把展示状态混入植物和僵尸的战斗对象 */
+    private final Almanac almanac;
+
+    /** 保存从当前游戏打开的编辑器，重复点击时恢复原窗口，避免未保存的关卡散落在多个窗口中 */
+    private LevelEditor editorWindow;
+
+    /** 编辑器试玩返回时恢复这局游戏的选关页；普通游戏和独立编辑器试玩没有上级游戏 */
+    private final Game selectionOwner;
+
+    /** 负责场上每一株植物每一帧的行为 */
+    private final PlantActions plantActions;
+
+    /** 是否处于测试模式（测试时跳过选卡动画，立即更新状态） */
+    private final boolean testMode;
+
+    /** 战斗中不足一个固定步长的游戏时间，留到下一次刷新 */
+    private long pendingPlayTime;
+
+    /**
+     * 按运行环境安排画面刷新的计时器
+     *
+     * 保存为字段供 stop 方法结束更新，试玩窗口关闭时同步停止这一局
+     */
+    private final Timer timer;
+
+    /**
+     * 创建游戏画面，并决定是否自动推进和显示开发者调试信息
+     *
+     * 参数：assets 提供素材；firstLevel 是起始关卡；
+     * runTimer 表示是否自动推进；showDeveloperInfo 表示是否显示调试叠层
+     */
+    public Game(Assets assets, int firstLevel, boolean runTimer,
+            boolean showDeveloperInfo) {
+        this(assets, firstLevel, runTimer, showDeveloperInfo, null, null);
+    }
+
+    /** 参数与普通构造方法相同，sourceEditor 是试玩来源，selectionOwner 是需返回的原游戏 */
+    public Game(Assets assets, int firstLevel, boolean runTimer,
+            boolean showDeveloperInfo, LevelEditor sourceEditor, Game selectionOwner) {
+        this.assets = assets;
+        rewardEligible = runTimer && !showDeveloperInfo && sourceEditor == null;
+        editorWindow = sourceEditor;
+        this.selectionOwner = selectionOwner;
+        renderer = new GameRenderer(assets);
+        developerMode = showDeveloperInfo;
+        levelLoader = new LevelLoader(assets);
+        levelSelection = new LevelSelection(assets);
+        almanac = new Almanac(assets);
+        plantActions = new PlantActions(assets, state);
+        levelSystem = new LevelSystem(state, assets, new Random());
+        combatSystem = new CombatSystem(state, assets);
+        // 不启动计时器就说明是测试在手动推帧，这时跳过选卡的飞行动画更省事
+        testMode = !runTimer;
+        state.levelNumber = firstLevel;
+        // 游戏时钟和真实时钟从同一个点起步，之后游戏时钟按倍率累加
+        state.time = System.currentTimeMillis();
+        state.lastRealTime = state.time;
+
+        setPreferredSize(new Dimension(Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT));
+        setFocusable(true);
+        // 图鉴使用 Tab 切换类别，因此让按键进入游戏监听器而不是离开画布
+        setFocusTraversalKeysEnabled(false);
+
+        int frameInterval = Layout.FIXED_STEP_MS;
+        if (Boolean.getBoolean("pvz.browser")) {
+            frameInterval = BROWSER_FRAME_INTERVAL;
+            // 浏览器直接绘制当前画布，减少 Swing 中间缓冲区的整屏复制
+            setDoubleBuffered(false);
+        }
+        timer = new Timer(frameInterval, new FrameListener());
+        timer.setCoalesce(true);
+        if (runTimer) {
+            timer.start();
+        }
+
+        addMouseListener(new GameMouseListener());
+        addMouseMotionListener(new PointerListener());
+        addKeyListener(new SelectionKeyListener());
+    }
+
+    /** 用具名计时回调推进游戏，避免构造方法里嵌入事件逻辑 */
+    private class FrameListener implements ActionListener {
+        /** 参数 event 是计时通知，固定入口保证每帧走同一套更新 */
+        public void actionPerformed(ActionEvent event) {
+            tick();
+        }
+    }
+
+    /** 集中处理鼠标按键，右键取消选择，左键按当前画面分派 */
+    private class GameMouseListener extends MouseAdapter {
+        /** 参数 event 提供按钮和坐标；先获取焦点，让键盘选关立即可用 */
+        public void mousePressed(MouseEvent event) {
+            requestFocusInWindow();
+            if (event.getButton() == MouseEvent.BUTTON3) {
+                state.heldCard = null;
+                state.heldShovel = false;
+            } else if (event.getButton() == MouseEvent.BUTTON1) {
+                handleClick(event.getX(), event.getY(), event.getClickCount());
+            }
+        }
+    }
+
+    /** 移动和拖动复用同一位置记录，保证植物预览跟随鼠标 */
+    private class PointerListener extends MouseMotionAdapter {
+        /** 参数 event 是鼠标位置，供绘图器读取而不直接绘制 */
+        public void mouseMoved(MouseEvent event) {
+            state.mouseX = event.getX();
+            state.mouseY = event.getY();
+        }
+
+        /** 参数 event 是拖动位置，复用普通移动避免两条路径不一致 */
+        public void mouseDragged(MouseEvent event) {
+            mouseMoved(event);
+        }
+    }
+
+    /** 按当前画面分派选关、图鉴和退出按键，避免浏览操作改变战斗输入 */
+    private class SelectionKeyListener extends KeyAdapter {
+        /** 参数 event 提供键码；导航后请求重绘，使键盘选中反馈立即出现 */
+        public void keyPressed(KeyEvent event) {
+            if (state.screen == GameScreen.ALMANAC) {
+                if (almanac.keyPressed(event.getKeyCode(), state.time)) {
+                    state.screen = GameScreen.MENU;
+                }
+                event.consume();
+                repaint();
+            } else if (state.screen == GameScreen.LEVEL_SELECT) {
+                applySelectionAction(levelSelection.keyPressed(event.getKeyCode()));
+                repaint();
+            } else if (event.getKeyCode() == KeyEvent.VK_ESCAPE
+                    && GameScreen.canReturnToSelection(state.screen)) {
+                returnToLevelSelection();
+            }
+        }
+    }
+
+    /**
+     * 推进一次界面刷新：先积攒游戏时间，再按当前画面处理逻辑，最后请求重绘
+     *
+     * 战斗中使用所选倍率；菜单、选卡、开局演出和结算按真实时间推进
+     * 画面刷新率不变，只有战斗逻辑和动画跟着倍率变化
+     */
+    private void tick() {
+        int previousScreen = state.screen;
+        long realElapsed = elapsedSinceLastFrame();
+        if (state.screen == GameScreen.PLAY) {
+            long sample = System.nanoTime();
+            long milliseconds = Math.max(0, (sample - lastGameplaySample) / NANOSECONDS_PER_MILLISECOND);
+            activePlayMilliseconds = activePlayMilliseconds + milliseconds;
+            lastGameplaySample = sample;
+            advancePlayBy(realElapsed * state.speedMultiplier);
+            if (state.screen == GameScreen.LOSS) {
+                finishGameplay("failed");
+            } else if (!playRun.isEmpty()
+                    && activePlayMilliseconds - lastProgressMilliseconds >= GAMEPLAY_PROGRESS_INTERVAL) {
+                BrowserGameplay.progress(playRun, activePlayMilliseconds);
+                lastProgressMilliseconds = activePlayMilliseconds;
+            }
+        } else {
+            state.time = state.time + realElapsed;
+        }
+
+        if (state.screen == GameScreen.MENU && state.startingMenu) {
+            if (state.time - state.screenStart > Layout.MENU_START_DELAY) {
+                state.startingMenu = false;
+                openLevelSelection();
+            }
+        }
+        if (state.screen == GameScreen.CHOOSE) {
+            updateFlyingCards();
+            updateChooserExit();
+        }
+        if (state.screen == GameScreen.INTRO) {
+            updateIntro();
+        }
+        if (state.screen == GameScreen.VICTORY) {
+            if (state.time - state.screenStart > Layout.ENDING_SCREEN_DURATION) {
+                goToNextLevelOrMenu();
+            }
+        }
+        if (state.screen == GameScreen.LOSS) {
+            if (state.time - state.screenStart > Layout.ENDING_SCREEN_DURATION) {
+                state.screen = GameScreen.MENU;
+            }
+        }
+        if (state.screen != previousScreen || needsAnimation()) {
+            repaint();
+        }
+    }
+
+    /** 静态菜单、选关和结算由输入或状态切换触发重绘，战斗与图鉴保持连续动画 */
+    private boolean needsAnimation() {
+        if (state.screen == GameScreen.MENU) {
+            return state.startingMenu;
+        }
+        if (state.screen == GameScreen.LEVEL_SELECT
+                || state.screen == GameScreen.VICTORY || state.screen == GameScreen.LOSS) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 读取这一帧真实经过的时间
+     *
+     * 真实间隔要设个上限：窗口被拖动或最小化时计时器可能卡住很久，
+     * 恢复后如果一次补上几秒，僵尸会瞬间窜过整个草坪
+     * 返回：经过的毫秒数，最多按上限计算
+     */
+    private long elapsedSinceLastFrame() {
+        long realNow = System.currentTimeMillis();
+        long realElapsed = realNow - state.lastRealTime;
+        state.lastRealTime = realNow;
+
+        if (realElapsed < 0) {
+            realElapsed = 0;
+        }
+        if (realElapsed > Layout.MAX_FRAME_ELAPSED) {
+            realElapsed = Layout.MAX_FRAME_ELAPSED;
+        }
+        return realElapsed;
+    }
+
+    /**
+     * 通关时间到了：有下一关就接着打，没有了就回主菜单并退到第 1 关
+     *
+     * 注意 levelNumber 在判定胜利时就已经加过了，所以这里判断的是"下一关"
+     * 没有下一关时重置默认编号，让下次打开选关页从第一关开始选择
+     */
+    private void goToNextLevelOrMenu() {
+        if (Files.exists(assets.levelPath(state.levelNumber))) {
+            loadLevel();
+            return;
+        }
+        state.screen = GameScreen.MENU;
+        state.levelNumber = 0;
+    }
+
+    /**
+     * 更新选卡界面的飞行动画
+     *
+     * 动画完成时才真正改动 selected 列表，这样卡片不会"人还没到、位置先占"
+     * 渲染时卡槽会跳过飞行中的卡片，避免出现一实一虚两张卡；候选区则保留原位并显示为灰色锁定
+     */
+    private void updateFlyingCards() {
+        for (int position = 0; position < state.flyingCards.size(); position = position + 1) {
+            Card card = state.flyingCards.get(position);
+            boolean wasFlying = card.flying;
+            card.updateFly(state.time);
+
+            // 只在"刚刚落地"的那一帧更新一次
+            if (!wasFlying || card.flying) {
+                continue;
+            }
+            if (card.flyingToBar) {
+                state.selected.add(Integer.valueOf(card.index));
+            } else {
+                state.selected.remove(Integer.valueOf(card.index));
+            }
+        }
+        // 把已经落地的卡从飞行列表里删掉。从后往前删，删除后前面的下标不会错位
+        for (int position = state.flyingCards.size() - 1; position >= 0; position = position - 1) {
+            Card card = state.flyingCards.get(position);
+            if (!card.flying) {
+                state.flyingCards.remove(position);
+            }
+        }
+    }
+
+    /** 读取当前关卡，把场地清空并重新摆好卡片和僵尸出场表 */
+    public void loadLevel() {
+        Level level = levelLoader.load(state.levelNumber);
+
+        state.backgroundIndex = level.backgroundIndex;
+        state.background = assets.frame("Background", level.backgroundIndex);
+        state.barType = level.barType;
+        state.sunValue = level.initialSun;
+        state.skySunInterval = level.skySunInterval;
+
+        state.clearField();
+        state.schedule.addAll(level.spawns);
+        state.pool.addAll(level.cardPool);
+        // 两份清单只对正常选卡模式生效，别的模式读进来也没用，索性不拷
+        if (level.isNormalMode()) {
+            state.bannedPlants.addAll(level.bannedPlants);
+            state.requiredPlants.addAll(level.requiredPlants);
+            state.maxCards = level.maxCards;
+        }
+
+        // 每行先摆好推车；保龄球模式会用占用标记限制可投球的位置
+        for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+            state.cars.add(new Car(row));
+            for (int column = 0; column < Layout.COLUMN_COUNT; column = column + 1) {
+                boolean reserved = state.barType == Layout.BAR_BOWLING && column >= 3;
+                state.occupied[row][column] = reserved;
+            }
+        }
+
+        // 三种卡槽模式都从开局演出第一段走起：
+        // 正常选卡关卡推到位之后切到选卡界面，传送带和保龄球推完直接移回草坪
+        startIntro();
+    }
+
+    /**
+     * 开出关卡时，让必选植物一起飞进卡槽
+     *
+     * 和玩家自己点卡是同一套飞行动画，只不过这里同时起飞，
+     * 而且落点按清单顺序排，飞完之后玩家就不能再取消它们了
+     *
+     * 必选张数超过要求数量时只放得下前面几张。编辑器会在存档前提醒这种关卡，
+     * 但关卡文件是给人手改的，真被改坏了也得让玩家进得去、打得成，
+     * 所以这里截断而不是报错
+     */
+    private void launchRequiredCards() {
+        int limit = Math.min(state.requiredPlants.size(), state.maxCards);
+        for (int position = 0; position < limit; position = position + 1) {
+            int plantIndex = state.requiredPlants.get(position).intValue();
+            if (plantIndex >= PlantCatalog.CHOOSER_COUNT) {
+                continue;
+            }
+            if (testMode) {
+                // 测试模式不跑动画，直接占好卡槽
+                state.selected.add(Integer.valueOf(plantIndex));
+                continue;
+            }
+            Card card = chooserCard(plantIndex);
+            int targetLeft = Layout.cardSlotLeft(position);
+            card.startFly(targetLeft, Layout.CARD_BAR_TOP, state.time, true);
+            state.flyingCards.add(card);
+        }
+    }
+
+    /**
+     * 按植物编号在候选区里摆一张卡
+     *
+     * 候选区是一行八张往下排，画卡片和判断点击都要用同一套位置，所以抽出来共用
+     *
+     * 参数：plantIndex 是植物编号
+     * 返回：摆在候选区对应位置上的卡片
+     */
+    private static Card chooserCard(int plantIndex) {
+        int column = plantIndex % 8;
+        int row = plantIndex / 8;
+        int left = Layout.CHOOSER_LEFT + column * Layout.CHOOSER_COLUMN_SPACING;
+        int top = Layout.CHOOSER_TOP + row * Layout.CHOOSER_ROW_SPACING;
+        return new Card(plantIndex, left, top);
+    }
+
+    /** 真正开始打关卡：正常模式先按选好的卡摆出卡槽，然后切到游戏画面 */
+    private void startPlay() {
+        finishGameplay("abandoned");
+        activePlayMilliseconds = 0;
+        lastProgressMilliseconds = 0;
+        lastGameplaySample = System.nanoTime();
+        if (!testMode && Boolean.getBoolean("pvz.browser")) {
+            playRun = BrowserGameplay.begin(assets.levelPath(state.levelNumber),
+                state.levelNumber, !rewardEligible);
+        }
+        pendingPlayTime = 0;
+        state.cards.clear();
+        if (state.barType == Layout.BAR_NORMAL) {
+            state.cards.addAll(Cards.staticBar(state.selected));
+        }
+        // 进入战斗前清理开场展示对象，正式僵尸随后按出场表创建
+        state.introZombies.clear();
+        state.introChooser = false;
+        state.introChooserExiting = false;
+        state.introReturning = false;
+        state.cameraOffset = Layout.CAMERA_LEFT_OFFSET;
+        state.screen = GameScreen.PLAY;
+        state.playStart = state.time;
+        state.lastSkySun = state.time;
+        // 让第一张传送带卡片立即就能出，所以故意往前挪一点
+        state.lastCardTime = state.time - Layout.CONVEYOR_CARD_INTERVAL - 1;
+    }
+
+    /**
+     * 开始开局演出第一段：把镜头推到右边扫一遍僵尸
+     *
+     * 正常选卡关卡推到位之后切到选卡界面，玩家对着僵尸挑卡；
+     * 传送带和保龄球没有选卡环节，推完直接进第二段移回草坪
+     *
+     * 测试模式不跑演出：自检是按"载入关卡就能打"写的，
+     * 让它真等几秒演出，每个用例都得手动推帧，反而更容易写错
+     */
+    private void startIntro() {
+        if (testMode) {
+            if (state.barType == Layout.BAR_NORMAL) {
+                // 正常关卡还是要过一遍选卡界面，自检要点卡槽
+                state.screen = GameScreen.CHOOSE;
+                launchRequiredCards();
+            } else {
+                startPlay();
+            }
+            return;
+        }
+
+        // 卡槽的卡先清空：正常关卡等玩家挑完卡才由 beginIntroReturn 摆好；
+        // 传送带和保龄球的卡由游戏逻辑自己发，演出期间先空着
+        state.cards.clear();
+        buildIntroZombies();
+        state.cameraOffset = Layout.CAMERA_LEFT_OFFSET;
+        state.introStart = state.time;
+        state.introReturning = false;
+        state.introChooser = false;
+        state.screen = GameScreen.INTRO;
+    }
+
+    /**
+     * 开始开局演出第二段：镜头移回草坪，然后倒计时三秒
+     *
+     * 正常关卡是玩家点完"开始"才走到这里；传送带和保龄球在扫视结束时自动进来
+     */
+    private void beginIntroReturn() {
+        // 镜头移回草坪时卡槽要已经摆好，所以这里先把玩家挑的卡放进卡槽
+        state.cards.clear();
+        if (state.barType == Layout.BAR_NORMAL) {
+            state.cards.addAll(Cards.staticBar(state.selected));
+        }
+        state.introChooser = false;
+        state.introChooserExiting = false;
+        state.introReturning = true;
+        state.introReturnStart = state.time;
+        state.screen = GameScreen.INTRO;
+    }
+
+    /**
+     * 把本关会出现的僵尸各摆一只在草坪右侧，供镜头扫视时展示
+     *
+     * 同一品种只摆一只：玩家需要知道的是"这关有哪几种"，不是"有多少只"
+     * 按行的顺序往下摆，一种一行；种类比行数还多时，从右边另起一批继续摆
+     */
+    private void buildIntroZombies() {
+        state.introZombies.clear();
+
+        List<String> kinds = new ArrayList<String>();
+        for (ZombieSpawn spawn : state.schedule) {
+            if (!kinds.contains(spawn.name)) {
+                kinds.add(spawn.name);
+            }
+        }
+
+        for (int index = 0; index < kinds.size(); index = index + 1) {
+            int row = index % Layout.ROW_COUNT;
+            int bank = index / Layout.ROW_COUNT;
+            int x = Layout.INTRO_ZOMBIE_X + bank * Layout.INTRO_ZOMBIE_BANK_SPACING;
+            int bottom = Layout.ZOMBIE_FOOT_BASE + row * Layout.CELL_HEIGHT;
+
+            Zombie zombie = new Zombie(kinds.get(index), row, bottom, assets);
+            // 展示动画与选卡页共用游戏时钟，加载耗时后仍从当前帧正常播放
+            zombie.animationStart = state.time;
+            // 僵尸是"从右边走进来"的，构造时把画布中心对在 ZOMBIE_START_X
+            // （字段 x 存的是左沿，所以那儿存的是 ZOMBIE_START_X 减去半个画布宽）
+            // 这里挪到展示位；用画布左沿对齐，和它出场时的摆法保持一致
+            zombie.x = x;
+            state.introZombies.add(zombie);
+        }
+    }
+
+    /**
+     * 推进开局演出。演出分两段，这里按段分派
+     *
+     * 这个阶段不动关卡里的任何东西——僵尸不出场、阳光不掉、卡片不冷却，
+     * 玩家看到的就是一段纯演出
+     */
+    private void updateIntro() {
+        if (state.introReturning) {
+            updateIntroReturn();
+            return;
+        }
+        updateIntroOpening();
+    }
+
+    /**
+     * 第一段：镜头从草坪往右推，停在最右让玩家看清僵尸
+     *
+     * 正常选卡关卡推到时间就切到选卡界面；传送带和保龄球没有选卡环节，
+     * 直接接着进第二段
+     */
+    private void updateIntroOpening() {
+        long elapsed = state.time - state.introStart;
+
+        if (elapsed < Layout.INTRO_PAN_OUT_TIME) {
+            double progress = (double) elapsed / Layout.INTRO_PAN_OUT_TIME;
+            state.cameraOffset = interpolateCamera(progress);
+            return;
+        }
+        if (elapsed < Layout.INTRO_CHOOSE_PHASE_TIME) {
+            state.cameraOffset = Layout.CAMERA_RIGHT_OFFSET;
+            return;
+        }
+
+        // 推到位了。正常关卡切到选卡界面，玩家对着僵尸挑卡
+        state.cameraOffset = Layout.CAMERA_RIGHT_OFFSET;
+        if (state.barType == Layout.BAR_NORMAL) {
+            state.introChooser = true;
+            state.screenStart = state.time;
+            state.screen = GameScreen.CHOOSE;
+            launchRequiredCards();
+            return;
+        }
+        beginIntroReturn();
+    }
+
+    /**
+     * 第二段：镜头从最右移回草坪，移回之后停在草坪上，倒计时三秒
+     *
+     * 背包如果没有收回去（比如传送带关卡压根没有背包），这里也要兜一下
+     */
+    private void updateIntroReturn() {
+        state.introChooser = false;
+        state.introChooserExiting = false;
+
+        long elapsed = state.time - state.introReturnStart;
+
+        long duration = Layout.introCountdownDelay(state.barType) + Layout.INTRO_COUNTDOWN_TIME;
+        if (elapsed >= duration) {
+            startPlay();
+            return;
+        }
+        if (elapsed < Layout.INTRO_PAN_BACK_TIME) {
+            double progress = 1.0 - (double) elapsed / Layout.INTRO_PAN_BACK_TIME;
+            state.cameraOffset = interpolateCamera(progress);
+            return;
+        }
+        state.cameraOffset = Layout.CAMERA_LEFT_OFFSET;
+    }
+
+    /**
+     * 按进度算出相机该在的横坐标
+     *
+     * 参数：progress 是进度，0 表示在最左（平时那片草坪），1 表示推到最右
+     * 返回：相机截取背景图的横坐标
+     */
+    private static int interpolateCamera(double progress) {
+        int span = Layout.CAMERA_RIGHT_OFFSET - Layout.CAMERA_LEFT_OFFSET;
+        return Layout.CAMERA_LEFT_OFFSET + (int) (span * progress);
+    }
+
+    /**
+     * 处理一次左键点击
+     *
+     * 参数：x 和 y 是点击位置
+     * 说明：设成公开的，是因为自检在别的包里，也要用它模拟点击
+     */
+    public void click(int x, int y) {
+        handleClick(x, y, 1);
+    }
+
+    /** 参数 x、y 是点击位置，clickCount 是连击次数；鼠标和自检共用分派逻辑，保留双击选关 */
+    private void handleClick(int x, int y, int clickCount) {
+        if (state.screen == GameScreen.ALMANAC) {
+            if (almanac.click(x, y, state.time)) {
+                state.screen = GameScreen.MENU;
+            }
+            repaint();
+            return;
+        }
+        if (GameScreen.canReturnToSelection(state.screen)) {
+            Rectangle button = new Rectangle(Layout.RETURN_SELECTION_LEFT,
+                Layout.RETURN_SELECTION_TOP, Layout.RETURN_SELECTION_WIDTH,
+                Layout.RETURN_SELECTION_HEIGHT);
+            if (button.contains(x, y)) {
+                returnToLevelSelection();
+                return;
+            }
+        }
+        if (state.screen == GameScreen.LEVEL_SELECT) {
+            applySelectionAction(levelSelection.click(x, y, clickCount));
+            repaint();
+            return;
+        }
+        if (state.screen == GameScreen.MENU) {
+            clickMenu(x, y);
+            return;
+        }
+        if (state.screen == GameScreen.CHOOSE) {
+            clickCardChooser(x, y);
+            return;
+        }
+        if (state.screen == GameScreen.PLAY) {
+            clickPlay(x, y);
+        }
+    }
+
+    /** 参数 x、y 是菜单点击位置；分派图鉴和冒险模式入口 */
+    private void clickMenu(int x, int y) {
+        Rectangle book = new Rectangle(Layout.ALMANAC_BUTTON_LEFT, Layout.ALMANAC_BUTTON_TOP,
+            Layout.ALMANAC_BUTTON_WIDTH, Layout.ALMANAC_BUTTON_HEIGHT);
+        if (book.contains(x, y)) {
+            state.startingMenu = false;
+            almanac.open(state.time);
+            state.screen = GameScreen.ALMANAC;
+            repaint();
+            return;
+        }
+        Rectangle option = new Rectangle(Layout.MENU_BUTTON_LEFT, Layout.MENU_BUTTON_TOP,
+            Layout.MENU_BUTTON_WIDTH, Layout.MENU_BUTTON_HEIGHT);
+        if (option.contains(x, y)) {
+            if (testMode) {
+                openLevelSelection();
+                return;
+            }
+            state.startingMenu = true;
+            state.screenStart = state.time;
+        }
+    }
+
+    /** 平台按钮复用游戏内的编辑器，选关时使用当前选择，其他画面使用本关编号 */
+    public void showEditor() {
+        int level = state.levelNumber;
+        if (state.screen == GameScreen.LEVEL_SELECT && levelSelection.selectedLevel() >= 0) {
+            level = levelSelection.selectedLevel();
+        }
+        openEditor(level);
+    }
+
+    /** 参数 level 是选关页选中的编号；交给事件线程打开，排队期间切换选择也不会改变本次目标 */
+    private void openEditor(int level) {
+        if (!BrowserAccess.canEdit()) {
+            return;
+        }
+        SwingUtilities.invokeLater(new OpenEditorTask(level));
+    }
+
+    /** 在事件线程中创建或恢复同一个编辑器，连续点击也不会重复创建窗口 */
+    private class OpenEditorTask implements Runnable {
+        private final int level;
+
+        /** 参数 level 是点击编辑按钮时选中的关卡，保存下来避免使用上一局的编号 */
+        OpenEditorTask(int level) {
+            this.level = level;
+        }
+
+        /** 创建时载入选中的关卡，已打开时仅恢复窗口，保留编辑器中尚未保存的内容 */
+        public void run() {
+            if (editorWindow == null || !editorWindow.isDisplayable()) {
+                Path levelDirectory = assets.levelPath(0).getParent();
+                Path assetRoot = levelDirectory.getParent();
+                editorWindow = LevelEditor.createWindow(assets, assetRoot, level, Game.this);
+            }
+            editorWindow.setState(JFrame.NORMAL);
+            editorWindow.setVisible(true);
+            editorWindow.toFront();
+            editorWindow.requestFocus();
+        }
+    }
+
+    /** 进入选关时重新读取封面，编辑器保存过的关卡无需重启游戏就能展示 */
+    private void openLevelSelection() {
+        levelSelection.open(state.levelNumber);
+        state.startingMenu = false;
+        state.screen = GameScreen.LEVEL_SELECT;
+    }
+
+    /** 放弃当前战斗后回到选关，清空对象和动画状态，重选当前关卡时从头开始 */
+    private void returnToLevelSelection() {
+        finishGameplay("abandoned");
+        if (selectionOwner != null) {
+            // 试玩只借用一个窗口，返回时停止试玩并恢复原游戏，避免试玩变成第二个选关入口
+            stop();
+            Window preview = SwingUtilities.getWindowAncestor(this);
+            if (preview != null) {
+                preview.dispose();
+            }
+            selectionOwner.state.levelNumber = state.levelNumber;
+            selectionOwner.returnToLevelSelection();
+            Window original = SwingUtilities.getWindowAncestor(selectionOwner);
+            if (original instanceof JFrame) {
+                JFrame frame = (JFrame) original;
+                frame.setState(JFrame.NORMAL);
+            }
+            if (original != null) {
+                original.setVisible(true);
+                original.toFront();
+            }
+            selectionOwner.requestFocusInWindow();
+            return;
+        }
+        state.clearField();
+        state.introZombies.clear();
+        state.introChooser = false;
+        state.introChooserExiting = false;
+        state.introReturning = false;
+        pendingPlayTime = 0;
+        openLevelSelection();
+        repaint();
+    }
+
+    /** 参数 action 来自选关输入；编辑使用当前选择，只有开始时才载入战斗 */
+    private void applySelectionAction(String action) {
+        if (action.equals("back")) {
+            state.screen = GameScreen.MENU;
+        } else if (action.equals("edit")) {
+            int level = levelSelection.selectedLevel();
+            if (level >= 0) {
+                openEditor(level);
+            }
+        } else if (action.equals("start")) {
+            int level = levelSelection.selectedLevel();
+            if (level >= 0) {
+                state.levelNumber = level;
+                loadLevel();
+            }
+        }
+    }
+
+    /**
+     * 推进背包的收纳动画
+     *
+     * 玩家点了"开始战斗"之后，背包先照着来路沉回画面下方，
+     * 沉完了才轮到镜头移回草坪——两段动画依次播，不会同时挤在一起
+     */
+    private void updateChooserExit() {
+        if (!state.introChooserExiting) {
+            return;
+        }
+        if (state.time - state.chooserExitStart >= Layout.CHOOSER_EXIT_TIME) {
+            beginIntroReturn();
+        }
+    }
+
+    /**
+     * 把战斗推进到指定的游戏时间，不依赖真实时钟
+     *
+     * 参数：elapsed 是本次需要增加的游戏毫秒数
+     * 说明：只给自检用，游戏本身靠计时器推进，不会调用它
+     */
+    public void step(long elapsed) {
+        if (state.screen == GameScreen.PLAY) {
+            long targetTime = state.playStart + elapsed;
+            long remaining = targetTime - state.time - pendingPlayTime;
+            advancePlayBy(remaining);
+        }
+    }
+
+    /**
+     * 把游戏时间积攒起来，按固定的小步推进战斗
+     *
+     * 参数：elapsed 是本次增加的游戏毫秒数；不足一步的部分留给下次
+     */
+    private void advancePlayBy(long elapsed) {
+        if (elapsed <= 0) {
+            return;
+        }
+        pendingPlayTime = pendingPlayTime + elapsed;
+        while (pendingPlayTime >= Layout.FIXED_STEP_MS && state.screen == GameScreen.PLAY) {
+            pendingPlayTime = pendingPlayTime - Layout.FIXED_STEP_MS;
+            state.time = state.time + Layout.FIXED_STEP_MS;
+            updateLevel();
+        }
+    }
+
+    /**
+     * 处理选卡界面的点击：可以取消已选的卡、选中新卡，恰好选满指定数量后才能开始
+     */
+    private void clickCardChooser(int x, int y) {
+        // 演出里的选卡界面正在升起或收起时不接受点击：
+        // 这段时间里画的位置和点击判定的位置对不上，点下去会误触
+        if (state.introChooserExiting) {
+            return;
+        }
+        if (state.introChooser && state.time - state.screenStart < Layout.CHOOSER_RISE_TIME) {
+            return;
+        }
+        if (state.selected.size() == state.maxCards) {
+            BufferedImage button = assets.image("StartButton");
+            Rectangle start = new Rectangle(Layout.START_BUTTON_LEFT, Layout.START_BUTTON_TOP,
+                button.getWidth(), button.getHeight());
+            if (start.contains(x, y)) {
+                // 演出里的选卡界面：先让背包沉回画面下方，沉完才轮到镜头移回草坪
+                // 直接载入选卡界面的老路子（自检）没有演出，点开始就是直接开打
+                if (state.introChooser) {
+                    state.introChooserExiting = true;
+                    state.chooserExitStart = state.time;
+                } else {
+                    startPlay();
+                }
+                return;
+            }
+        }
+
+        // 先看是不是点在已经选中的卡上，是的话就取消选择
+        for (int position = 0; position < state.selected.size(); position = position + 1) {
+            int plantIndex = state.selected.get(position).intValue();
+            int left = Layout.cardSlotLeft(position);
+            Card card = new Card(plantIndex, left, Layout.CARD_BAR_TOP);
+            if (card.bounds(assets, Layout.CARD_SCALE).contains(x, y)) {
+                // 必选植物是关卡强加的，玩家点不掉
+                if (state.requiredPlants.contains(Integer.valueOf(plantIndex))) {
+                    return;
+                }
+                if (testMode) {
+                    state.selected.remove(position);
+                    return;
+                }
+                // 这张卡已经在飞了，就别重复触发
+                if (state.isFlying(plantIndex)) {
+                    return;
+                }
+                // 不立即从 selected 移除，等动画完成后由 updateFlyingCards 处理
+                int column = plantIndex % 8;
+                int row = plantIndex / 8;
+                int targetLeft = Layout.CHOOSER_LEFT + column * Layout.CHOOSER_COLUMN_SPACING;
+                int targetTop = Layout.CHOOSER_TOP + row * Layout.CHOOSER_ROW_SPACING;
+                card.startFly(targetLeft, targetTop, state.time, false);
+                state.flyingCards.add(card);
+                return;
+            }
+        }
+
+        if (state.selected.size() >= state.maxCards) {
+            return;
+        }
+        // 再看是不是点在候选卡上；已经选过的卡不能再选一次
+        for (int index = 0; index < PlantCatalog.CHOOSER_COUNT; index = index + 1) {
+            // 被本关禁掉的植物画成灰色锁定，点了也不该有反应
+            if (state.bannedPlants.contains(Integer.valueOf(index))) {
+                continue;
+            }
+            Card card = chooserCard(index);
+            boolean alreadyChosen = state.selected.contains(Integer.valueOf(index));
+            if (card.bounds(assets, Layout.CHOOSER_CARD_SCALE).contains(x, y) && !alreadyChosen) {
+                if (testMode) {
+                    // 测试模式：立即加到 selected，跳过动画
+                    state.selected.add(Integer.valueOf(index));
+                    return;
+                }
+                // 这张卡已经在飞了，就别重复触发
+                if (state.isFlying(index)) {
+                    return;
+                }
+                // 目标位置要空出正在飞过来的卡所占的槽位，否则两张卡会飞到同一格
+                int targetLeft = Layout.cardSlotLeft(state.nextBarSlot());
+                card.startFly(targetLeft, Layout.CARD_BAR_TOP, state.time, true);
+                state.flyingCards.add(card);
+                return;
+            }
+        }
+    }
+
+    /** 处理游戏中的点击：先看加速按钮和铲子，再收阳光、选卡或种植 */
+    private void clickPlay(int x, int y) {
+        if (clickSpeedButton(x, y)) {
+            return;
+        }
+        if (clickShovelSlot(x, y)) {
+            return;
+        }
+        if (state.heldShovel) {
+            boolean removedPlant = removePlantAt(x, y);
+            if (removedPlant || isEmptyGridCell(x, y)) {
+                state.heldShovel = false;
+            }
+            return;
+        }
+        if (state.heldCard == null) {
+            if (collectSun(x, y)) {
+                return;
+            }
+            selectCard(x, y);
+            return;
+        }
+        plantHeldCard(x, y);
+    }
+
+    /**
+     * 处理铲子卡槽的点击
+     *
+     * 参数：x 和 y 是鼠标坐标
+     * 返回：点中铲子卡槽时返回真
+     */
+    private boolean clickShovelSlot(int x, int y) {
+        if (state.barType != Layout.BAR_NORMAL) {
+            return false;
+        }
+        if (!Layout.insideShovelSlot(x, y)) {
+            return false;
+        }
+        state.heldCard = null;
+        state.heldShovel = !state.heldShovel;
+        return true;
+    }
+
+    /**
+     * 判断鼠标是否点中了没有植物的草坪格子
+     *
+     * 参数：x 和 y 是鼠标坐标
+     * 返回：点中空格子时返回真；否则返回假
+     */
+    private boolean isEmptyGridCell(int x, int y) {
+        int column = Layout.columnAt(x);
+        int row = Layout.rowAt(y);
+        if (x < Layout.GRID_LEFT || y < Layout.LAWN_TOP) {
+            return false;
+        }
+        if (!Layout.insideGrid(row, column)) {
+            return false;
+        }
+        return !state.occupied[row][column];
+    }
+
+    /**
+     * 判断有没有点中右上角的加速按钮
+     *
+     * 返回：点中了就返回真，表示这次点击已经被按钮用掉了
+     */
+    private boolean clickSpeedButton(int x, int y) {
+        Rectangle button = new Rectangle(Layout.SPEED_BUTTON_LEFT, Layout.SPEED_BUTTON_TOP,
+            Layout.SPEED_BUTTON_WIDTH, Layout.SPEED_BUTTON_HEIGHT);
+        if (!button.contains(x, y)) {
+            return false;
+        }
+        state.speedMultiplier = nextSpeedMultiplier(state.speedMultiplier);
+        return true;
+    }
+
+    /** 在可选倍率里找出当前倍率的下一个；已经是最后一个就绕回第一个 */
+    private int nextSpeedMultiplier(int current) {
+        for (int index = 0; index < Layout.SPEED_MULTIPLIERS.length - 1; index = index + 1) {
+            if (Layout.SPEED_MULTIPLIERS[index] == current) {
+                return Layout.SPEED_MULTIPLIERS[index + 1];
+            }
+        }
+        return Layout.SPEED_MULTIPLIERS[0];
+    }
+
+    /**
+     * 试着点掉一颗阳光
+     *
+     * 返回：收走了就返回真；否则返回假，让调用方继续判断是不是点卡
+     */
+    private boolean collectSun(int x, int y) {
+        for (Sun sun : state.suns) {
+            if (!sun.alive) {
+                continue;
+            }
+            Rectangle bounds = sun.bounds(assets, state.time);
+            if (bounds.contains(x, y)) {
+                sun.startCollect(assets, state.time);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 点卡槽：阳光够并且不在冷却中，才能把卡拿在手里 */
+    private void selectCard(int x, int y) {
+        for (Card card : state.cards) {
+            Rectangle bounds = card.bounds(assets, Layout.CARD_SCALE);
+            if (!bounds.contains(x, y)) {
+                continue;
+            }
+            // 传送带和保龄球模式不花阳光、也没有冷却，直接就能拿
+            if (state.barType != Layout.BAR_NORMAL) {
+                state.heldCard = card;
+                return;
+            }
+            PlantDefinition definition = PlantCatalog.definitionAt(card.index);
+            boolean enoughSun = state.sunValue >= definition.cost;
+            boolean cooledDown = state.time - card.lastUsed > definition.cooldown;
+            if (enoughSun && cooledDown) {
+                state.heldCard = card;
+            }
+            return;
+        }
+    }
+
+    /** 手里拿着卡时点击草坪：能种就种下去，点在卡槽区域则取消 */
+    private void plantHeldCard(int x, int y) {
+        // 点回卡槽那一条就当作取消
+        if (y < Layout.PLAY_CARD_BAR_BOTTOM) {
+            state.heldCard = null;
+            return;
+        }
+
+        int column = Layout.columnAt(x);
+        int row = Layout.rowAt(y);
+        if (x < Layout.GRID_LEFT || y < Layout.LAWN_TOP) {
+            return;
+        }
+        if (!Layout.insideGrid(row, column)) {
+            return;
+        }
+        if (state.occupied[row][column]) {
+            return;
+        }
+
+        String name = PlantCatalog.nameAt(state.heldCard.index);
+        int center = Layout.columnCenter(column);
+        int bottom = Layout.rowBottom(row);
+        boolean day = state.backgroundIndex == 0;
+        Plant plant = new Plant(name, center, bottom, row, column, assets, state.time, day);
+        state.plants.add(plant);
+
+        // 保龄球模式不占格子，因为球是要滚走的
+        if (state.barType != Layout.BAR_BOWLING) {
+            state.occupied[row][column] = true;
+        }
+
+        if (state.barType == Layout.BAR_NORMAL) {
+            PlantDefinition definition = PlantCatalog.definitionAt(state.heldCard.index);
+            state.sunValue = state.sunValue - definition.cost;
+            state.heldCard.lastUsed = state.time;
+        } else {
+            // 传送带上的卡用掉一张就少一张
+            state.cards.remove(state.heldCard);
+        }
+        state.heldCard = null;
+    }
+
+    /**
+     * 找到鼠标指向的植物并用铲子移除它
+     *
+     * 参数：x 和 y 是鼠标坐标
+     * 只有点到植物实际可见的碰撞范围时才会移除，点在空草地上不会误伤相邻格子
+     */
+    private boolean removePlantAt(int x, int y) {
+        for (int position = state.plants.size() - 1; position >= 0; position = position - 1) {
+            Plant plant = state.plants.get(position);
+            if (!plant.alive) {
+                continue;
+            }
+            Rectangle bounds = plant.collisionBox(assets, state.time);
+            if (bounds.contains(x, y)) {
+                plantActions.removePlant(plant);
+                state.shovelSwingStart = state.time;
+                state.shovelSwingX = x;
+                state.shovelSwingY = y;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 推进关卡一帧：出僵尸、出卡、掉阳光，然后更新所有物体，最后回收死掉的 */
+    private void updateLevel() {
+        levelSystem.updateSpawnsAndDrops();
+
+        plantActions.updateAll();
+        combatSystem.updateAll();
+
+        // 回收必须放在所有更新之后：这一帧里死亡的物体只有等没人再遍历它们了才能删，
+        // 否则正在跑的那个 for 循环会因为下标错位而漏掉后面的物体
+        state.reapDeadObjects();
+
+        if (levelSystem.isVictoryReady()) {
+            finishGameplay("passed");
+            state.levelNumber = state.levelNumber + 1;
+            state.screen = GameScreen.VICTORY;
+            state.screenStart = state.time;
+        }
+    }
+
+    /**
+     * 把画面画出来
+     *
+     * 这里只把活儿交给 GameRenderer，自己不掺和画图的细节
+     */
+    protected void paintComponent(Graphics graphics) {
+        // 每种画面都先绘制完整底图，背景与角色在同一次绘制中完成
+        Graphics2D painter = (Graphics2D) graphics.create();
+        if (state.screen == GameScreen.ALMANAC) {
+            painter.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            almanac.draw(painter, state.time);
+        } else if (state.screen == GameScreen.LEVEL_SELECT) {
+            painter.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            levelSelection.draw(painter);
+        } else {
+            renderer.draw(painter, state.screen, state.time, state, developerMode);
+        }
+        painter.dispose();
+    }
+
+    /** 返回本关的卡槽模式，供无需窗口的测试核对 */
+    public int getBarType() {
+        return state.barType;
+    }
+
+    /** 返回当前画面编号，供菜单到选关再到关卡的流程验证 */
+    public int getScreen() {
+        return state.screen;
+    }
+
+    /** 返回当前关卡编号，供选关结果验证而不暴露可写状态 */
+    public int getLevelNumber() {
+        return state.levelNumber;
+    }
+
+    /**
+     * 停掉这一局，不再推进画面和逻辑
+     *
+     * 关掉游戏窗口并不会自动停下计时器，这一局会在看不见的地方接着跑，
+     * 白白占着处理器。所以关窗口的时候要记得叫一声 stop
+     */
+    public void stop() {
+        finishGameplay("closed");
+        timer.stop();
+    }
+
+    /** 一局仅发送一次结束事件，返回选关和窗口关闭复用同一清理入口 */
+    private void finishGameplay(String outcome) {
+        if (!playRun.isEmpty()) {
+            BrowserGameplay.finish(playRun, outcome, activePlayMilliseconds);
+            playRun = "";
+        }
+    }
+
+    /**
+     * 查询这一局是不是还在跑
+     *
+     * 返回：计时器还在走就返回真
+     */
+    public boolean isRunning() {
+        return timer.isRunning();
+    }
+
+    /** 返回已经种下的植物数量，供测试核对 */
+    public int getPlantCount() {
+        int count = 0;
+        for (Plant plant : state.plants) {
+            if (plant.alive) {
+                count = count + 1;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 返回此刻还在场上的僵尸数量，供测试核对
+     *
+     * 正在播死亡动画的僵尸仍然算数（它还站着、还占着画面），
+     * 已经倒下的则会在每帧末尾被 reapDeadObjects 清掉，不再计入
+     */
+    public int getZombieCount() {
+        return state.zombies.size();
+    }
+
+    /**
+     * 返回指定僵尸的横坐标，供自检核对不同推进方式的结果
+     *
+     * 参数：index 是僵尸在出场列表中的位置
+     * 返回：该僵尸图片左边缘的横坐标
+     */
+    public double getZombieX(int index) {
+        return state.zombies.get(index).x;
+    }
+
+    /** 返回当前卡槽里的卡片数量，供测试核对 */
+    public int getCardCount() {
+        return state.cards.size();
+    }
+}

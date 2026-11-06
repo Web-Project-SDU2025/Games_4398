@@ -58,6 +58,13 @@ function loadRequests() {
   const context = { axios: { post: post }, useAppStore: useAppStore };
   vm.createContext(context);
   vm.runInContext(source, context);
+  let gameSource = fs.readFileSync(
+    new URL("../src/services/gameServ.js", import.meta.url),
+    "utf8",
+  );
+  gameSource = gameSource.replace(/^import .*;\r?\n/gm, "");
+  gameSource = gameSource.replace(/export /g, "");
+  vm.runInContext(gameSource, context);
   return {
     context: context,
     changed: changed,
@@ -95,4 +102,34 @@ test("切号后迟到的写入响应保留新账户缓存版本", async function
   loaded.switchDuringRequest();
   await loaded.context.writeRequest("/save", {}, "games");
   assert.deepEqual(loaded.changed, []);
+});
+
+// 删除游戏与记录共用成功结果，业务失败和切号场景分别保留当前缓存版本
+test("删除游戏携带关联清理确认并同步记录缓存", async function testGameDeletion() {
+  const loaded = loadRequests();
+  await loaded.context.deleteGame(12);
+  assert.equal(loaded.readRequest().body.data.gameId, 12);
+  assert.equal(loaded.readRequest().body.data.removeRelated, true);
+  assert.deepEqual(loaded.changed, ["games", "records"]);
+  loaded.setResult({ code: 1 });
+  await loaded.context.deleteGame(12);
+  assert.deepEqual(loaded.changed, ["games", "records"]);
+  const racing = loadRequests();
+  racing.switchDuringRequest();
+  await racing.context.deleteGame(12);
+  assert.deepEqual(racing.changed, []);
+});
+
+// 记录操作只发送隐藏地址与编号，资金和游戏归属缓存由原业务维护
+test("记录操作提交隐藏请求", async function testRecordHideRequest() {
+  const loaded = loadRequests();
+  await loaded.context.hideRecord(4);
+  const request = loaded.readRequest();
+  assert.equal(request.url, "/api/game/recordHide");
+  assert.equal(request.body.data.recordId, 4);
+  assert.deepEqual(loaded.changed, ["records"]);
+  await loaded.context.restoreRecord(4);
+  assert.equal(loaded.readRequest().url, "/api/game/recordRestore");
+  assert.equal(loaded.readRequest().body.data.recordId, 4);
+  assert.deepEqual(loaded.changed, ["records", "records"]);
 });

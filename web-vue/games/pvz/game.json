@@ -1,0 +1,45 @@
+{
+  "id": "pvz",
+  "name": "植物大战僵尸",
+  "number": "PVZ",
+  "category": "塔防",
+  "description": "一款轻松有趣的策略塔防游戏。收集阳光，种植向日葵、豌豆射手等各具能力的植物，搭配攻击与防御阵容，抵御一波波来袭的僵尸，守护你的家园。",
+  "runtime": "java17",
+  "adapter": "pvz.browser.BrowserGame",
+  "classpath": ["game.jar", "gson-2.11.0.jar"],
+  "assets": "assets.zip",
+  "assetVersion": "java-1.10-2",
+  "cover": "media/menu.png",
+  "capabilities": {
+    "editor": true,
+    "importData": true,
+    "exportData": true,
+    "gameplayEvents": true
+  },
+  "gameplay": {
+    "reward": 15,
+    "levelDirectory": "levels",
+    "levelPrefix": "level_",
+    "timeArray": "zombie_list",
+    "timeField": "time"
+  },
+  "display": { "width": 1440, "height": 960 },
+  "imports": {
+    "minimum": 0,
+    "maximum": 99,
+    "maxBytes": 2097152,
+    "accept": ".json,application/json",
+    "label": "关卡编号"
+  },
+  "preservedPaths": ["levels"],
+  "dataDirectory": "levels",
+  "build": {
+    "source": "src/main/java",
+    "testSource": "src/test/java",
+    "tests": ["pvz.SelfCheckTest", "pvz.BrowserAdapterTest"],
+    "assets": "assets",
+    "libraries": ["lib/gson-2.11.0.jar"],
+    "licenses": ["LICENSE", "lib/GSON-LICENSE"],
+    "cover": "media/menu.png"
+  }
+}

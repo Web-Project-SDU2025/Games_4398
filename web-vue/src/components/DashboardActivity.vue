@@ -1,16 +1,27 @@
 <template>
   <div class="dashboard-chart">
-    <VChart
-      :option="option"
-      autoresize
-      aria-label="最近七天个人游玩时长，单位为分钟"
-    />
+    <div class="dashboard-chart-caption">
+      <strong>{{ totalHours }}<small>小时</small></strong>
+      <span>游玩时长</span>
+      <fieldset class="dashboard-activity-intervals" aria-label="统计粒度">
+        <label v-for="interval in intervals" :key="interval.hours">
+          <input
+            v-model="intervalHours"
+            type="radio"
+            name="activity-interval"
+            :value="interval.hours"
+          />
+          <span>{{ interval.label }}</span>
+        </label>
+      </fieldset>
+    </div>
+    <VChart :option="option" autoresize :aria-label="chartLabel" />
     <details class="dashboard-chart-data">
-      <summary>查看每日数据</summary>
+      <summary>查看时段数据</summary>
       <dl>
-        <div v-for="day in activity" :key="day.date">
-          <dt>{{ day.label }}</dt>
-          <dd>{{ day.minutes.toFixed(1) }} 分钟</dd>
+        <div v-for="period in activity" :key="period.startTime">
+          <dt>{{ period.label }}</dt>
+          <dd>{{ period.minutes.toFixed(minuteDecimals) }} 分钟</dd>
         </div>
       </dl>
     </details>
@@ -23,6 +34,12 @@ import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
+import {
+  DURATION_DECIMALS,
+  ACTIVITY_INTERVALS,
+  DEFAULT_ACTIVITY_HOURS,
+  aggregateActivity,
+} from "../logic/dashboard.js";
 
 // 活动图内部边距，预留坐标轴文字区域
 const CHART_GRID = { left: 40, right: 16, top: 24, bottom: 32 };
@@ -30,8 +47,8 @@ const CHART_GRID = { left: 40, right: 16, top: 24, bottom: 32 };
 const POINT_SIZE = 6;
 // 折线宽度，单位为像素
 const LINE_WIDTH = 2;
-// 时长显示的小数位数
-const MINUTE_DECIMALS = 1;
+// 纵轴刻度的最小间隔，单位为分钟
+const MINIMUM_TICK_MINUTES = 1;
 
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -41,13 +58,13 @@ function readColor(styles, name) {
   return value.trim();
 }
 
-// 根据七天统计生成折线图参数，图表颜色从当前工作区样式读取
+// 根据当前时段统计生成折线图参数，图表颜色从当前工作区样式读取
 function activityOption() {
   const labels = [];
   const minutes = [];
-  for (const day of this.activity) {
-    labels.push(day.label);
-    const roundedMinutes = day.minutes.toFixed(MINUTE_DECIMALS);
+  for (const period of this.activity) {
+    labels.push(period.label);
+    const roundedMinutes = period.minutes.toFixed(DURATION_DECIMALS);
     minutes.push(Number(roundedMinutes));
   }
   let shell = document.querySelector(".desktop-shell");
@@ -80,7 +97,7 @@ function activityOption() {
     },
     yAxis: {
       type: "value",
-      minInterval: 1,
+      minInterval: MINIMUM_TICK_MINUTES,
       axisLabel: { color: muted },
       splitLine: { lineStyle: { color: rule, type: "dashed" } },
     },
@@ -99,7 +116,35 @@ function activityOption() {
 
 export default {
   components: { VChart: VChart },
-  props: { activity: { type: Array, required: true } },
-  computed: { option: activityOption },
+  props: {
+    records: { type: Array, required: true },
+    generatedAt: { type: Number, required: true },
+    totalHours: { type: String, required: true },
+  },
+  // 切换只重算本地记录，保留当前图表范围与时长精度
+  data: function activityState() {
+    return {
+      minuteDecimals: DURATION_DECIMALS,
+      intervals: ACTIVITY_INTERVALS,
+      intervalHours: DEFAULT_ACTIVITY_HOURS,
+    };
+  },
+  computed: {
+    option: activityOption,
+    // 图表与明细共用同一组时段，刷新记录时保持当前选择
+    activity: function activity() {
+      const now = new Date(this.generatedAt);
+      return aggregateActivity(this.records, now, this.intervalHours);
+    },
+    // 图表的可访问名称同步统计粒度和时长单位
+    chartLabel: function chartLabel() {
+      for (const interval of this.intervals) {
+        if (interval.hours === this.intervalHours) {
+          return "最近七天个人游玩时长，" + interval.label + "汇总，单位为分钟";
+        }
+      }
+      return "最近七天个人游玩时长，单位为分钟";
+    },
+  },
 };
 </script>

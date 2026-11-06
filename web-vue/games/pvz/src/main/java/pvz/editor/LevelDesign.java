@@ -1,0 +1,933 @@
+package pvz.editor;
+
+import com.google.gson.JsonArray;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import pvz.level.LevelJson;
+import pvz.plant.PlantCatalog;
+import pvz.world.Assets;
+import pvz.world.Layout;
+import pvz.zombie.ZombieCatalog;
+import pvz.zombie.ZombieSpawn;
+
+/**
+ * 关卡编辑器眼里的一个关卡
+ *
+ * 关卡文件里的僵尸是一条条"第几毫秒、第几行、什么僵尸"的流水账，
+ * 人看不出波次，也不好改。这个类把它换成一张表格：
+ * 横向是第几波，纵向是草坪第几行，一个格子记着"这一波这一行出哪种僵尸、出几只"
+ * 编辑时改表格，存盘时再把表格摊平回流水账
+ */
+public class LevelDesign {
+    /** 编辑器能放置的僵尸品种，必须都是游戏真正实现了的 */
+    public static final String[] ZOMBIE_KINDS = ZombieCatalog.names();
+
+    /** 和 ZOMBIE_KINDS 一一对应的中文名，只用来显示 */
+    public static final String[] ZOMBIE_LABELS = ZombieCatalog.labels();
+
+    /** 背景选项，下标就是关卡文件里的 background_type */
+    public static final String[] BACKGROUND_LABELS = {
+        "0 - 白天草坪", "1 - 夜晚草坪", "2 - 白天泳池", "3 - 夜晚泳池", "4 - 保龄球草坪"
+    };
+
+    /** 卡槽模式选项，下标就是关卡文件里的 choosebar_type */
+    public static final String[] BAR_LABELS = {
+        "0 - 正常选卡", "1 - 传送带", "2 - 坚果保龄球"
+    };
+
+    /** 最少要有一波，否则表格就空了 */
+    public static final int MIN_WAVE_COUNT = 1;
+
+    /** 最多支持这么多波，再多表格就宽得没法看了 */
+    public static final int MAX_WAVE_COUNT = 40;
+
+    /** 一个格子里最多放这么多只僵尸 */
+    public static final int MAX_CELL_COUNT = 20;
+
+    /** 两波之间的最短间隔 */
+    public static final long MIN_WAVE_INTERVAL = 1000;
+
+    /** 同一格里两只僵尸之间的最短间隔 */
+    public static final long MIN_SPAWN_SPACING = 50;
+
+    /** 新建关卡时，第一波默认等 20 秒再出 */
+    public static final long DEFAULT_FIRST_WAVE_DELAY = 20000;
+
+    /** 新建关卡时，两波之间默认隔 20 秒 */
+    public static final long DEFAULT_WAVE_INTERVAL = 20000;
+
+    /** 新建关卡时，同一格里的僵尸默认错开 0.6 秒 */
+    public static final long DEFAULT_SPAWN_SPACING = 600;
+
+    /** 新建关卡时默认给 8 波 */
+    public static final int DEFAULT_WAVE_COUNT = 8;
+
+    /**
+     * 导入老关卡时，两只僵尸相隔超过这个时间就算换了一波
+     *
+     * 原版关卡里同一波的僵尸都挤在几秒内出场，波与波之间往往隔十几秒，
+     * 拿 5 秒当分界线能把绝大多数关卡分对
+     */
+    private static final long IMPORT_WAVE_GAP = 5000;
+
+    /** 用第几张背景图 */
+    public int backgroundIndex;
+
+    /** 卡槽模式：正常选卡、传送带还是坚果保龄球 */
+    public int barType = Layout.BAR_NORMAL;
+
+    /** 开局赠送的阳光 */
+    public int initialSun = 50;
+
+    /** 自定义截图使用素材目录的相对路径，复制项目后无需修改本机绝对路径 */
+    public String screenshot = "";
+
+    /** 天空每隔多少毫秒掉一颗阳光，也就是阳光自然生成的速度 */
+    public long skySunInterval = Layout.SKY_SUN_INTERVAL;
+
+    /** 进入关卡后等多少毫秒出第一波 */
+    public long firstWaveDelay = DEFAULT_FIRST_WAVE_DELAY;
+
+    /** 相邻两波之间隔多少毫秒，也就是出怪速度 */
+    public long waveInterval = DEFAULT_WAVE_INTERVAL;
+
+    /** 同一格的僵尸按此毫秒间隔依次出现 */
+    public long spawnSpacing = DEFAULT_SPAWN_SPACING;
+
+    /** 传送带和保龄球模式可以出的卡片编号，正常选卡模式用不到 */
+    public final List<Integer> cardPool = new ArrayList<Integer>();
+
+    /** 本关禁止使用的植物编号；只对正常选卡模式生效 */
+    public final List<Integer> bannedPlants = new ArrayList<Integer>();
+
+    /** 本关强制携带、玩家不能取消的植物编号；只对正常选卡模式生效 */
+    public final List<Integer> requiredPlants = new ArrayList<Integer>();
+
+    /**
+     * 本关要求玩家恰好选中的卡片数量
+     *
+     * 只对正常选卡模式生效；选中数量必须等于这个值才能开始战斗
+     */
+    public int maxCards = Layout.DEFAULT_CARD_SLOTS;
+
+    /** 导入老关卡时如果做了近似处理，把说明记在这里给用户看 */
+    public String importNote = "";
+
+    /** 表格里每个格子放的僵尸品种，没放就是 null。第一维是行，第二维是波 */
+    private String[][] kinds = new String[Layout.ROW_COUNT][DEFAULT_WAVE_COUNT];
+
+    /** 表格里每个格子放了几只僵尸，和 kinds 一一对应 */
+    private int[][] counts = new int[Layout.ROW_COUNT][DEFAULT_WAVE_COUNT];
+
+    /** 每个格子是否随机行出怪，和 kinds 一一对应 */
+    private boolean[][] randomRows = new boolean[Layout.ROW_COUNT][DEFAULT_WAVE_COUNT];
+
+    /** 当前一共有几波，也就是表格有几列 */
+    private int waveCount = DEFAULT_WAVE_COUNT;
+
+    /**
+     * 查询当前有几波
+     *
+     * 返回：波数
+     */
+    public int waveCount() {
+        return waveCount;
+    }
+
+    /**
+     * 改变波数，也就是给表格加列或减列
+     *
+     * 减少波数会把后面几波的内容一起丢掉，这是用户主动删列的预期结果
+     *
+     * 参数：newCount 是想要的波数，超出允许范围时会被夹回来
+     */
+    public void setWaveCount(int newCount) {
+        int target = newCount;
+        if (target < MIN_WAVE_COUNT) {
+            target = MIN_WAVE_COUNT;
+        }
+        if (target > MAX_WAVE_COUNT) {
+            target = MAX_WAVE_COUNT;
+        }
+        if (target == waveCount) {
+            return;
+        }
+
+        // 换成新尺寸的表格，再把两者都有的那部分内容搬过去
+        String[][] newKinds = new String[Layout.ROW_COUNT][target];
+        int[][] newCounts = new int[Layout.ROW_COUNT][target];
+        boolean[][] newRandomRows = new boolean[Layout.ROW_COUNT][target];
+        int sharedWaves = Math.min(target, waveCount);
+        for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+            for (int wave = 0; wave < sharedWaves; wave = wave + 1) {
+                newKinds[row][wave] = kinds[row][wave];
+                newCounts[row][wave] = counts[row][wave];
+                newRandomRows[row][wave] = randomRows[row][wave];
+            }
+        }
+        kinds = newKinds;
+        counts = newCounts;
+        randomRows = newRandomRows;
+        waveCount = target;
+    }
+
+    /**
+     * 判断行号和波号是不是都落在表格里
+     *
+     * 参数：row 是行号；wave 是波号
+     * 返回：都在范围内就返回真
+     */
+    public boolean insideGrid(int row, int wave) {
+        if (row < 0 || row >= Layout.ROW_COUNT) {
+            return false;
+        }
+        if (wave < 0 || wave >= waveCount) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 查某个格子放的是哪种僵尸
+     *
+     * 参数：row 是行号；wave 是波号
+     * 返回：僵尸品种名；格子是空的或者坐标越界都返回 null
+     */
+    public String kindAt(int row, int wave) {
+        if (!insideGrid(row, wave)) {
+            return null;
+        }
+        return kinds[row][wave];
+    }
+
+    /**
+     * 查某个格子放了几只僵尸
+     *
+     * 参数：row 是行号；wave 是波号
+     * 返回：僵尸数量；格子是空的或者坐标越界都返回 0
+     */
+    public int countAt(int row, int wave) {
+        if (!insideGrid(row, wave)) {
+            return 0;
+        }
+        return counts[row][wave];
+    }
+
+    /**
+     * 查某个格子是否随机行出怪
+     *
+     * 参数：row 是行号；wave 是波号
+     * 返回：随机行就返回真；格子是空的或者坐标越界都返回假
+     */
+    public boolean randomRowAt(int row, int wave) {
+        if (!insideGrid(row, wave)) {
+            return false;
+        }
+        return randomRows[row][wave];
+    }
+
+    /**
+     * 设置某个格子是否随机行出怪
+     *
+     * 参数：row 是行号；wave 是波号；random 是否随机行
+     */
+    public void setRandomRow(int row, int wave, boolean random) {
+        if (!insideGrid(row, wave)) {
+            return;
+        }
+        randomRows[row][wave] = random;
+    }
+
+    /**
+     * 往某个格子里放僵尸
+     *
+     * 参数：row 是行号；wave 是波号；kind 是僵尸品种名；count 是数量
+     *       kind 传 null 或者 count 不大于 0，都表示把这个格子清空
+     */
+    public void setCell(int row, int wave, String kind, int count) {
+        if (!insideGrid(row, wave)) {
+            return;
+        }
+        if (kind == null || count <= 0) {
+            kinds[row][wave] = null;
+            counts[row][wave] = 0;
+            randomRows[row][wave] = false;
+            return;
+        }
+        kinds[row][wave] = kind;
+        counts[row][wave] = Math.min(count, MAX_CELL_COUNT);
+    }
+
+    /**
+     * 清空某个格子
+     *
+     * 参数：row 是行号；wave 是波号
+     */
+    public void clearCell(int row, int wave) {
+        setCell(row, wave, null, 0);
+    }
+
+    /**
+     * 给某个格子增减僵尸数量
+     *
+     * 参数：row 是行号；wave 是波号；delta 是增减的只数，负数表示减少
+     *       减到 0 时格子会被清空
+     */
+    public void addCount(int row, int wave, int delta) {
+        if (!insideGrid(row, wave)) {
+            return;
+        }
+        if (kinds[row][wave] == null) {
+            return;
+        }
+        int newCount = counts[row][wave] + delta;
+        if (newCount < 0) {
+            newCount = 0;
+        }
+        setCell(row, wave, kinds[row][wave], newCount);
+    }
+
+    /**
+     * 拼出一个格子的文字摘要，比如"路障僵尸 × 2"
+     *
+     * 编辑器用它来提示当前选中的是哪个格子
+     *
+     * 参数：row 是行号；wave 是波号
+     * 返回：摘要文字；格子是空的或者坐标越界都返回 null
+     */
+    public String cellSummary(int row, int wave) {
+        String kind = kindAt(row, wave);
+        if (kind == null) {
+            return null;
+        }
+        int position = indexOfKind(kind);
+        String label = kind;
+        if (position >= 0) {
+            label = ZOMBIE_LABELS[position];
+        }
+        return label + " × " + countAt(row, wave);
+    }
+
+    /**
+     * 切换某个格子的随机行状态
+     *
+     * 参数：row 是行号；wave 是波号
+     */
+    public void toggleRandomRow(int row, int wave) {
+        if (!insideGrid(row, wave)) {
+            return;
+        }
+        randomRows[row][wave] = !randomRows[row][wave];
+    }
+
+    /**
+     * 把一个格子的内容整个搬到另一个格子，源格子清空
+     *
+     * 参数：fromRow、fromWave 是源格子的坐标；toRow、toWave 是目标格子的坐标
+     */
+    public void moveCell(int fromRow, int fromWave, int toRow, int toWave) {
+        if (!insideGrid(fromRow, fromWave) || !insideGrid(toRow, toWave)) {
+            return;
+        }
+        if (fromRow == toRow && fromWave == toWave) {
+            return;
+        }
+        String kind = kinds[fromRow][fromWave];
+        int count = counts[fromRow][fromWave];
+        boolean random = randomRows[fromRow][fromWave];
+        clearCell(fromRow, fromWave);
+        setCell(toRow, toWave, kind, count);
+        randomRows[toRow][toWave] = random;
+    }
+
+    /**
+     * 交换两个格子的内容
+     *
+     * 用交换而不是覆盖：目标格子往往已经有僵尸，直接写进去会把它弄丢
+     *
+     * 参数：firstRow、firstWave 是第一个格子的坐标；secondRow、secondWave 是第二个格子的坐标
+     */
+    public void swapCells(int firstRow, int firstWave, int secondRow, int secondWave) {
+        if (!insideGrid(firstRow, firstWave) || !insideGrid(secondRow, secondWave)) {
+            return;
+        }
+        String keptKind = kinds[firstRow][firstWave];
+        int keptCount = counts[firstRow][firstWave];
+        boolean keptRandom = randomRows[firstRow][firstWave];
+        kinds[firstRow][firstWave] = kinds[secondRow][secondWave];
+        counts[firstRow][firstWave] = counts[secondRow][secondWave];
+        randomRows[firstRow][firstWave] = randomRows[secondRow][secondWave];
+        kinds[secondRow][secondWave] = keptKind;
+        counts[secondRow][secondWave] = keptCount;
+        randomRows[secondRow][secondWave] = keptRandom;
+    }
+
+    /** 把整张表格清空，但保留波数和各项参数 */
+    public void clearAllCells() {
+        for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+            for (int wave = 0; wave < waveCount; wave = wave + 1) {
+                clearCell(row, wave);
+            }
+        }
+    }
+
+    /**
+     * 算出某一波的出场时刻
+     *
+     * 参数：wave 是波号，从 0 开始
+     * 返回：从关卡开始算起的第几毫秒
+     */
+    public long waveTime(int wave) {
+        return firstWaveDelay + (long) wave * waveInterval;
+    }
+
+    /**
+     * 数一数整张表格里一共有多少只僵尸
+     *
+     * 返回：僵尸总数
+     */
+    public int totalZombies() {
+        int total = 0;
+        for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+            for (int wave = 0; wave < waveCount; wave = wave + 1) {
+                total = total + counts[row][wave];
+            }
+        }
+        return total;
+    }
+
+    /**
+     * 判断某个名字是不是编辑器支持的僵尸品种
+     *
+     * 参数：kind 是僵尸品种名
+     * 返回：支持就返回真
+     */
+    public static boolean isKnownKind(String kind) {
+        return indexOfKind(kind) >= 0;
+    }
+
+    /**
+     * 把毫秒换成"分:秒"的样子，给表头显示用
+     *
+     * 参数：milliseconds 是毫秒数
+     * 返回：形如 1:30 的字符串
+     */
+    public static String formatTime(long milliseconds) {
+        long totalSeconds = milliseconds / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        return String.format("%d:%02d", minutes, seconds);
+    }
+
+    /**
+     * 把表格摊平成游戏要的出场表
+     *
+     * 每格数量展开为对应条数，出场时刻按 spawnSpacing 依次递增
+     * 如果格子标记了随机行，僵尸会随机出现在任意一行而非固定行
+     *
+     * 返回：按出场时间排好序的僵尸出场表
+     */
+    public List<ZombieSpawn> buildSpawns() {
+        List<ZombieSpawn> result = new ArrayList<ZombieSpawn>();
+        for (int wave = 0; wave < waveCount; wave = wave + 1) {
+            for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+                String kind = kinds[row][wave];
+                if (kind == null) {
+                    continue;
+                }
+                for (int index = 0; index < counts[row][wave]; index = index + 1) {
+                    long spawnTime = waveTime(wave) + index * spawnSpacing;
+                    int targetRow = row;
+                    if (randomRows[row][wave]) {
+                        targetRow = ZombieSpawn.RANDOM_ROW;
+                    }
+                    result.add(new ZombieSpawn((int) spawnTime, targetRow, kind));
+                }
+            }
+        }
+        LevelJson.sortByTime(result);
+        return result;
+    }
+
+    /**
+     * 把整个关卡写成 JSON 文本
+     *
+     * 使用项目已有的 Gson 处理缩进和字符转义，避免自己维护逗号、引号和换行
+     * 除了游戏要看的字段，最后还多写一段 editor，把表格本身记下来，
+     * 这样下次打开还能还原成一模一样的表格；游戏不认识这段，会直接忽略
+     *
+     * 返回：完整的 JSON 文本
+     */
+    public String toJsonText() {
+        JsonObject json = new JsonObject();
+        json.addProperty(LevelJson.BACKGROUND_TYPE, backgroundIndex);
+        json.addProperty(LevelJson.CHOOSEBAR_TYPE, barType);
+        json.addProperty(LevelJson.INIT_SUN_VALUE, initialSun);
+        json.addProperty(LevelJson.SKY_SUN_INTERVAL, skySunInterval);
+        if (!screenshot.isEmpty()) {
+            json.addProperty(LevelJson.SCREENSHOT, screenshot);
+        }
+
+        // 只有传送带和保龄球模式才有卡池，正常选卡模式写了反而多余
+        if (barType != Layout.BAR_NORMAL) {
+            json.add(LevelJson.CARD_POOL, plantArray(cardPool));
+        }
+        // 空清单沿用默认值，避免关卡文件保存无意义的空字段
+        if (!bannedPlants.isEmpty()) {
+            json.add(LevelJson.BANNED_PLANTS, plantArray(bannedPlants));
+        }
+        if (!requiredPlants.isEmpty()) {
+            json.add(LevelJson.REQUIRED_PLANTS, plantArray(requiredPlants));
+        }
+        // 默认卡槽数量可以省略，与游戏读取旧关卡时的规则一致
+        if (maxCards != Layout.DEFAULT_CARD_SLOTS) {
+            json.addProperty(LevelJson.MAX_CARDS, maxCards);
+        }
+
+        List<ZombieSpawn> spawns = buildSpawns();
+        JsonArray spawnArray = new JsonArray();
+        for (ZombieSpawn spawn : spawns) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty(LevelJson.TIME, spawn.spawnTime);
+            entry.addProperty(LevelJson.MAP_Y, spawn.row);
+            entry.addProperty(LevelJson.NAME, spawn.name);
+            spawnArray.add(entry);
+        }
+        json.add(LevelJson.ZOMBIE_LIST, spawnArray);
+        json.add(LevelJson.EDITOR, editorObject());
+        GsonBuilder builder = new GsonBuilder();
+        builder.setPrettyPrinting();
+        Gson gson = builder.create();
+        return gson.toJson(json) + "\n";
+    }
+
+    /**
+     * 把植物编号清单转换成 JSON 数组
+     *
+     * 卡池、禁用清单、必选清单的格式完全一样，都是每项记录一种植物的名字，
+     * 所以共用这一个方法，改动格式时只要改一处
+     *
+     * 参数：plants 是植物编号列表；返回对应的名字数组
+     */
+    private static JsonArray plantArray(List<Integer> plants) {
+        JsonArray entries = new JsonArray();
+        for (int plantIndex : plants) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty(LevelJson.NAME, PlantCatalog.nameAt(plantIndex));
+            entries.add(entry);
+        }
+        return entries;
+    }
+
+    /**
+     * 生成 editor 对象，单独保存波次表格以便下次准确恢复
+     *
+     * 返回：包含时间设置和非空格子的 JSON 对象
+     */
+    private JsonObject editorObject() {
+        JsonObject editor = new JsonObject();
+        editor.addProperty("wave_count", waveCount);
+        editor.addProperty("first_wave_delay", firstWaveDelay);
+        editor.addProperty("wave_interval", waveInterval);
+        editor.addProperty("spawn_spacing", spawnSpacing);
+        JsonArray cells = new JsonArray();
+        for (int wave = 0; wave < waveCount; wave = wave + 1) {
+            for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+                if (kinds[row][wave] == null) {
+                    continue;
+                }
+                JsonObject cell = new JsonObject();
+                cell.addProperty("wave", wave);
+                cell.addProperty("row", row);
+                cell.addProperty("name", kinds[row][wave]);
+                cell.addProperty("count", counts[row][wave]);
+                if (randomRows[row][wave]) {
+                    cell.addProperty("random_row", true);
+                }
+                cells.add(cell);
+            }
+        }
+
+        editor.add("cells", cells);
+        return editor;
+    }
+
+    /**
+     * 把关卡存成文件
+     *
+     * 参数：path 是要写到哪里，目录不存在时会自动建好
+     * 异常：写文件失败时抛出 IOException
+     */
+    public void save(Path path) throws IOException {
+        Path parent = path.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        String text = toJsonText();
+        byte[] content = text.getBytes(StandardCharsets.UTF_8);
+        Files.write(path, content);
+    }
+
+    /**
+     * 从文件里读出一个关卡
+     *
+     * 参数：path 是关卡文件位置
+     * 返回：读好的关卡
+     * 异常：读文件失败时抛出 IOException
+     */
+    public static LevelDesign load(Path path) throws IOException {
+        JsonObject json = Assets.readObject(path);
+        return fromJson(json);
+    }
+
+    /**
+     * 从 JSON 对象里读出一个关卡
+     *
+     * 带 editor 字段时原样恢复网格，旧关卡则根据出场时间重建波次
+     *
+     * 参数：json 是关卡文件的根对象
+     * 返回：读好的关卡
+     */
+    public static LevelDesign fromJson(JsonObject json) {
+        LevelDesign design = new LevelDesign();
+        design.screenshot = LevelJson.readScreenshot(json);
+        if (json.has(LevelJson.BACKGROUND_TYPE)) {
+            design.backgroundIndex = json.get(LevelJson.BACKGROUND_TYPE).getAsInt();
+        }
+        if (json.has(LevelJson.CHOOSEBAR_TYPE)) {
+            design.barType = json.get(LevelJson.CHOOSEBAR_TYPE).getAsInt();
+        }
+        if (json.has(LevelJson.INIT_SUN_VALUE)) {
+            design.initialSun = json.get(LevelJson.INIT_SUN_VALUE).getAsInt();
+        }
+        design.skySunInterval = LevelJson.readSkySunInterval(json);
+        design.maxCards = LevelJson.readCardSlots(json);
+
+        // 认不出的植物名跳过、不报错：编辑器得能打开任何文件，包括别的版本写出来的、
+        // 带了新植物的关卡，好让用户看到问题再自己把那项删掉
+        // 但跳过不能一声不吭，所以先把名字攒着，最后并进 importNote 显示给用户
+        List<String> unknownPlants = new ArrayList<String>();
+        design.cardPool.addAll(LevelJson.readPlantListSkippingUnknown(
+            json, LevelJson.CARD_POOL, unknownPlants));
+        design.bannedPlants.addAll(LevelJson.readPlantListSkippingUnknown(
+            json, LevelJson.BANNED_PLANTS, unknownPlants));
+        design.requiredPlants.addAll(LevelJson.readPlantListSkippingUnknown(
+            json, LevelJson.REQUIRED_PLANTS, unknownPlants));
+
+        if (json.has(LevelJson.EDITOR)) {
+            design.readEditorBlock(json.getAsJsonObject(LevelJson.EDITOR));
+        } else if (json.has(LevelJson.ZOMBIE_LIST)) {
+            design.rebuildFromSpawns(json.getAsJsonArray(LevelJson.ZOMBIE_LIST));
+        }
+
+        // rebuildFromSpawns 也会写 importNote（同一格合并了品种、有不认识的僵尸），
+        // 所以这里得往后接，不能直接赋值把前一句盖掉
+        design.importNote = design.importNote + unknownPlantNote(unknownPlants);
+        return design;
+    }
+
+    /**
+     * 把认不出的植物名拼成一句给用户看的提示
+     *
+     * 参数：unknownPlants 是读文件时跳过的植物名，已经去过重
+     * 返回：提示文字；一个名字都没跳过就返回空字符串
+     */
+    private static String unknownPlantNote(List<String> unknownPlants) {
+        if (unknownPlants.isEmpty()) {
+            return "";
+        }
+        String names = "";
+        for (int index = 0; index < unknownPlants.size(); index = index + 1) {
+            if (index > 0) {
+                names = names + "、";
+            }
+            names = names + unknownPlants.get(index);
+        }
+        return "存在本编辑器不认识的植物（" + names + "），已跳过。";
+    }
+
+    /**
+     * 读 editor 那一段，把表格原样恢复出来
+     *
+     * 参数：editor 是关卡文件里的 editor 对象
+     */
+    private void readEditorBlock(JsonObject editor) {
+        if (editor.has("first_wave_delay")) {
+            firstWaveDelay = editor.get("first_wave_delay").getAsLong();
+        }
+        if (editor.has("wave_interval")) {
+            long interval = editor.get("wave_interval").getAsLong();
+            waveInterval = Math.max(MIN_WAVE_INTERVAL, interval);
+        }
+        if (editor.has("spawn_spacing")) {
+            long spacing = editor.get("spawn_spacing").getAsLong();
+            spawnSpacing = Math.max(MIN_SPAWN_SPACING, spacing);
+        }
+        if (editor.has("wave_count")) {
+            setWaveCount(editor.get("wave_count").getAsInt());
+        }
+        if (!editor.has("cells")) {
+            return;
+        }
+
+        JsonArray cells = editor.getAsJsonArray("cells");
+        for (int index = 0; index < cells.size(); index = index + 1) {
+            JsonObject cell = cells.get(index).getAsJsonObject();
+            int wave = cell.get("wave").getAsInt();
+            int row = cell.get("row").getAsInt();
+            String name = cell.get("name").getAsString();
+            int count = cell.get("count").getAsInt();
+            boolean random = false;
+            if (cell.has("random_row")) {
+                random = cell.get("random_row").getAsBoolean();
+            }
+            // 文件中的波号超过声明列数时，扩展网格以保留这些条目
+            if (wave >= waveCount) {
+                setWaveCount(wave + 1);
+            }
+            if (isKnownKind(name)) {
+                setCell(row, wave, name, count);
+                randomRows[row][wave] = random;
+            }
+        }
+    }
+
+    /**
+     * 拿老关卡的出场表反推出表格
+     *
+     * 分三步：先按出场时间把僵尸切成一波一波，再从波与波的间距反推出各项时间参数，
+     * 最后统计每一波每一行出了多少只僵尸，填进格子里
+     *
+     * 参数：list 是关卡文件里的 zombie_list 数组
+     */
+    private void rebuildFromSpawns(JsonArray list) {
+        List<ZombieSpawn> spawns = LevelJson.readSpawns(list);
+        if (spawns.isEmpty()) {
+            clearAllCells();
+            return;
+        }
+        LevelJson.sortByTime(spawns);
+
+        List<List<ZombieSpawn>> waves = splitIntoWaves(spawns);
+        readTimingFromWaves(spawns, waves);
+        fillCellsFromWaves(waves);
+    }
+
+    /**
+     * 按出场时间把僵尸切成一波一波
+     *
+     * 相邻两只僵尸隔得比 IMPORT_WAVE_GAP 还久，就认为中间换了一波
+     *
+     * 参数：spawns 是已经按时间排好序的出场表
+     * 返回：每一波一个列表
+     */
+    private static List<List<ZombieSpawn>> splitIntoWaves(List<ZombieSpawn> spawns) {
+        List<List<ZombieSpawn>> waves = new ArrayList<List<ZombieSpawn>>();
+        List<ZombieSpawn> current = new ArrayList<ZombieSpawn>();
+        current.add(spawns.get(0));
+        for (int index = 1; index < spawns.size(); index = index + 1) {
+            ZombieSpawn spawn = spawns.get(index);
+            ZombieSpawn previous = current.get(current.size() - 1);
+            if (spawn.spawnTime - previous.spawnTime > IMPORT_WAVE_GAP) {
+                waves.add(current);
+                current = new ArrayList<ZombieSpawn>();
+            }
+            current.add(spawn);
+        }
+        waves.add(current);
+        return waves;
+    }
+
+    /**
+     * 从切好的波次里反推出各项时间参数
+     *
+     * 第一波什么时候出，就是第一波延迟；各波起点之间的平均间距，就是出怪间隔；
+     * 一波之内两只僵尸最小的间距，就当成同格僵尸的错开时间
+     *
+     * 参数：spawns 是排好序的出场表；waves 是切好的波次
+     */
+    private void readTimingFromWaves(List<ZombieSpawn> spawns, List<List<ZombieSpawn>> waves) {
+        List<ZombieSpawn> firstWave = waves.get(0);
+        firstWaveDelay = firstWave.get(0).spawnTime;
+
+        if (waves.size() > 1) {
+            List<ZombieSpawn> lastWave = waves.get(waves.size() - 1);
+            long span = lastWave.get(0).spawnTime - firstWave.get(0).spawnTime;
+            long average = span / (waves.size() - 1);
+            waveInterval = Math.max(MIN_WAVE_INTERVAL, average);
+        }
+
+        long smallestGap = Long.MAX_VALUE;
+        for (int index = 1; index < spawns.size(); index = index + 1) {
+            long gap = spawns.get(index).spawnTime - spawns.get(index - 1).spawnTime;
+            // 跨波的大间距不能拿来当同格间隔，所以只看波内的那些小间距
+            if (gap > 0 && gap <= IMPORT_WAVE_GAP && gap < smallestGap) {
+                smallestGap = gap;
+            }
+        }
+        if (smallestGap != Long.MAX_VALUE) {
+            spawnSpacing = Math.max(MIN_SPAWN_SPACING, smallestGap);
+        }
+    }
+
+    /**
+     * 统计每一波每一行的僵尸，填进表格的格子里
+     *
+     * 一个格子只能记一种僵尸，所以同一波同一行混着几种时只能取数量最多的那种，
+     * 数量仍按该行的总数算，这样僵尸总数不会变少。做了这种合并会写进 importNote 告诉用户
+     *
+     * 参数：waves 是切好的波次
+     */
+    private void fillCellsFromWaves(List<List<ZombieSpawn>> waves) {
+        setWaveCount(waves.size());
+        clearAllCells();
+        boolean merged = false;
+        boolean unknown = false;
+
+        for (int wave = 0; wave < waves.size(); wave = wave + 1) {
+            List<ZombieSpawn> group = waves.get(wave);
+            if (hasUnknownKind(group)) {
+                unknown = true;
+            }
+            int[][] tally = countByRowAndKind(group);
+            for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
+                if (fillOneCell(row, wave, tally[row])) {
+                    merged = true;
+                }
+            }
+        }
+
+        String note = "";
+        if (merged) {
+            note = note + "同一波同一行出现了多种僵尸，已按数量最多的品种合并。";
+        }
+        if (unknown) {
+            note = note + "存在编辑器不支持的僵尸品种，已跳过。";
+        }
+        importNote = note;
+    }
+
+    /**
+     * 看看这一波里有没有编辑器不支持的僵尸品种
+     *
+     * 参数：group 是这一波的出场记录
+     * 返回：有不认识的品种就返回真
+     */
+    private static boolean hasUnknownKind(List<ZombieSpawn> group) {
+        for (int index = 0; index < group.size(); index = index + 1) {
+            if (indexOfKind(group.get(index).name) < 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 数一数这一波里，每一行各出了几只哪种僵尸
+     *
+     * 参数：group 是这一波的出场记录
+     * 返回：一张表，第一维是行号，第二维是品种在 ZOMBIE_KINDS 里的下标
+     */
+    private static int[][] countByRowAndKind(List<ZombieSpawn> group) {
+        int[][] tally = new int[Layout.ROW_COUNT][ZOMBIE_KINDS.length];
+        for (int index = 0; index < group.size(); index = index + 1) {
+            ZombieSpawn spawn = group.get(index);
+            int kindIndex = indexOfKind(spawn.name);
+            if (kindIndex < 0) {
+                continue;
+            }
+            if (spawn.row < 0 || spawn.row >= Layout.ROW_COUNT) {
+                continue;
+            }
+            tally[spawn.row][kindIndex] = tally[spawn.row][kindIndex] + 1;
+        }
+        return tally;
+    }
+
+    /**
+     * 按统计结果填好一个格子
+     *
+     * 一个格子只放得下一种僵尸，所以混着几种时只能取数量最多的那种，
+     * 数量仍按这一行的总数算，这样僵尸总数不会变少
+     *
+     * 参数：row 是行号；wave 是波号；rowTally 是这一行各品种的只数
+     * 返回：这一行原本混着好几种、做了合并就返回真
+     */
+    private boolean fillOneCell(int row, int wave, int[] rowTally) {
+        int bestKind = 0;
+        int total = 0;
+        int kindsPresent = 0;
+        for (int kindIndex = 0; kindIndex < rowTally.length; kindIndex = kindIndex + 1) {
+            total = total + rowTally[kindIndex];
+            if (rowTally[kindIndex] > 0) {
+                kindsPresent = kindsPresent + 1;
+            }
+            if (rowTally[kindIndex] > rowTally[bestKind]) {
+                bestKind = kindIndex;
+            }
+        }
+        if (total > 0) {
+            setCell(row, wave, ZOMBIE_KINDS[bestKind], total);
+        }
+        return kindsPresent > 1;
+    }
+
+    /**
+     * 查一种僵尸排在 ZOMBIE_KINDS 的第几位
+     *
+     * 参数：kind 是僵尸品种名
+     * 返回：找到就返回下标；找不到返回 -1
+     */
+    private static int indexOfKind(String kind) {
+        for (int index = 0; index < ZOMBIE_KINDS.length; index = index + 1) {
+            if (ZOMBIE_KINDS[index].equals(kind)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 存盘前检查一遍，把容易踩的坑提前说清楚
+     *
+     * 返回：需要提醒用户的话；没什么问题就返回空字符串
+     */
+    public String validate() {
+        if (totalZombies() == 0) {
+            return "网格里一只僵尸都没有，进入关卡后会立刻通关。";
+        }
+        // 空卡池虽然能够读取，但无法生成卡片，保存前提醒以免进入无法种植的关卡
+        if (barType != Layout.BAR_NORMAL && cardPool.isEmpty()) {
+            return "传送带和保龄球模式必须至少选一张卡池里的植物，否则关卡无法载入。";
+        }
+        if (barType == Layout.BAR_NORMAL && backgroundIndex != 0) {
+            return "只有白天草坪（背景 0）的正常选卡关卡会从天上掉阳光，当前设置下阳光生成速度不起作用。";
+        }
+        // 必选超过卡槽数量时，游戏只能放入前几张，不能按关卡原计划选卡
+        if (requiredPlants.size() > maxCards) {
+            return "卡槽数量是 " + maxCards + " 张，必选植物却有 " + requiredPlants.size()
+                + " 张，进了关卡没法开始。";
+        }
+        // 除开禁用和必选，候选区剩下的植物不够填满卡槽，玩家照样凑不齐没法开始
+        int usablePlants = PlantCatalog.CHOOSER_COUNT - bannedPlants.size() - requiredPlants.size();
+        if (usablePlants < maxCards) {
+            return "禁用和必选之后只剩 " + usablePlants + " 种植物可选，凑不满 " + maxCards
+                + " 张卡槽，进了关卡没法开始。";
+        }
+        // 同时禁用和必选的植物按必选执行，校验结果向编辑者说明该优先级
+        for (int index = 0; index < bannedPlants.size(); index = index + 1) {
+            int plant = bannedPlants.get(index).intValue();
+            if (requiredPlants.contains(Integer.valueOf(plant))) {
+                return PlantCatalog.nameAt(plant) + " 同时出现在禁用和必选清单里，游戏里会按必选处理。";
+            }
+        }
+        return "";
+    }
+}

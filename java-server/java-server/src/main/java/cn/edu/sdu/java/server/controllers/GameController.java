@@ -3,6 +3,7 @@ package cn.edu.sdu.java.server.controllers;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.GameService;
+import cn.edu.sdu.java.server.services.BlockcoinService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,10 +12,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/game")
 public class GameController {
     private final GameService service;
+    private final BlockcoinService store;
 
     /** 保存游戏业务服务，接口校验与事务由服务处理 */
-    public GameController(GameService service) {
+    public GameController(GameService service, BlockcoinService store) {
         this.service = service;
+        this.store = store;
     }
 
     /**
@@ -50,12 +53,15 @@ public class GameController {
     }
 
     /**
-     * 将游戏加入或移出当前用户的游戏库或收藏
+     * 更新当前用户的收藏，游戏库加入请求按原购买关系校验
      * @param request data 中包含 gameId、mode 和 added
      * @return 操作成功或失败的响应
      */
     @PostMapping("/collection")
     public DataResponse collection(@RequestBody DataRequest request) {
+        if ("library".equals(request.getString("mode")) && request.getBoolean("added")) {
+            return store.restoreLibrary(request);
+        }
         return service.changeCollection(request);
     }
 
@@ -78,13 +84,15 @@ public class GameController {
         return service.saveRecord(request);
     }
 
-    /**
-     * 删除一条游戏记录
-     * @param request data 中包含 recordId
-     * @return 删除成功或失败的响应
-     */
-    @PostMapping("/recordDelete")
-    public DataResponse recordDelete(@RequestBody DataRequest request) {
-        return service.deleteRecord(request);
+    /** 隐藏当前账户看到的记录，旧地址也进入同一隐藏流程 */
+    @PostMapping({"/recordHide", "/recordDelete"})
+    public DataResponse recordHide(@RequestBody DataRequest request) {
+        return service.hideRecord(request);
+    }
+
+    /** 恢复当前查看账户隐藏的记录，原统计资料继续保持完整 */
+    @PostMapping("/recordRestore")
+    public DataResponse recordRestore(@RequestBody DataRequest request) {
+        return service.restoreRecord(request);
     }
 }

@@ -1,4 +1,6 @@
-// 状态栏时钟的刷新间隔，单位为毫秒
+import { ADMIN_PAGES } from "./admin.js";
+
+// 右下角时钟的刷新间隔，单位为毫秒
 export const CLOCK_INTERVAL = 1000;
 
 /** 复制菜单并整理管理入口，使用角色控制账户管理，缺少管理分组时创建该分组 */
@@ -8,26 +10,45 @@ export function createSidebarGroups(groups, isAdmin) {
   for (const group of groups) {
     const copied = { id: group.id, title: group.title, sList: [] };
     for (const item of group.sList) {
-      if (item.name === "MenuManage" || item.name === "DictionaryManage") {
+      if (
+        item.name === "MenuManage" ||
+        item.name === "DictionaryManage" ||
+        item.name === "AccountManage" ||
+        item.name === "GameUserManage" ||
+        item.name === "BlockcoinManage" ||
+        item.name === "RecordManage"
+      ) {
         managementGroup = copied;
-      }
-      if (item.name === "GameUserManage" || item.name === "AccountManage") {
         continue;
       }
-      copied.sList.push(item);
+      if (item.name === "GameCatalog") {
+        copied.sList.push({
+          id: item.id,
+          name: item.name,
+          title: "游戏商城",
+          sList: item.sList,
+        });
+      } else {
+        copied.sList.push(item);
+      }
     }
-    result.push(copied);
+    if (copied.sList.length > 0) {
+      result.push(copied);
+    }
   }
   if (isAdmin) {
-    if (!managementGroup) {
+    if (!managementGroup || !result.includes(managementGroup)) {
       managementGroup = { id: "management", title: "系统管理", sList: [] };
       result.push(managementGroup);
     }
-    managementGroup.sList.push({
-      id: "account-management",
-      name: "AccountManage",
-      title: "账户管理",
-    });
+    managementGroup.sList = [];
+    for (const page of ADMIN_PAGES) {
+      managementGroup.sList.push({
+        id: page.id,
+        name: page.name,
+        title: page.title,
+      });
+    }
   }
   return result;
 }
@@ -39,6 +60,9 @@ export function createHomeTabs() {
 
 /** 保留原菜单地址，仅统一首页标题 */
 export function getMenuTitle(item) {
+  if (item.name === "GameCatalog") {
+    return "游戏商城";
+  }
   if (item.name === "MainPage") {
     return "首页";
   }
@@ -47,11 +71,19 @@ export function getMenuTitle(item) {
 
 /** 在菜单及子菜单中查找页面标题；找不到时返回空字符串 */
 export function findMenuTitle(items, name) {
+  if (name === "Messages") {
+    return "消息中心";
+  }
   if (name === "AiSupport") {
     return "AI 客服";
   }
   if (name === "AccountManage" || name === "GameUserManage") {
     return "账户管理";
+  }
+  for (const page of ADMIN_PAGES) {
+    if (page.name === name) {
+      return page.title;
+    }
   }
   for (const item of items) {
     if (item.name === name) {
@@ -111,7 +143,7 @@ export function updateGroup(closed, id, open) {
   }
 }
 
-/** 将日期按北京时间显示，各电脑采用相同的显示时区 */
+/** 使用北京时间格式化底部时钟，各电脑使用相同的显示时区 */
 export function formatClock(date) {
   return date.toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",

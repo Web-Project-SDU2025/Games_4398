@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import * as support from "../src/logic/support.js";
+import { createQuestionWithSiteGuide } from "../src/logic/siteGuide.js";
 import * as pet from "../src/logic/pet.js";
+import { CHAT_IMAGE_LIMITS } from "../src/tools/chatImages.js";
 
 // 读取共用聊天组件，网络由测试替身控制，不调用真实百炼
 function loadChat(askAi) {
@@ -18,9 +20,11 @@ function loadChat(askAi) {
   script = script + "\nthis.component = component;";
   const context = {
     support: support,
+    createQuestionWithSiteGuide: createQuestionWithSiteGuide,
     askAi: askAi,
     AbortController: AbortController,
     crypto: crypto,
+    CHAT_IMAGE_LIMITS: CHAT_IMAGE_LIMITS,
   };
   vm.createContext(context);
   vm.runInContext(script, context);
@@ -61,7 +65,7 @@ test("聊天等待期间防重复，成功后恢复输入", async function testC
   function askAi(id, question) {
     requests = requests + 1;
     assert.equal(id.length, 36);
-    assert.equal(question, "五子棋规则");
+    assert.ok(question.includes("用户本次问题：五子棋规则"));
     return new Promise(waitForAnswer);
   }
   const chat = loadChat(askAi).state;
@@ -71,12 +75,30 @@ test("聊天等待期间防重复，成功后恢复输入", async function testC
   await chat.send();
   assert.equal(requests, 1);
   assert.equal(chat.conversation.messages.length, 1);
+  assert.equal(chat.conversation.messages[0].content, "五子棋规则");
   complete("连成五子获胜");
   await pending;
   assert.equal(chat.pending, false);
   assert.equal(chat.question, "");
   assert.equal(chat.conversation.messages[1].content, "连成五子获胜");
 });
+
+// 问题较短时附带网站资料，超出接口长度时保留用户原文
+test(
+  "网站操作资料只进入请求且不会超过问题长度上限",
+  function testSiteGuideLimits() {
+    const question = "4398 的游戏商城在哪里？";
+    const informedQuestion = createQuestionWithSiteGuide(question);
+    assert.ok(informedQuestion.includes("游戏商城"));
+    assert.ok(informedQuestion.endsWith("用户本次问题：" + question));
+    assert.ok(informedQuestion.length <= support.QUESTION_LIMIT);
+    const longQuestion = "游".repeat(support.QUESTION_LIMIT);
+    assert.equal(
+      createQuestionWithSiteGuide(longQuestion),
+      longQuestion,
+    );
+  },
+);
 
 // 停止和切换历史后丢弃迟到的响应，新会话保持原状态
 test("停止或切换对话后丢弃迟到的模型回复", async function testChatCancellation() {
@@ -133,6 +155,35 @@ test("回答失败后保留问题并支持重试", async function testChatRetry(
   assert.equal(chat.failedQuestion, "");
 });
 
+// 图片问题可以省略文字，失败重试继续携带同一批图，历史仅保留小图
+test("多图问题和失败重试保留图片", async function testMultipleImages() {
+  const source = "data:image/jpeg;base64,AAAA";
+  let requests = 0;
+  // 检查图片通过共用请求发送，首个请求模拟失败
+  async function askAi(id, question, signal, images, multimodal) {
+    requests = requests + 1;
+    assert.equal(images.length, 2);
+    assert.equal(multimodal, true);
+    if (requests === 1) {
+      throw new Error("图片请求失败");
+    }
+    return "两张截图的回答";
+  }
+  const chat = loadChat(askAi).state;
+  chat.images = [
+    { id: "one", name: "one.png", source: source, preview: source },
+    { id: "two", name: "two.png", source: source, preview: source },
+  ];
+  await chat.send();
+  assert.equal(chat.conversation.messages.length, 1);
+  assert.equal(chat.conversation.messages[0].images.length, 2);
+  assert.equal(chat.conversation.messages[0].images[0].source, undefined);
+  assert.equal(chat.failedImages.length, 2);
+  await chat.retry();
+  assert.equal(requests, 2);
+  assert.equal(chat.conversation.messages[1].content, "两张截图的回答");
+});
+
 // 存储和位置处理用实际模块，确认两个账号互不读取历史
 test("账号历史隔离、旧数据兼容和宠物边界正确", function testStorageAndPet() {
   const values = new Map();
@@ -160,9 +211,26 @@ test("账号历史隔离、旧数据兼容和宠物边界正确", function testS
     const position = pet.clampPosition(-20, 900, 104, 78, 375, 667);
     assert.equal(position.left, 12);
     assert.equal(position.top, 577);
-    pet.saveSettings(1, { visible: false, greetings: false });
+    pet.saveSettings(1, { visible: false });
     assert.equal(pet.readSettings(1).visible, false);
     assert.equal(pet.readSettings(2).visible, true);
+    assert.equal(pet.readSettings(2).horizontal, 1);
+    assert.equal(pet.readSettings(2).vertical, 1);
+    const defaults = pet.readSettings(2);
+    const corner = pet.clampPosition(
+      (1440 - 160) * defaults.horizontal,
+      (900 - 120) * defaults.vertical,
+      160,
+      120,
+      1440,
+      868,
+    );
+    assert.equal(corner.left, 1268);
+    assert.equal(corner.top, 736);
+    pet.saveSettings(2, { visible: true, horizontal: 0.4, vertical: 0.6 });
+    assert.equal(pet.readSettings(2).vertical, 0.6);
+    pet.saveSettings(2, { visible: true, horizontal: 1, vertical: 0.85 });
+    assert.equal(pet.readSettings(2).vertical, 1);
   } finally {
     delete globalThis.localStorage;
   }

@@ -1,0 +1,62 @@
+{
+    "background_type":0,
+    "screenshot":"levels/screenshots/level_4.png",
+    "choosebar_type":1,
+    "init_sun_value":50,
+    "sky_sun_interval":7000,
+    "card_pool":[
+        {"name":"Peashooter"},
+        {"name":"SnowPea"},
+        {"name":"WallNut"},
+        {"name":"CherryBomb"},
+        {"name":"RepeaterPea"},
+        {"name":"Chomper"},
+        {"name":"PotatoMine"}
+    ],
+    "zombie_list":[
+        {"time":1000, "map_y":0, "name":"Zombie"},
+        {"time":1000, "map_y":1, "name":"Zombie"},
+        {"time":1000, "map_y":2, "name":"ConeheadZombie"},
+        {"time":1000, "map_y":3, "name":"BucketheadZombie"},
+        {"time":1000, "map_y":4, "name":"Zombie"},
+        {"time":2000, "map_y":0, "name":"Zombie"},
+        {"time":2000, "map_y":1, "name":"Zombie"},
+        {"time":2000, "map_y":2, "name":"ConeheadZombie"},
+        {"time":2000, "map_y":3, "name":"BucketheadZombie"},
+        {"time":2000, "map_y":4, "name":"Zombie"},
+        {"time":3000, "map_y":0, "name":"Zombie"},
+        {"time":3000, "map_y":1, "name":"Zombie"},
+        {"time":3000, "map_y":3, "name":"BucketheadZombie"},
+        {"time":4000, "map_y":1, "name":"Zombie"},
+        {"time":60000, "map_y":0, "name":"BucketheadZombie"},
+        {"time":60000, "map_y":1, "name":"FlagZombie"},
+        {"time":60000, "map_y":2, "name":"Zombie"},
+        {"time":60000, "map_y":3, "name":"NewspaperZombie"},
+        {"time":60000, "map_y":4, "name":"BucketheadZombie"},
+        {"time":61000, "map_y":0, "name":"BucketheadZombie"},
+        {"time":61000, "map_y":1, "name":"FlagZombie"},
+        {"time":61000, "map_y":2, "name":"Zombie"},
+        {"time":61000, "map_y":3, "name":"NewspaperZombie"},
+        {"time":61000, "map_y":4, "name":"BucketheadZombie"},
+        {"time":62000, "map_y":1, "name":"FlagZombie"},
+        {"time":62000, "map_y":4, "name":"BucketheadZombie"}
+    ],
+    "editor":{
+        "wave_count":2,
+        "first_wave_delay":1000,
+        "wave_interval":59000,
+        "spawn_spacing":1000,
+        "cells":[
+            {"wave":0, "row":0, "name":"Zombie", "count":3},
+            {"wave":0, "row":1, "name":"Zombie", "count":4},
+            {"wave":0, "row":2, "name":"ConeheadZombie", "count":2},
+            {"wave":0, "row":3, "name":"BucketheadZombie", "count":3},
+            {"wave":0, "row":4, "name":"Zombie", "count":2},
+            {"wave":1, "row":0, "name":"BucketheadZombie", "count":2},
+            {"wave":1, "row":1, "name":"FlagZombie", "count":3},
+            {"wave":1, "row":2, "name":"Zombie", "count":2},
+            {"wave":1, "row":3, "name":"NewspaperZombie", "count":2},
+            {"wave":1, "row":4, "name":"BucketheadZombie", "count":3}
+        ]
+    }
+}

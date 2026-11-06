@@ -4,7 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 // 使用实际状态仓库和路由方法，后端只提供测试身份，不访问真实账号
-function loadSession(profileRequest) {
+function loadSession(profileRequest, switchRequest) {
   let storeDefinition;
   const notices = [];
   // 保存仓库定义，测试直接调用项目原有的方法
@@ -19,6 +19,7 @@ function loadSession(profileRequest) {
   const stateContext = {
     defineStore: defineStore,
     getProfile: profileRequest,
+    switchAccount: switchRequest,
     getMenuList: getMenuList,
     localStorage: {},
   };
@@ -99,12 +100,13 @@ test("旧登录身份会同步为真实管理员，系统菜单正常进入", as
   }
   const session = loadSession(getProfile);
   const result = await session.checkAccess({
-    path: "/MenuManage",
+    path: "/AccountManage",
     meta: { adminOnly: true },
   });
   assert.equal(result, true);
   assert.equal(session.store.userInfo.role, "ROLE_ADMIN");
   assert.equal(session.store.userInfo.perName, "新昵称");
+  assert.equal(session.store.profile.name, "新昵称");
   await session.store.setNavi();
   assert.equal(session.store.systemConfig.naviList.length, 1);
 });
@@ -126,7 +128,7 @@ test("后端取消管理员身份后，旧缓存不能继续放行", async funct
   const session = loadSession(getProfile);
   session.store.userInfo.role = "ROLE_ADMIN";
   const result = await session.checkAccess({
-    path: "/DictionaryManage",
+    path: "/BlockcoinManage",
     meta: { adminOnly: true },
   });
   assert.equal(result, "/MainPage");
@@ -146,7 +148,7 @@ test("身份同步期间切号不会串改角色", async function testAccountRac
   }
   const session = loadSession(getProfile);
   const navigation = session.checkAccess({
-    path: "/MenuManage",
+    path: "/RecordManage",
     meta: { adminOnly: true },
   });
   session.store.userInfo = {
@@ -164,7 +166,98 @@ test("身份同步期间切号不会串改角色", async function testAccountRac
   assert.equal(await navigation, false);
   assert.equal(session.store.userInfo.username, "other");
   assert.equal(session.store.userInfo.role, "ROLE_GAME_USER");
+  assert.equal(session.store.profile, null);
 });
+
+// 右上角切号后读取目标账户的完整资料并显示对应角色
+test(
+  "切换账户后重新读取目标账户个人资料",
+  async function testSwitchLoadsProfile() {
+    let selectedUsername = "";
+    // 返回目标账户资料供切号后的身份刷新使用
+    async function getProfile() {
+      return {
+        code: 0,
+        data: {
+          userId: 9,
+          username: selectedUsername,
+          name: "目标管理员",
+          role: "ROLE_ADMIN",
+          signature: "目标账户签名",
+          email: "admin@example.com",
+          phone: "12345678",
+          createTime: "2026-11-01 10:00:00",
+          lastLoginTime: "2026-11-06 10:00:00",
+        },
+      };
+    }
+    // 模拟目标账户令牌和权限菜单
+    async function switchRequest(username, token) {
+      assert.equal(username, "admin");
+      assert.equal(token, "current-token");
+      selectedUsername = username;
+      return {
+        session: {
+          id: 9,
+          username: username,
+          perName: "目标管理员",
+          token: "target-token",
+          role: "ROLE_ADMIN",
+        },
+        menus: [{ id: 9, title: "系统管理", sList: [] }],
+      };
+    }
+    const session = loadSession(getProfile, switchRequest);
+
+    await session.store.switchAccount("admin");
+
+    assert.equal(session.store.userInfo.username, "admin");
+    assert.equal(session.store.profile.signature, "目标账户签名");
+    assert.equal(session.store.profile.email, "admin@example.com");
+    assert.equal(session.store.profile.createTime, "2026-11-01 10:00:00");
+    assert.equal(session.store.profile.lastLoginTime, "2026-11-06 10:00:00");
+  },
+);
+
+// 目标账户资料读取失败时恢复切号前的身份和资料
+test(
+  "切号资料读取失败时保留原账户",
+  async function testSwitchRestoresPreviousAccount() {
+    // 模拟读取目标账户资料时发生网络错误
+    async function getProfile() {
+      throw new Error("资料读取失败");
+    }
+    // 提供已签发的目标账户令牌和权限菜单
+    async function switchRequest() {
+      return {
+        session: {
+          id: 9,
+          username: "admin",
+          perName: "目标管理员",
+          token: "target-token",
+          role: "ROLE_ADMIN",
+        },
+        menus: [{ id: 9, title: "系统管理", sList: [] }],
+      };
+    }
+    const session = loadSession(getProfile, switchRequest);
+    const previousProfile = {
+      username: "player",
+      signature: "原账户签名",
+    };
+    session.store.profile = previousProfile;
+
+    await assert.rejects(
+      session.store.switchAccount("admin"),
+      /资料读取失败/,
+    );
+
+    assert.equal(session.store.userInfo.username, "player");
+    assert.equal(session.store.userInfo.token, "current-token");
+    assert.equal(session.store.profile, previousProfile);
+    assert.equal(session.store.systemConfig.naviList.length, 0);
+  },
+);
 
 // 身份读取失败时保留登录，并取消当前管理页面导航
 test("身份读取失败给出提示并取消管理页面跳转", async function testIdentityFailure() {

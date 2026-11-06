@@ -66,7 +66,7 @@ class ManagementTests {
     @Test
     void frontendRoutesForwardWithoutSwallowingMissingResources() throws Exception {
         MockMvc client = MockMvcBuilders.standaloneSetup(new PageController()).build();
-        for (String path : List.of("/MainPage", "/AccountManage", "/AiSupport")) {
+        for (String path : List.of("/MainPage", "/AccountManage", "/BlockcoinManage", "/RecordManage", "/AiSupport")) {
             ResultActions response = client.perform(get(path));
             response.andExpect(status().isOk());
             response.andExpect(forwardedUrl("/index.html"));
@@ -98,6 +98,26 @@ class ManagementTests {
         verifyNoInteractions(users, auth);
     }
 
+    /** 右上角切换到目标账户时也更新登录时间和次数 */
+    @Test
+    void accountSwitchRecordsSuccessfulLogin() {
+        UserRepository users = mock(UserRepository.class);
+        AuthService auth = mock(AuthService.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        User player = user(2, "player", "ROLE_GAME_USER");
+        when(users.findByUserName("player")).thenReturn(Optional.of(player));
+        LocalAccountController controller = new LocalAccountController(users, auth, true);
+        DataRequest data = new DataRequest();
+        data.add("username", "player");
+
+        DataResponse response = controller.switchAccount(data, request);
+
+        assertEquals(0, response.getCode());
+        verify(auth).recordSuccessfulLogin(player);
+        verify(auth).createSession(player);
+    }
+
     /** 统一登录入口按数据库角色生成会话，普通账户保持游戏用户身份 */
     @Test
     void unifiedLoginKeepsDatabaseRole() {
@@ -125,6 +145,8 @@ class ManagementTests {
                 (cn.edu.sdu.java.server.payload.response.JwtResponse) response.getBody();
         assertNotNull(session);
         assertEquals("ROLE_GAME_USER", session.getRole());
+        assertNotNull(ordinary.getLastLoginTime());
+        assertEquals(1, ordinary.getLoginCount());
         verify(users).save(ordinary);
         verify(jwt).generateToken(any());
     }
@@ -135,7 +157,8 @@ class ManagementTests {
         UserRepository users = mock(UserRepository.class);
         UserTypeRepository roles = mock(UserTypeRepository.class);
         GameRecordRepository records = mock(GameRecordRepository.class);
-        GameUserService service = new GameUserService(users, roles, records, mock(PasswordEncoder.class));
+        GameUserService service = new GameUserService(users, roles, records,
+            mock(PasswordEncoder.class), mock(BlockcoinWalletRepository.class), mock(MessageService.class));
         login(user(9, "reviewer", "ROLE_ADMIN"));
         User admin = user(1, "admin", "ROLE_ADMIN");
         when(users.findById(1)).thenReturn(Optional.of(admin));
@@ -148,10 +171,47 @@ class ManagementTests {
         User player = user(2, "player", "ROLE_GAME_USER");
         when(users.findById(2)).thenReturn(Optional.of(player));
         when(roles.findByName("ROLE_ADMIN")).thenReturn(admin.getUserType());
+        MessageService messages = mock(MessageService.class);
+        service = new GameUserService(users, roles, records,
+            mock(PasswordEncoder.class), mock(BlockcoinWalletRepository.class), messages);
         request.add("userId", 2);
         request.add("role", "ROLE_ADMIN");
         assertEquals(0, service.saveAccount(request).getCode());
         assertEquals("ROLE_ADMIN", player.getUserType().getName());
+        verify(messages).notifyAccount(anyString(), eq(2), eq("账户资料变更"), contains("账户身份"));
+    }
+
+    /** 账户列表展示资金与活动信息，读取尚无钱包的账户时保持原余额状态 */
+    @Test
+    void accountListShowsImportantInformationWithoutCreatingWallets() {
+        UserRepository users = mock(UserRepository.class);
+        UserTypeRepository roles = mock(UserTypeRepository.class);
+        GameRecordRepository records = mock(GameRecordRepository.class);
+        BlockcoinWalletRepository wallets = mock(BlockcoinWalletRepository.class);
+        GameUserService service = new GameUserService(users, roles, records,
+            mock(PasswordEncoder.class), wallets, mock(MessageService.class));
+        User player = user(2, "player", "ROLE_GAME_USER");
+        player.setCreateTime("2026-11-01 10:00:00");
+        player.setLastLoginTime("2026-11-06 10:00:00");
+        player.setLoginCount(5);
+        Game game = new Game();
+        game.setGameId(8);
+        player.getGames().add(game);
+        player.getFavorites().add(game);
+        when(users.findAll()).thenReturn(List.of(player));
+        when(wallets.findAll()).thenReturn(List.of());
+        when(records.countByUserUserId(2)).thenReturn(3L);
+        DataResponse response = service.getGameUserList(new DataRequest());
+        List<?> list = (List<?>) response.getData();
+        Map<?, ?> account = (Map<?, ?>) list.get(0);
+        assertNull(account.get("balance"));
+        assertEquals(1, account.get("gameCount"));
+        assertEquals(1, account.get("favoriteCount"));
+        assertEquals(3L, account.get("recordCount"));
+        assertEquals(5, account.get("loginCount"));
+        assertEquals(player.getLastLoginTime(), account.get("lastLoginTime"));
+        assertFalse(account.containsKey("password"));
+        verify(wallets, never()).save(any());
     }
 
     /** 分数管理遇到小数时返回输入错误，仓库保持原数据 */
@@ -159,7 +219,7 @@ class ManagementTests {
     void recordsRejectFractionalScores() {
         GameRecordRepository records = mock(GameRecordRepository.class);
         AdminRecordService service = new AdminRecordService(records, mock(GameRepository.class),
-                mock(UserRepository.class), mock(GameService.class));
+                mock(UserRepository.class), mock(GameService.class), mock(GamePlayRepository.class));
         DataRequest request = new DataRequest();
         request.add("userId", 1);
         request.add("gameId", 1);
@@ -169,13 +229,15 @@ class ManagementTests {
         verifyNoInteractions(records);
     }
 
-    /** 新增、修改和删除复用同一记录编号，两种视图对应相同数据 */
+    /** 新增和修改复用同一记录编号，隐藏通过公共可见性服务处理 */
     @Test
-    void administratorsCanCreateUpdateAndDeleteRecords() {
+    void administratorsCanCreateUpdateAndHideRecords() {
         GameRecordRepository records = mock(GameRecordRepository.class);
         UserRepository users = mock(UserRepository.class);
         GameRepository games = mock(GameRepository.class);
-        AdminRecordService service = new AdminRecordService(records, games, users, mock(GameService.class));
+        GameService gameService = mock(GameService.class);
+        AdminRecordService service = new AdminRecordService(records, games, users,
+            gameService, mock(GamePlayRepository.class));
         User player = user(2, "player", "ROLE_GAME_USER");
         Game game = new Game();
         game.setGameId(1);
@@ -200,9 +262,10 @@ class ManagementTests {
         assertEquals(0, service.save(request).getCode());
         assertEquals(77, saved.getScore());
         assertEquals(60, saved.getDurationSeconds());
-        when(records.existsById(4)).thenReturn(true);
-        assertEquals(0, service.delete(request).getCode());
-        verify(records).deleteById(4);
+        when(gameService.hideRecord(request)).thenReturn(new DataResponse(0, null, "记录已隐藏"));
+        assertEquals(0, service.hide(request).getCode());
+        verify(gameService).hideRecord(request);
+        verify(records, never()).deleteById(anyInt());
     }
 
     /** 普通用户实际调用管理员控制器时会被方法权限拒绝 */
