@@ -112,7 +112,10 @@
   font: inherit;
 }
 .store-page button {
-  cursor: pointer;
+  cursor: var(--cursor-link);
+}
+.store-page button:disabled {
+  cursor: not-allowed;
 }
 .store-page .store-refresh {
   margin-left: auto;

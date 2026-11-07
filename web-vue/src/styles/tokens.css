@@ -1,4 +1,7 @@
 :root {
+  /* 指针图片与点击热点共用配置，图片加载期间使用系统指针 */
+  --cursor-default: url("/cursors/arrow.svg") 4 3, default;
+  --cursor-link: url("/cursors/hand.svg") 12 3, pointer;
   /* 登录背景和工作区内容区共用底色 */
   --color-workspace-background: #141619;
   --color-paper: #1b2838;
@@ -34,6 +37,14 @@
   --dur-dialog: 220ms;
   --dur-reduced: 100ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 系统高对比度模式使用系统指针，配合用户的可访问性设置 */
+@media (forced-colors: active) {
+  :root {
+    --cursor-default: default;
+    --cursor-link: pointer;
+  }
 }
 
 /* 工作区参考 anzhiyu 的中性深色界面，登录页沿用原有配色 */

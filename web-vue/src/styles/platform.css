@@ -2,6 +2,7 @@
 
 html,
 body {
+  cursor: var(--cursor-default);
   margin: 0;
   overflow-x: clip;
 }
@@ -41,12 +42,27 @@ a {
   -webkit-tap-highlight-color: var(--color-clear);
 }
 button {
-  cursor: pointer;
+  cursor: var(--cursor-link);
   white-space: nowrap;
   width: max-content;
   max-width: 100%;
   flex-shrink: 0;
   box-sizing: border-box;
+}
+/* 可点击控件沿用手形，编辑区域继续提供文字输入提示 */
+a[href],
+summary,
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  cursor: var(--cursor-link);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
 }
 select,
 option,
@@ -61,6 +77,12 @@ select {
 }
 button:disabled {
   opacity: 0.55;
+}
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
   cursor: not-allowed;
 }
 a {

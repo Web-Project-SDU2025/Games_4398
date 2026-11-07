@@ -57,7 +57,7 @@
   border-radius: var(--radius-control);
   background: var(--color-header);
   color: var(--color-ink);
-  cursor: pointer;
+  cursor: var(--cursor-link);
 }
 .pet-hide {
   position: absolute;

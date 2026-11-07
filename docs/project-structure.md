@@ -215,6 +215,7 @@
     │       └── UPSTREAM.md                                                     原项目说明
     ├── public/                                                                 静态图片和网站图标
     │   ├── audio/                                                              背景音乐音轨
+    │   ├── cursors/                                                            鼠标箭头和点击手形
     │   ├── icons/                                                              音符图标与来源许可
     │   ├── games/                                                              构建生成的注册表、启动页和游戏包
     │   ├── favicon.ico

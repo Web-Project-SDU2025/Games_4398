@@ -123,7 +123,7 @@
   font-size: 13px;
   font-weight: 700;
   padding: 14px 12px;
-  cursor: pointer;
+  cursor: var(--cursor-link);
   color: var(--color-sidebar-muted);
 }
 .desktop-shell .sidebar-group a {
