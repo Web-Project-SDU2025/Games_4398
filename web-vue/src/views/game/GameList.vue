@@ -76,7 +76,7 @@
     <BlockcoinHistory v-if="mode === 'library'" :history="wallet.history" />
     <dialog ref="editor">
       <form class="game-form" @submit.prevent="confirmGame">
-        <h3>游戏资料</h3>
+        <h3>商店游戏资料</h3>
         <label
           >游戏编号<input
             v-model="form.num"
@@ -225,6 +225,7 @@ export default {
         this.close();
         await this.query();
         this.$emit("changed");
+        this.notice = "商店游戏资料已更新";
       } catch (error) {
         this.editorNotice = "保存失败";
       }

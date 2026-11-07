@@ -29,7 +29,7 @@ export function findInstalledGame(games, path) {
   return null;
 }
 
-// 游戏库与收藏合并安装资料和账户状态，每个游戏只展示一次，未安装游戏仍保留资料
+// 商城、游戏库和收藏共用数据库资料，安装清单只补充封面与运行能力
 export function launcherGames(catalog, installedGames) {
   const result = [];
   for (const record of catalog) {
@@ -54,7 +54,6 @@ export function launcherGames(catalog, installedGames) {
       entry.id = installed.id;
       entry.cover = installed.cover;
       entry.capabilities = installed.capabilities;
-      entry.description = installed.description;
       entry.installed = true;
       entry.runtime = installed.runtime;
     }

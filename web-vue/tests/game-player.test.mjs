@@ -110,8 +110,8 @@ test("编辑器和登录权限保持原边界", function testEditorRules() {
   assert.equal(player.address, address);
 });
 
-// 游戏条目统一包含收藏与持有状态，缺少安装包时仍保留游戏资料和不可启动状态
-test("游戏库合并显示资料且保留未安装游戏", function testLibraryEntries() {
+// 管理员维护的资料用于商城与游戏库，安装清单不能覆盖介绍，未安装游戏仍保留
+test("商城和游戏库使用管理员保存的资料", function testLibraryEntries() {
   const catalog = [
     {
       gameId: 1,
@@ -135,6 +135,8 @@ test("游戏库合并显示资料且保留未安装游戏", function testLibrary
   const installed = [
     {
       id: "pvz",
+      name: "安装包旧名称",
+      category: "安装包旧分类",
       gamePath: "/games/pvz/game.json",
       cover: "/games/pvz/media/menu.png",
       description: "游戏玩法",
@@ -146,9 +148,25 @@ test("游戏库合并显示资料且保留未安装游戏", function testLibrary
   assert.equal(entries[0].favorite, true);
   assert.equal(entries[0].owned, true);
   assert.equal(entries[0].cover, installed[0].cover);
+  assert.equal(entries[0].name, catalog[0].name);
+  assert.equal(entries[0].category, catalog[0].category);
+  assert.equal(entries[0].description, "数据库介绍");
   assert.equal(entries[1].installed, false);
   assert.equal(entries[1].description, "其他介绍");
   assert.equal(catalog[0].description, "数据库介绍");
+  // 再次保存或清空介绍都以数据库为准，避免管理员删除后又显示安装包旧文案
+  catalog[0].name = "管理员修改后的名称";
+  catalog[0].category = "管理员修改后的分类";
+  catalog[0].description = "管理员修改后的商店介绍";
+  const updated = launcherGames(catalog, installed);
+  assert.equal(updated[0].name, catalog[0].name);
+  assert.equal(updated[0].category, catalog[0].category);
+  assert.equal(updated[0].description, catalog[0].description);
+  assert.equal(updated[0].gamePath, catalog[0].gamePath);
+  assert.equal(updated[0].capabilities.editor, true);
+  catalog[0].description = "";
+  const cleared = launcherGames(catalog, installed);
+  assert.equal(cleared[0].description, "");
 });
 
 // 消息源与账户必须同时匹配，隐藏在其他页面时仍可刷新记录和奖励
