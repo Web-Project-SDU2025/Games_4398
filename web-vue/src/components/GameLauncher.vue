@@ -4,7 +4,7 @@
     :class="{ 'store-products': commerce }"
     aria-label="游戏条目"
   >
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <article
       v-for="game in visibleGames"
       :key="game.gameId"
@@ -144,7 +144,10 @@ export default {
       return this.playLabel(game);
     },
     // 校验入口条件后向共用运行仓库发起请求，页面切换本身不会结束游戏
-    play: function play(game, editor) {
+    play: function play(
+      game,
+      editor,
+    ) {
       if (
         !game.installed ||
         (editor && !this.admin) ||

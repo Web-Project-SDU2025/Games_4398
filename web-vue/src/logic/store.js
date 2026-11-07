@@ -6,7 +6,12 @@ export const STORE_MODES = [
 ];
 
 // 按搜索、分类和持有关系筛选商品，空输入显示全部匹配项
-export function filterProducts(products, search, category, mode) {
+export function filterProducts(
+  products,
+  search,
+  category,
+  mode,
+) {
   const result = [];
   const keyword = search.trim().toLowerCase();
   for (const game of products) {

@@ -40,7 +40,7 @@
         <span class="i-ep-close" aria-hidden="true"></span>
       </button>
     </header>
-    <p v-if="notice" class="game-player-notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <iframe
       ref="frame"
       :src="session.address"

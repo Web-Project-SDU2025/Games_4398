@@ -38,6 +38,8 @@ function fixture() {
     new URL("./fixtures/java-game/src", import.meta.url),
   );
   fs.cpSync(fixturePath, path.join(source, "src"), { recursive: true });
+  fs.mkdirSync(path.join(source, "resources/sample"), { recursive: true });
+  fs.writeFileSync(path.join(source, "resources/sample/message.txt"), "classpath resource");
   fs.writeFileSync(
     path.join(source, "cover.png"),
     Buffer.from(
@@ -53,7 +55,7 @@ function fixture() {
     classpath: ["game.jar"],
     cover: "assets/cover.png",
     arguments: ["{assets}", "start"],
-    build: { source: "src", cover: "cover.png", libraries: [] },
+    build: { source: "src", resources: "resources", cover: "cover.png", libraries: [] },
   };
   const manifestFile = path.join(source, "game.json");
   fs.writeFileSync(manifestFile, JSON.stringify(descriptor));
@@ -75,14 +77,27 @@ function cleanup(loaded) {
 }
 
 // 新游戏只维护一份配置，导入后同时支持源码构建和已有 JAR 再接入
-test("通用游戏包导入、构建与预编译 JAR 接入", function testGenericImport() {
+test("通用游戏包导入、构建与预编译 JAR 接入", async function testGenericImport() {
   const loaded = fixture();
   try {
     importGame(loaded.source, loaded.manifestFile, loaded.frontend);
     assert.deepEqual(readRegistry(loaded.frontend), ["sample"]);
-    buildGames(loaded.frontend, false);
+    await buildGames(loaded.frontend, false);
     const generated = path.join(loaded.frontend, "public/games/sample");
     assert.ok(fs.existsSync(path.join(generated, "game.jar")));
+    assert.equal(fs.readFileSync(
+      path.join(loaded.frontend, "games/sample/resources/sample/message.txt"), "utf8",
+    ), "classpath resource");
+    const jdk = findJdk();
+    let jarTool = "jar";
+    if (process.platform === "win32") {
+      jarTool = "jar.exe";
+    }
+    const contents = childProcess.spawnSync(path.join(jdk, jarTool), [
+      "--list", "--file", path.join(generated, "game.jar"),
+    ], { encoding: "utf8", windowsHide: true });
+    assert.equal(contents.status, 0);
+    assert.match(contents.stdout, /sample\/message\.txt/);
     const manifest = JSON.parse(
       fs.readFileSync(path.join(generated, "game.json"), "utf8"),
     );
@@ -118,11 +133,10 @@ test("通用游戏包导入、构建与预编译 JAR 接入", function testGener
     const filename = path.join(second, "game.json");
     fs.writeFileSync(filename, JSON.stringify(descriptor));
     importGame(second, filename, loaded.frontend);
-    buildGames(loaded.frontend, false);
+    await buildGames(loaded.frontend, false);
     assert.equal(fs.existsSync(oldResource), false);
     assert.equal(fs.readFileSync(keptResource, "utf8"), "user notes");
     const jar = path.join(loaded.frontend, "public/games/binary-game/game.jar");
-    const jdk = findJdk();
     let java = "java";
     if (process.platform === "win32") {
       java = "java.exe";
@@ -154,6 +168,12 @@ test("通用导入检查重复编号、越界路径和缺失依赖", function te
       readProject(loaded.source, descriptor);
     });
     descriptor.build.source = "src";
+    descriptor.build.resources = "cover.png";
+    // 类路径资源必须来自目录，普通封面文件不能充当资源目录
+    assert.throws(function invalidResources() {
+      readProject(loaded.source, descriptor);
+    }, /resources/);
+    descriptor.build.resources = "resources";
     descriptor.build.libraries = ["lib/missing.jar"];
     // 依赖缺失时不向游戏目录复制任何内容
     assert.throws(function missingDependency() {

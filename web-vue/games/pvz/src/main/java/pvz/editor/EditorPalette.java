@@ -55,7 +55,10 @@ public class EditorPalette extends JPanel {
      *
      * 参数：editorIcons 提供图标；dragController 接收点击和拖动的报告
      */
-    public EditorPalette(EditorIcons editorIcons, EditorDragController dragController) {
+    public EditorPalette(
+            EditorIcons editorIcons,
+            EditorDragController dragController
+    ) {
         icons = editorIcons;
         controller = dragController;
         setBackground(new Color(0xF2, 0xF5, 0xF0));

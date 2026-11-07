@@ -46,7 +46,10 @@ public class CheckJavaStyle {
     private static final Pattern DEFENSIVE_COMMENT = Pattern.compile("兜底|万一|免得|不值得|不用担心|只好|不是笔误|收摊|攥着");
 
     /** 收集指定目录下的 Java 文件，子目录递归检查 */
-    private static void collectFiles(Path directory, List<Path> files) throws IOException {
+    private static void collectFiles(
+            Path directory,
+            List<Path> files
+    ) throws IOException {
         try (java.nio.file.DirectoryStream<Path> entries = Files.newDirectoryStream(directory)) {
             for (Path entry : entries) {
                 if (Files.isDirectory(entry)) {
@@ -225,14 +228,20 @@ public class CheckJavaStyle {
 
         /** 三目表达式使用分支说明每种结果 */
         @Override
-        public Void visitConditionalExpression(ConditionalExpressionTree node, Void unused) {
+        public Void visitConditionalExpression(
+                ConditionalExpressionTree node,
+                Void unused
+        ) {
             report(node, "请使用 if / else");
             return super.visitConditionalExpression(node, unused);
         }
 
         /** 复合赋值使用普通赋值表达计算过程 */
         @Override
-        public Void visitCompoundAssignment(CompoundAssignmentTree node, Void unused) {
+        public Void visitCompoundAssignment(
+                CompoundAssignmentTree node,
+                Void unused
+        ) {
             report(node, "请使用普通赋值");
             return super.visitCompoundAssignment(node, unused);
         }

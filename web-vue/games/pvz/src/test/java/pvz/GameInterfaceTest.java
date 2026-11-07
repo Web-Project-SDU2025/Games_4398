@@ -261,7 +261,10 @@ public class GameInterfaceTest {
     }
 
     /** 验证选卡、战斗和演出都能返回选关，重新开始保持原关卡且不残留本局对象 */
-    private static void checkReturnToSelection(Assets assets, Path project) throws Exception {
+    private static void checkReturnToSelection(
+            Assets assets,
+            Path project
+    ) throws Exception {
         int left = Layout.RETURN_SELECTION_LEFT + Layout.RETURN_SELECTION_WIDTH / 2;
         int top = Layout.RETURN_SELECTION_TOP + Layout.RETURN_SELECTION_HEIGHT / 2;
         Rectangle returnButton = new Rectangle(Layout.RETURN_SELECTION_LEFT,
@@ -321,7 +324,10 @@ public class GameInterfaceTest {
     }
 
     /** 分别检查战斗与选卡画面，逐像素比较旧版固定字号和右对齐，防止只修改其中一处 */
-    private static void checkSunNumbers(Assets assets, Path project) throws Exception {
+    private static void checkSunNumbers(
+            Assets assets,
+            Path project
+    ) throws Exception {
         BufferedImage samples = new BufferedImage(360, 100, BufferedImage.TYPE_INT_RGB);
         Graphics2D samplePainter = samples.createGraphics();
         for (int screen = GameScreen.CHOOSE; screen <= GameScreen.PLAY; screen = screen + 1) {
@@ -377,7 +383,10 @@ public class GameInterfaceTest {
     }
 
     /** 验证点击封面仅选中关卡，回车进入实际关卡，并支持返回菜单 */
-    private static void checkLevelSelection(Assets assets, Path project) throws Exception {
+    private static void checkLevelSelection(
+            Assets assets,
+            Path project
+    ) throws Exception {
         Game game = new Game(assets, 0, false, false);
         game.setSize(Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
         game.click(Layout.MENU_BUTTON_LEFT + 30, Layout.MENU_BUTTON_TOP + 30);
@@ -442,7 +451,10 @@ public class GameInterfaceTest {
     }
 
     /** 使用模拟系统缩放的画笔绘制选关，防止只在百分之百缩放时看起来居中 */
-    private static void checkScaledSelection(Assets assets, Path project) throws Exception {
+    private static void checkScaledSelection(
+            Assets assets,
+            Path project
+    ) throws Exception {
         LevelSelection selection = new LevelSelection(assets);
         selection.open(1);
         for (double scale : DISPLAY_SCALES) {
@@ -487,7 +499,13 @@ public class GameInterfaceTest {
     }
 
     /** 参数 game 是目标界面，坐标、次数和按键组成系统鼠标事件，验证实际监听器的分派 */
-    private static void sendMousePress(Game game, int horizontal, int vertical, int count, int button) {
+    private static void sendMousePress(
+            Game game,
+            int horizontal,
+            int vertical,
+            int count,
+            int button
+    ) {
         MouseEvent event = new MouseEvent(game, MouseEvent.MOUSE_PRESSED,
             System.currentTimeMillis(), 0, horizontal, vertical, count, false, button);
         for (MouseListener listener : game.getMouseListeners()) {

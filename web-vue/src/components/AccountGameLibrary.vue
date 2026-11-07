@@ -21,7 +21,7 @@
       <label>游戏名称<input v-model.trim="search" :disabled="saving" /></label>
       <button type="submit" :disabled="saving || loading">查询</button>
     </form>
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="game-table-wrap" :aria-busy="loading">
       <table class="game-table">
         <thead>

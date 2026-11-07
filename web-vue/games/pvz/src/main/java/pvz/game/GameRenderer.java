@@ -298,7 +298,12 @@ public class GameRenderer {
      *
      * 参数：painter 是画笔；time 是当前时刻；sprite 是要画的精灵；shift 是横向偏移
      */
-    private void movedDraw(Graphics2D painter, long time, Sprite sprite, int shift) {
+    private void movedDraw(
+            Graphics2D painter,
+            long time,
+            Sprite sprite,
+            int shift
+    ) {
         if (shift == 0) {
             sprite.draw(painter, assets, time);
             return;
@@ -383,7 +388,11 @@ public class GameRenderer {
      *
      * 参数：painter 是画笔；time 是当前时刻；state 里装着选卡数据
      */
-    private void drawChooserContent(Graphics2D painter, long time, GameState state) {
+    private void drawChooserContent(
+            Graphics2D painter,
+            long time,
+            GameState state
+    ) {
         drawChooserTopBar(painter, time, state);
         drawChooserPanel(painter, time, state);
         drawFlyingCards(painter, time, state);
@@ -501,7 +510,11 @@ public class GameRenderer {
      *
      * 参数：painter 是画笔；time 是当前游戏时刻；state 是游戏数据
      */
-    private void drawDeveloperOverlay(Graphics2D painter, long time, GameState state) {
+    private void drawDeveloperOverlay(
+            Graphics2D painter,
+            long time,
+            GameState state
+    ) {
         Graphics2D debugPainter = (Graphics2D) painter.create();
         debugPainter.setFont(new Font("SansSerif", Font.BOLD, 12));
         debugPainter.setStroke(new BasicStroke(2));
@@ -713,7 +726,12 @@ public class GameRenderer {
     }
 
     /** 画某一行的植物 */
-    private void drawRowPlants(Graphics2D painter, long time, GameState state, int row) {
+    private void drawRowPlants(
+            Graphics2D painter,
+            long time,
+            GameState state,
+            int row
+    ) {
         for (Plant plant : state.plants) {
             if (plant.alive && plant.row == row) {
                 drawPlant(painter, time, plant);
@@ -722,7 +740,12 @@ public class GameRenderer {
     }
 
     /** 画某一行的僵尸；被冻住的僵尸脚下要加一层冰 */
-    private void drawRowZombies(Graphics2D painter, long time, GameState state, int row) {
+    private void drawRowZombies(
+            Graphics2D painter,
+            long time,
+            GameState state,
+            int row
+    ) {
         for (Zombie zombie : state.zombies) {
             if (!zombie.alive || zombie.row != row) {
                 continue;
@@ -739,7 +762,12 @@ public class GameRenderer {
     }
 
     /** 画某一行的子弹 */
-    private void drawRowBullets(Graphics2D painter, long time, GameState state, int row) {
+    private void drawRowBullets(
+            Graphics2D painter,
+            long time,
+            GameState state,
+            int row
+    ) {
         for (Bullet bullet : state.bullets) {
             if (bullet.alive && bullet.row == row) {
                 bullet.draw(painter, assets, time);
@@ -822,7 +850,11 @@ public class GameRenderer {
     }
 
     /** 画手里拿着的卡片或铲子，保持两种工具的预览入口一致 */
-    private void drawHeldItemPreview(Graphics2D painter, long time, GameState state) {
+    private void drawHeldItemPreview(
+            Graphics2D painter,
+            long time,
+            GameState state
+    ) {
         if (isShovelSwinging(time, state)) {
             drawShovelSwing(painter, time, state);
             return;

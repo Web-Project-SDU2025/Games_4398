@@ -6,7 +6,7 @@
       ><button type="submit">查询</button>
       <button type="button" @click="edit(null)">添加账户</button>
     </form>
-    <p v-reveal="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="game-table-wrap motion-results" :aria-busy="loaded && loading">
       <table class="game-table">
         <thead>
@@ -127,7 +127,7 @@
           <button type="submit" :disabled="saving">保存</button
           ><button type="button" :disabled="saving" @click="close">取消</button>
         </div>
-        <p role="status">{{ editorNotice }}</p>
+        <span v-toast="editorNotice"></span>
       </form>
     </dialog>
     <BlockcoinAdjustment ref="adjustment" @changed="assetsChanged" />

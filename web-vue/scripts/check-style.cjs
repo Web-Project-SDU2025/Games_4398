@@ -20,12 +20,22 @@ const FORBIDDEN_SYNTAX = {
 const errors = [];
 
 // 记录文件和行号，让检查结果能直接定位需要修改的位置
-function report(filename, node, message) {
+function report(
+  filename,
+  node,
+  message,
+) {
   errors.push(filename + ":" + node.loc.start.line + " " + message);
 }
 
 // 按语法节点检查表达式，字符串中的符号由解析器识别为文字
-function checkNode(node, parent, comments, source, filename) {
+function checkNode(
+  node,
+  parent,
+  comments,
+  source,
+  filename,
+) {
   if (!node || typeof node !== "object") {
     return;
   }

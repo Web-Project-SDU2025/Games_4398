@@ -367,7 +367,11 @@ public class Assets {
      *
      * 参数：name 是游戏里的动画名；file 是专属素材路径；fallbackName 是已加载的动画名
      */
-    private void animationWithFallback(String name, String file, String fallbackName)
+    private void animationWithFallback(
+            String name,
+            String file,
+            String fallbackName
+    )
             throws IOException {
         Path animationPath = root.resolve(file);
         if (Files.isRegularFile(animationPath)) {
@@ -415,7 +419,11 @@ public class Assets {
      *
      * 参数：name 是动画名；file 是文件路径；scale 是目标倍数（小于 1 表示缩小）
      */
-    private void scaledAnimation(String name, String file, double scale) throws IOException {
+    private void scaledAnimation(
+            String name,
+            String file,
+            double scale
+    ) throws IOException {
         List<BufferedImage> list = new ArrayList<BufferedImage>();
         for (GifFrame frame : readGif(root.resolve(file))) {
             list.add(AssetToolkit.resizeByScale(frame.image, scale));
@@ -563,7 +571,11 @@ public class Assets {
     }
 
     /** 读取元数据节点里的整数属性，缺失时返回默认值 */
-    private static int intAttribute(IIOMetadataNode node, String name, int fallback) {
+    private static int intAttribute(
+            IIOMetadataNode node,
+            String name,
+            int fallback
+    ) {
         if (node == null) {
             return fallback;
         }

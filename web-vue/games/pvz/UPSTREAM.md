@@ -1,36 +1,18 @@
 # 植物大战僵尸（Java 版）
 
-这是一个用 Java Swing 编写的植物大战僵尸学习项目，包含冒险模式、传送带关卡、坚果保龄球关卡和图形化关卡编辑器。读者可以通过源码学习 Java 桌面程序、游戏循环、动画播放、碰撞检测和 JSON 文件读写。
+本项目使用 Java Swing 编写，包含冒险模式、传送带关卡、坚果保龄球关卡和图形化关卡编辑器。源码展示了 Java 桌面程序、动画、碰撞检测和 JSON 文件读写。
 
-项目代码规模较小，适合大一至大二学生阅读和参考。
-
-本文件保留独立 Java 工程的使用说明，其中的运行与打包命令面向原工程。平台中的浏览器启动方式见[游戏接入说明](../../../docs/game-integration.md)。
+本文件说明独立 Java 工程的运行方式。平台中的浏览器启动方式见[游戏接入说明](../../../docs/game-integration.md)。
 
 **本项目仅能用于学习，禁止商用，严禁抄袭！**
 
 作者：**Windy-Field / Octorange**
 
-## 游戏截图
+## 游戏画面
 
-| 主菜单 | 选卡界面 |
+| 浏览器运行画面 | 关卡编辑器 |
 | --- | --- |
-| ![主菜单](screenshots/menu.png) | ![选卡界面](screenshots/level-1.png) |
-
-| 关卡选择 | 第 4 关 |
-| --- | --- |
-| ![关卡选择](screenshots/level-selection.png) | ![第 4 关](screenshots/level-3-play.png) |
-
-| 经典关卡 | 传送带关卡 |
-| --- | --- |
-| ![经典关卡](screenshots/level-0-play.png) | ![传送带关卡](screenshots/level-4-play.png) |
-
-| 坚果保龄球关卡 | 关卡编辑器 |
-| --- | --- |
-| ![坚果保龄球关卡](screenshots/level-5-play.png) | ![关卡编辑器](screenshots/editor.png) |
-
-| 植物图鉴 | 僵尸图鉴 |
-| --- | --- |
-| ![植物图鉴](screenshots/almanac-plants.png) | ![僵尸图鉴](screenshots/almanac-zombies.png) |
+| ![浏览器运行画面](../../../docs/images/game.png) | ![关卡编辑器](../../../docs/images/editor.png) |
 
 ## 当前版本
 
@@ -71,7 +53,7 @@
 
 ## 快速开始
 
-开发者在 Windows 中使用 JDK 17 或更高版本，保留完整素材后，在独立工程根目录运行以下命令：
+在 Windows 上安装 JDK 17 或更高版本并保留完整素材后，可以在独立工程根目录运行以下命令：
 
 ```bat
 run.bat            :: 从第 1 关开始
@@ -81,7 +63,7 @@ run.bat editor     :: 打开关卡编辑器并载入第 1 关
 run.bat editor 3   :: 打开关卡编辑器并载入第 4 关
 ```
 
-玩家进入游戏后，点击“冒险模式”即可打开选关页。命令行关卡参数用于指定默认选中项，编辑器试玩则直接载入指定关卡。
+玩家点击“冒险模式”后可以进入选关页。命令行参数可指定默认关卡，编辑器也可以直接载入指定关卡试玩。
 
 游戏入口是 `src/main/java/pvz/Main.java`，编辑器入口是 `src/main/java/pvz/EditorMain.java`。
 
@@ -101,30 +83,16 @@ assets/
 
 素材缺失或损坏时，请运行 `run.bat test`。自检程序会检查素材、资料表、动画和关卡文件是否能够正常使用。
 
-新增素材的英文命名、重复比对和筛选结果见 [`docs/asset-import/README.md`](docs/asset-import/README.md)。
-以后可以新增的植物和僵尸技能见 [`docs/asset-import/creative-skills.md`](docs/asset-import/creative-skills.md)。
-
 ## 自检程序
 
-`run.bat test` 会在不打开游戏窗口的情况下运行 `SelfCheckTest`。它会检查以下内容：
-
-- 界面图片、背景、植物素材和僵尸素材；
-- 植物与僵尸资料表、卡片、动画和基础行为；
-- 橄榄球僵尸的速度、动画和死亡流程；
-- 巨人的砸击、半血投掷、冻结、小鬼飞行落地、专属死亡和编辑器读写；
-- 窝瓜的索敌、锁定目标和多目标压扁范围；
-- 铲子、传送带、保龄球、选卡、种植和出怪流程；
-- 关卡编辑器的保存、读取和游戏侧加载；
-- 游戏渲染结果和固定时间步长。
-
-所有检查通过后，程序会输出 `PASS`，并将测试画面保存到 `build/`。自检程序会临时使用 `assets/levels/level_99.json`，创建前检查该文件是否存在，结束后删除本次临时文件。
+`run.bat test` 会运行 `SelfCheckTest`，检查游戏素材、关卡、主要行为和编辑器读写。检查通过后，程序会输出 `PASS` 并保存测试画面。
 
 ## 关卡编辑器
 
-玩家点击选关页右下角的“关卡编辑器”，即可编辑当前选中关卡。重复点击会切回已打开的编辑器，并保留未保存内容；关闭编辑器后，玩家可以继续选关。双击封面或按回车可以进入关卡。
+玩家可以从选关页打开关卡编辑器，编辑当前选中的关卡。编辑器会保留未保存内容；玩家关闭编辑器后可以继续选关。
 
-![关卡编辑器](screenshots/editor.png)
-编辑器的网格横向表示波次，纵向表示草坪的 5 行。每个格子表示某一波在某一行出现的僵尸以及出现数量。
+![关卡编辑器](../../../docs/images/editor.png)
+编辑器网格以列表示波次，以行表示草坪位置。每个格子记录该波次该行出现的僵尸和数量。
 
 | 操作 | 作用 |
 | --- | --- |
@@ -136,11 +104,7 @@ assets/
 | 将格子拖出网格或按 Delete | 删除格子中的僵尸 |
 | 按 R 或勾选“随机行出怪” | 让这一波的僵尸随机选择行 |
 
-编辑器可以设置初始阳光、阳光生成间隔、出怪间隔、卡槽数量、卡池、禁用植物和必选植物。卡槽数量的范围是 1~8；禁用植物和必选植物只对正常选卡关卡生效。
-
-右侧“关卡截图”区域可选择 PNG、JPG 或 GIF 图片作为选关封面，设置后需保存关卡。点击“恢复自动”并保存可改回自动封面，截图导入位置与回退规则见 [游戏界面设计](docs/interface-design.md)。
-
-点击“保存并试玩”可在试玩窗口运行当前关卡，同一编辑器只保留一个试玩窗口。从游戏内打开的编辑器试玩时，点击“返回选关”或按 Esc 会关闭试玩并回到原选关窗口。勾选“开发者模式”后，试玩画面会显示碰撞箱、血量和场上对象数量；该设置不会写入关卡文件。
+编辑器支持设置阳光、出怪节奏、卡槽和卡池，也可以保存封面并试玩关卡。
 
 ## 游戏操作
 
@@ -154,7 +118,7 @@ assets/
 
 ## 项目结构
 
-源码放在 `src/`，素材放在 `assets/`，说明放在 `docs/`，展示截图放在 `screenshots/`。`scripts/` 保存运行和打包共用的构建工具。
+源码放在 `src/`，素材放在 `assets/`，说明放在 `docs/`，运行和打包工具放在 `scripts/`。
 
 `build/` 保存编译结果和自检截图，`target/` 是 Maven 生成的目录，`dist/` 保存发行包。
 
@@ -228,7 +192,7 @@ src/test/java/pvz/
 └── SelfCheckTest.java            项目自检程序
 ```
 
-项目遵循以下规则：
+源码按植物、僵尸、游戏、关卡和编辑器等职责拆分。主要实现约定如下：
 
 - `PlantCatalog` 和 `ZombieCatalog` 保存植物、僵尸的固定资料。品种差异应优先写入资料表，不要在多个类中重复判断名称。
 - `Layout` 保存坐标、时间、血量、伤害和界面布局常量；`LevelJson` 保存关卡 JSON 的字段约定。
@@ -239,37 +203,15 @@ src/test/java/pvz/
 
 ## 新增植物示例
 
-源码中的扩展 TODO 使用连续编号 `01`～`20`，这些注释是学习和扩展指引，应保留；其中提到的可选步骤只在新功能需要时执行。
-
-| 编号 | 扩展步骤 | 主要位置 |
-| --- | --- | --- |
-| 01 | 设计共用数值 | `Layout` |
-| 02～05 | 植物属性、素材、资料与位置 | `PlantDefinition`、`Assets`、`PlantCatalog`、`Plant` |
-| 06～09 | 子弹素材、嘴部高度和子弹选择 | `Assets`、`Layout`、`ShooterActions` |
-| 10～11 | 植物行为与特殊绘制 | `PlantActions`、`GameRenderer` |
-| 12～14 | 僵尸属性、素材和资料 | `ZombieDefinition`、`Assets`、`ZombieCatalog` |
-| 15～17 | 僵尸状态、死亡与特殊能力 | `Zombie`、`ZombieActions` |
-| 18～20 | 动画和行为验证 | `SelfCheckTest` |
-
-下面以“寒冰双发射手”为例说明扩展步骤。开发者新增植物时，应先复用已有资料和行为，再补充所需代码。
+新增植物时，开发者应准备素材、登记植物资料和动画，并复用已有行为。新增内容也需要通过自检。
 
 ### 必做步骤
 
-1. 将基础动画和状态动画放入 `assets/Plants/IceRepeater/`，新增目录和文件使用英文名。
-2. 将卡片图片放入 `assets/Cards/`，并让文件名与 `PlantDefinition.cardPicture` 一致。
-3. 在 `world/Assets.java` 的 `loadPlants()` 中登记动画。普通动画使用 `animation()`，序列动画使用 `sequence()`，需要拉伸的动画使用 `stretchedAnimation()`。
-4. 在 `plant/PlantCatalog.java` 中增加一条完整的 `PlantDefinition`，填写名称、卡片、花费、冷却、血量、睡眠状态、可被吃状态、行为类别、产阳光数量、绘制偏移、攻击动画和子弹转换资料。
-5. 为植物选择已有的 `PlantActionType`，在对应行为类中实现必要的具名方法；少量特殊逻辑不单独建文件。
-6. 在 `SelfCheckTest.java` 的动画名单中加入新动画。若植物会进入传送带或保龄球卡池，还要准备对应卡片并加入相关检查。
-7. 运行 `run.bat test`，确认素材、资料表、卡片、渲染和行为检查全部通过。
+开发者需要准备素材、登记植物资料和动画，并运行自检。
 
 ### 可选步骤
 
-- 植物需要睡眠动画时，准备 `植物名Sleep`，并在 `PlantDefinition` 中设置 `sleepsAtDay`。
-- 植物需要特殊绘制位置时，在 `PlantDefinition` 中设置 `rootShift` 或 `verticalShift`。
-- 植物需要攻击保护时，在 `PlantDefinition` 中设置 `attackAnimation`。
-- 植物发射特殊子弹时，在 `Assets.loadBullets()` 登记素材，并在 `ShooterActions.bulletNameFor()` 选择；新伤害或命中特效还需更新 `Bullet`。只有植物会改变经过它的子弹时才配置 `BulletTransformation`。
-- 植物需要新的射击高度时，再修改 `Layout.java` 和 `ShooterActions.java`。
+开发者可以根据植物能力设置睡眠动画、绘制位置或攻击动作。
 
 ### 植物行为类别
 
@@ -283,14 +225,7 @@ src/test/java/pvz/
 
 ## 新增僵尸
 
-1. 将僵尸动画放入 `assets/Zombies/` 或 `assets/new_assets/`。
-2. 在 `world/Assets.java` 的 `loadZombies()` 中登记行走、攻击、死亡和特殊动作动画。
-3. 在 `zombie/ZombieCatalog.java` 中增加一条 `ZombieDefinition`，填写血量、装备、速度和动画名称。
-4. 僵尸需要不同状态的动画时，开发者先填写资料字段，再核对该字段的默认规则；`null` 表示使用该字段约定的默认值，缺失动画的处理方式以对应字段规则为准。
-5. 特殊技能在 `ZombieActions` 中增加具名方法，复用普通移动、索敌、攻击和冻结流程，不按品种单独新增行为文件。
-6. 在 `AlmanacDescriptions` 补充介绍，在 `SelfCheckTest` 登记动画；新战斗规则加入 `CombatTest`，最后运行 `run.bat test`。
-
-编辑器会自动读取 `ZombieCatalog` 中的僵尸名单，新增品种后也使用这份资料。
+新增僵尸时，开发者需要登记动画和僵尸资料，并复用已有的行为处理。新增行为应加入对应自检。
 
 ## 制作免安装包
 
@@ -302,22 +237,11 @@ src/test/java/pvz/
 
 脚本会编译游戏、生成 `game.jar`，再通过 `jlink` 制作精简运行时，输出到 `dist/MyPVZ`。玩家解压后双击 `play-game.bat` 即可离线运行。
 
-调试打包过程时，可以使用以下参数：
-
-```powershell
-.\package.ps1 -SkipPackage
-.\package.ps1 -Name CustomName
-```
-
-`-SkipPackage` 会跳过最后的压缩步骤，`-Name` 可以修改输出目录名称。`dist/` 已加入 `.gitignore`，不会被提交到仓库。
-
 ## 技术说明
 
-- 游戏使用 Java Swing 绘制，不依赖游戏引擎。
-- 动画通过读取 GIF 的逐帧图像播放。
-- 关卡使用 JSON 文件保存，并由 Gson 解析。
-- 植物、僵尸和子弹使用矩形碰撞检测；僵尸还会单独计算躯干碰撞范围。
-- 游戏使用固定时间步长推进战斗，因此不同速度下的规则仍保持一致。
+- 游戏使用 Java Swing 绘制，动画由 GIF 逐帧播放。
+- 关卡以 JSON 保存，并由 Gson 解析。
+- 游戏使用矩形碰撞检测和固定时间步长推进战斗。
 
 ## 版权与许可
 

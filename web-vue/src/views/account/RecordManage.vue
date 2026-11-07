@@ -11,7 +11,7 @@
         <input v-model="showHidden" type="checkbox" />显示隐藏记录
       </label>
     </form>
-    <p v-reveal="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="game-table-wrap motion-results" :aria-busy="loaded && loading">
       <table class="game-table">
         <thead>
@@ -120,7 +120,7 @@
             type="datetime-local"
             step="1"
         /></label>
-        <p v-reveal="editorNotice" role="status">{{ editorNotice }}</p>
+        <span v-toast="editorNotice"></span>
         <div class="game-actions">
           <button type="submit" :disabled="saving">保存</button
           ><button type="button" :disabled="saving" @click="close">取消</button>
@@ -254,7 +254,10 @@ export default {
       this.$refs.editor.close();
     },
     // 隐藏与恢复按当前管理员保存，确认期间切号则结束本次操作
-    changeVisibility: async function changeVisibility(record, hidden) {
+    changeVisibility: async function changeVisibility(
+      record,
+      hidden,
+    ) {
       if (this.updating !== null) {
         return;
       }

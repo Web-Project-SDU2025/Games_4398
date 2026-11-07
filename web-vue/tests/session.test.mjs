@@ -60,14 +60,14 @@ function loadSession(profileRequest, switchRequest) {
     return {};
   }
   // 记录错误提示，网络失败时应让用户知道没有完成身份检查
-  function ElMessage(options) {
-    notices.push(options.message);
+  function showToast(message) {
+    notices.push(message);
   }
   const routeContext = {
     useAppStore: useAppStore,
     createRouter: createRouter,
     createWebHistory: createWebHistory,
-    ElMessage: ElMessage,
+    showToast: showToast,
   };
   let routeSource = fs.readFileSync(
     new URL("../src/router/index.js", import.meta.url),

@@ -39,7 +39,11 @@ export function getRoleName(role) {
 }
 
 /** 检查旧密码、新密码和确认密码，返回错误文字；通过时返回空字符串 */
-export function checkPasswordChange(oldPassword, newPassword, confirmation) {
+export function checkPasswordChange(
+  oldPassword,
+  newPassword,
+  confirmation,
+) {
   if (!oldPassword || !newPassword) {
     return "旧密码和新密码不能为空";
   }

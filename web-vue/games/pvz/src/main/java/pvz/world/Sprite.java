@@ -50,7 +50,14 @@ public class Sprite {
      * 参数：kind 是素材名；center 是期望的中心横坐标；bottom 是期望的底边纵坐标；
      *       row 是所在行；hitPoints 是最初的血量；assets 提供图片
      */
-    public Sprite(String kind, int center, int bottom, int row, int hitPoints, Assets assets) {
+    public Sprite(
+            String kind,
+            int center,
+            int bottom,
+            int row,
+            int hitPoints,
+            Assets assets
+    ) {
         name = kind;
         animation = kind;
         animationStart = System.currentTimeMillis();
@@ -190,7 +197,12 @@ public class Sprite {
      * 参数：first 和 second 是要比较的两个精灵；assets 提供图片；time 是当前时刻
      * 返回：碰上了返回真
      */
-    public static boolean touches(Sprite first, Sprite second, Assets assets, long time) {
+    public static boolean touches(
+            Sprite first,
+            Sprite second,
+            Assets assets,
+            long time
+    ) {
         Rectangle firstBox = first.collisionBox(assets, time);
         Rectangle secondBox = second.collisionBox(assets, time);
         return firstBox.intersects(secondBox);

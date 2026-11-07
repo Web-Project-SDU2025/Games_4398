@@ -74,7 +74,11 @@ public class ConveyorRegressionTest {
     }
 
     /** 参数 mode 是传送带或保龄球；连续补卡至满，再移除中间卡片，逐步检查实际矩形不重叠 */
-    private static void checkQueue(Assets assets, Path root, int mode) throws Exception {
+    private static void checkQueue(
+            Assets assets,
+            Path root,
+            int mode
+    ) throws Exception {
         GameState state = new GameState();
         state.barType = mode;
         state.background = assets.frame("Background", 0);
@@ -102,7 +106,12 @@ public class ConveyorRegressionTest {
     }
 
     /** 参数 duration 是模拟时间，移动每一步都检查相邻卡片的真实边界以覆盖停靠和补位过程 */
-    private static void advanceQueue(GameState state, LevelSystem system, Assets assets, long duration) {
+    private static void advanceQueue(
+            GameState state,
+            LevelSystem system,
+            Assets assets,
+            long duration
+    ) {
         long end = state.time + duration;
         while (state.time < end) {
             state.time = state.time + Layout.FIXED_STEP_MS;

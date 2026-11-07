@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { buildNativeGame } from "./build-native-game.mjs";
 import {
   FRONTEND_ROOT,
   JAVA_RELEASE,
@@ -31,6 +32,9 @@ const RUNTIME_WEB_FILES = [
   "java-player.html",
   "java-player.css",
   "java-player.js",
+  "native-player.html",
+  "native-player.js",
+  "native-player.css",
 ];
 const GENERATED_RESOURCE_PATTERN = /^\d+-[a-f0-9]{20}\.bin$/;
 const RUNTIME_TEST_CLASSES = [
@@ -40,6 +44,26 @@ const RUNTIME_TEST_CLASSES = [
 const RUN_TESTS = process.argv.includes("--test");
 // 固定归档时间使相同源码生成相同资源指纹，页面缓存按真实内容更新
 const ARCHIVE_TIME = "2020-01-01T00:00:00Z";
+
+// 资源按原目录进入类路径，拒绝链接和覆盖 class，避免素材替换已编译的实现
+function copyResources(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const input = inside(source, entry.name, "Java 资源");
+    const output = path.join(destination, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error("Java 资源应使用实际文件");
+    }
+    if (entry.isDirectory()) {
+      copyResources(input, output);
+    } else if (entry.isFile()) {
+      if (entry.name.endsWith(".class") || fs.existsSync(output)) {
+        throw new Error("Java 资源不能覆盖类文件或已有资源：" + entry.name);
+      }
+      fs.copyFileSync(input, output);
+    }
+  }
+}
 
 // 将运行包发布为带内容指纹的数据资源，网页后台加载，配置始终指向同一构建版本
 function publishResources(manifest, output) {
@@ -87,7 +111,13 @@ function cleanPublishedResources(output, resources) {
 }
 
 // 编译源码与适配器，预编译 JAR 的原始字节码合并到共用运行器后发布
-function compile(project, jdk, classes, libraries, frontendRoot) {
+function compile(
+  project,
+  jdk,
+  classes,
+  libraries,
+  frontendRoot,
+) {
   const sources = [];
   collectJava(path.join(frontendRoot, RUNTIME_SOURCE), sources);
   if (project.build.source) {
@@ -124,7 +154,13 @@ function compile(project, jdk, classes, libraries, frontendRoot) {
 }
 
 // 以独立目录编译测试，再执行每个游戏声明的检查入口
-function testProject(project, jdk, classes, libraries, frontendRoot) {
+function testProject(
+  project,
+  jdk,
+  classes,
+  libraries,
+  frontendRoot,
+) {
   if (!project.build.testSource) {
     return;
   }
@@ -173,7 +209,12 @@ function testProject(project, jdk, classes, libraries, frontendRoot) {
 }
 
 // 发布一个游戏，源码构建与 JAR 接入共用素材、封面、许可和运行配置
-export function buildProject(project, jdk, frontendRoot, tests) {
+export function buildProject(
+  project,
+  jdk,
+  frontendRoot,
+  tests,
+) {
   const output = path.join(frontendRoot, "public/games", project.manifest.id);
   const cache = path.join(frontendRoot, "games/build");
   fs.mkdirSync(cache, { recursive: true });
@@ -189,6 +230,15 @@ export function buildProject(project, jdk, frontendRoot, tests) {
       fs.copyFileSync(file, path.join(output, path.basename(file)));
     }
     compile(project, jdk, classes, libraries, frontendRoot);
+    if (project.build.resources) {
+      copyResources(inside(project.root, project.build.resources, "Java 资源目录"), classes);
+    }
+    if (project.build.prepareClass) {
+      runJava(jdk, "java", [
+        "-Djava.awt.headless=true", "-cp", classes + path.delimiter + libraries.join(path.delimiter),
+        project.build.prepareClass, classes,
+      ]);
+    }
     runJava(jdk, "jar", [
       "--create",
       "--date=" + ARCHIVE_TIME,
@@ -243,7 +293,7 @@ export function buildProject(project, jdk, frontendRoot, tests) {
 }
 
 // 从唯一源码清单生成站内注册表和校验模块，新增游戏只维护自己的配置
-export function buildGames(frontendRoot, tests) {
+export async function buildGames(frontendRoot, tests) {
   const ids = readRegistry(frontendRoot);
   const projects = [];
   for (const id of ids) {
@@ -251,7 +301,11 @@ export function buildGames(frontendRoot, tests) {
   }
   const jdk = findJdk();
   for (const project of projects) {
-    buildProject(project, jdk, frontendRoot, tests);
+    if (project.manifest.runtime === "html5") {
+      await buildNativeGame(project, frontendRoot);
+    } else {
+      buildProject(project, jdk, frontendRoot, tests);
+    }
   }
   const addresses = [];
   for (const id of ids) {
@@ -281,5 +335,5 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  buildGames(FRONTEND_ROOT, RUN_TESTS);
+  await buildGames(FRONTEND_ROOT, RUN_TESTS);
 }

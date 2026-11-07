@@ -100,7 +100,11 @@ export function findMenuTitle(items, name) {
 }
 
 /** 添加或更新页面标签，同一地址只保留一个标签 */
-export function rememberTab(tabs, path, title) {
+export function rememberTab(
+  tabs,
+  path,
+  title,
+) {
   for (const tab of tabs) {
     if (tab.path === path) {
       tab.title = title;
@@ -111,7 +115,11 @@ export function rememberTab(tabs, path, title) {
 }
 
 /** 删除指定标签，返回接下来应显示的地址；首页不允许关闭 */
-export function removeTab(tabs, path, currentPath) {
+export function removeTab(
+  tabs,
+  path,
+  currentPath,
+) {
   if (path === "/MainPage") {
     return currentPath;
   }
@@ -132,7 +140,11 @@ export function removeTab(tabs, path, currentPath) {
 }
 
 /** 记录分组展开状态，数组里只保存已折叠的分组编号 */
-export function updateGroup(closed, id, open) {
+export function updateGroup(
+  closed,
+  id,
+  open,
+) {
   const index = closed.indexOf(id);
   if (open) {
     if (index !== -1) {

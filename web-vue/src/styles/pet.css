@@ -175,10 +175,6 @@
 .support-compact .support-message {
   margin-bottom: 12px;
 }
-.support-compact .support-notice {
-  margin: 0;
-  font-size: 12px;
-}
 .support-compact .support-markdown h1 {
   font-size: 18px;
 }
@@ -197,12 +193,6 @@
 }
 .pet-panel-footer a {
   color: var(--color-accent);
-}
-.pet-notice {
-  margin: 0;
-  padding: 8px 12px;
-  color: var(--color-error);
-  font-size: 12px;
 }
 @media (max-width: 639px) {
   .pet-character {

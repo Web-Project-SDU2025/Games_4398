@@ -57,9 +57,7 @@
         </option>
       </select>
     </div>
-    <p v-if="notice || wallet.notice" class="store-notice" role="status">
-      {{ notice || wallet.notice }}
-    </p>
+    <span v-toast="notice || wallet.notice"></span>
     <GameLauncher
       :catalog="products"
       :admin="admin"
@@ -155,6 +153,7 @@ export default {
         return;
       }
       const token = useAppStore().userInfo.token;
+      this.notice = "";
       this.purchasing = game.gamePath;
       try {
         const confirmed = await messageConform(

@@ -1,0 +1,62 @@
+/* 提示使用平台主题，固定宽度上限保证长错误信息在窄屏内换行 */
+.el-message.platform-toast {
+  --el-message-bg-color: var(--color-paper-2);
+  --el-message-border-color: var(--color-rule);
+  --el-message-text-color: var(--color-ink);
+  --el-message-close-icon-color: var(--color-muted);
+  --el-message-close-hover-color: var(--color-ink);
+  max-width: min(520px, calc(100vw - 32px));
+  min-width: 240px;
+  padding: 14px 44px 14px 16px;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px #00000040;
+}
+.platform-toast .el-message__content {
+  min-width: 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.platform-toast .el-message__icon {
+  flex-shrink: 0;
+}
+.platform-toast.el-message--success .el-message__icon {
+  color: var(--color-success);
+}
+.platform-toast.el-message--error .el-message__icon {
+  color: var(--color-error);
+}
+.platform-toast.el-message--info .el-message__icon {
+  color: var(--color-accent);
+}
+.platform-toast .el-message__closeBtn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+/* 指令占位节点始终不占页面空间，页面与对话框共用同一约定 */
+[data-toast-source] {
+  display: none !important;
+}
+/* 独立顶层覆盖视口但不拦截操作，消息按钮继续接受鼠标和键盘输入 */
+.toast-overlay:popover-open {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
+}
+.toast-overlay .platform-toast {
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .el-message.platform-toast {
+    transition: none;
+  }
+}

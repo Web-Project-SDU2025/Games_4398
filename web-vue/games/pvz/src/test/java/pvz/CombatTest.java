@@ -67,7 +67,11 @@ public class CombatTest {
     }
 
     /** 参数 name 是僵尸名，expectedHealth 是设计血量；逐发命中检查实际扣血和状态节点 */
-    private static void checkZombieHealth(Assets assets, String name, int expectedHealth) {
+    private static void checkZombieHealth(
+            Assets assets,
+            String name,
+            int expectedHealth
+    ) {
         GameState state = new GameState();
         Zombie zombie = new Zombie(name, TEST_ROW, Layout.rowBottom(TEST_ROW), assets);
         placeAt(zombie, TEST_CENTER, assets, state.time);
@@ -170,13 +174,22 @@ public class CombatTest {
     }
 
     /** 参数 center 是身体中心；按碰撞盒位置放置，避免把图片透明留白当作身体 */
-    private static void placeAt(Zombie zombie, double center, Assets assets, long time) {
+    private static void placeAt(
+            Zombie zombie,
+            double center,
+            Assets assets,
+            long time
+    ) {
         Rectangle body = zombie.collisionBox(assets, time);
         zombie.x = zombie.x + center - body.getCenterX();
     }
 
     /** 参数 duration 是需推进的游戏毫秒数；每次用原游戏固定步长更新 */
-    private static void advance(GameState state, CombatSystem combat, long duration) {
+    private static void advance(
+            GameState state,
+            CombatSystem combat,
+            long duration
+    ) {
         long endTime = state.time + duration;
         while (state.time < endTime) {
             state.time = Math.min(endTime, state.time + Layout.FIXED_STEP_MS);
@@ -382,7 +395,10 @@ public class CombatTest {
     }
 
     /** 验证编辑器和关卡出怪读取同一个巨人名字，并输出游戏渲染图供检查 */
-    private static void checkGargantuarLevelAndEditor(Assets assets, Path project) throws Exception {
+    private static void checkGargantuarLevelAndEditor(
+            Assets assets,
+            Path project
+    ) throws Exception {
         LevelDesign design = new LevelDesign();
         design.setCell(TEST_ROW, 0, "Gargantuar", 1);
         List<ZombieSpawn> spawns = design.buildSpawns();

@@ -293,6 +293,26 @@ class BlockcoinTests {
         verify(fixture.entries, times(1)).save(any());
     }
 
+    /** 成就收入进入同一账户账本，重复业务编号和余额上限都不能多发字块币 */
+    @Test
+    void billiardsRewardCreditsOnceAndRespectsBalanceLimit() {
+        Fixture fixture = fixture(100);
+        assertEquals(5L, fixture.service.awardBilliards(fixture.user, fixture.game,
+                "round:opening", "开门红", 5));
+        assertEquals(105L, fixture.wallet.getBalance());
+        ArgumentCaptor<BlockcoinEntry> entry = ArgumentCaptor.forClass(BlockcoinEntry.class);
+        verify(fixture.entries).save(entry.capture());
+        assertEquals("billiards:round:opening", entry.getValue().getEntryId());
+        assertEquals("植物大战僵尸 · 开门红", entry.getValue().getReason());
+        when(fixture.entries.existsById("billiards:round:opening")).thenReturn(true);
+        assertEquals(0L, fixture.service.awardBilliards(fixture.user, fixture.game,
+                "round:opening", "开门红", 5));
+        fixture.wallet.setBalance(BlockcoinRules.MAX_BALANCE);
+        assertEquals(0L, fixture.service.awardBilliards(fixture.user, fixture.game,
+                "round:win", "获胜", 20));
+        verify(fixture.entries, times(1)).save(any(BlockcoinEntry.class));
+    }
+
     /** 每个用例使用全新对象，构造服务与生产环境保持相同依赖关系 */
     private static final class Fixture {
         private final User user = new User();

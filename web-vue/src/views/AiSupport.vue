@@ -49,9 +49,7 @@
           @changed="persist"
         />
       </Transition>
-      <p v-if="notice" v-reveal="notice" class="support-notice" role="status">
-        {{ notice }}
-      </p>
+      <span v-toast="notice"></span>
     </div>
     <dialog ref="nameEditor">
       <form class="game-form" @submit.prevent="saveName">

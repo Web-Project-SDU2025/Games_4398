@@ -224,6 +224,17 @@ public class BlockcoinService {
     @Transactional
     public long award(User user, Game game, String playId, String levelName, long amount) {
         String entryId = "reward:" + playId;
+        return creditReward(user, game, entryId, levelName + "通关", amount);
+    }
+
+    /** 台球成就使用独立业务编号，金额来自服务端判定，不接受客户端指定金额 */
+    @Transactional
+    public long awardBilliards(User user, Game game, String eventId, String title, long amount) {
+        return creditReward(user, game, "billiards:" + eventId, title, amount);
+    }
+
+    /** 在调用方持有账户锁的事务内入账，同一个业务编号最多保存一笔奖励 */
+    private long creditReward(User user, Game game, String entryId, String title, long amount) {
         if (amount <= 0 || entries.existsById(entryId)) {
             return 0;
         }
@@ -233,7 +244,7 @@ public class BlockcoinService {
         }
         wallet.setBalance(wallet.getBalance() + amount);
         wallets.save(wallet);
-        record(wallet, entryId, amount, game.getName() + " · " + levelName + "通关", game.getGamePath());
+        record(wallet, entryId, amount, game.getName() + " · " + title, game.getGamePath());
         return amount;
     }
 

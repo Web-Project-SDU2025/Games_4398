@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAppStore } from "../stores/app";
-import { ElMessage } from "element-plus";
+import { showToast } from "../tools/toast.js";
 
 // 游戏库和收藏共用列表页面，商城按商品布局单独维护
 function loadGameList() {
@@ -136,7 +136,7 @@ async function checkAccess(to) {
         return false;
       }
     } catch (error) {
-      ElMessage({ message: "无法确认当前账户身份，请稍后重试", type: "error" });
+      showToast("无法确认当前账户身份，请稍后重试", "error");
       return false;
     }
     if (user.role !== "ROLE_ADMIN") {

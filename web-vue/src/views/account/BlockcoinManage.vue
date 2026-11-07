@@ -31,7 +31,7 @@
       <button type="submit" :disabled="loading">查询</button>
       <button type="button" :disabled="loading" @click="reset">重置</button>
     </form>
-    <p v-if="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="game-table-wrap motion-results" :aria-busy="loading">
       <table class="game-table">
         <thead>

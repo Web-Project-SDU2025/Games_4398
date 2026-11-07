@@ -13,7 +13,11 @@ const PACKAGE_DIRECTORY = process.argv[2];
 const DESCRIPTOR_FILE = process.argv[3];
 
 // 校验所有文件后才复制到新目录，已有游戏由维护者在原目录更新，导入不覆盖现有工程
-export function importGame(sourceDirectory, descriptorFile, frontendRoot) {
+export function importGame(
+  sourceDirectory,
+  descriptorFile,
+  frontendRoot,
+) {
   const source = path.resolve(sourceDirectory);
   const descriptor = JSON.parse(fs.readFileSync(descriptorFile, "utf8"));
   const project = readProject(source, descriptor);

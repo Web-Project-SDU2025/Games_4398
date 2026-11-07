@@ -31,17 +31,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class GameFrameHeaderTests {
     /** 游戏启动页允许同源嵌入，其他页面保留拒绝嵌入，API 仍要求登录 */
     @Test
-    void onlyJavaPlayerAllowsSameOriginFrames() throws Exception {
+    void onlyGamePagesAllowSameOriginFrames() throws Exception {
         try (AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext()) {
             context.setServletContext(new MockServletContext());
             context.register(IsolatedConfiguration.class);
             context.refresh();
             MockMvc client = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-            ResultActions player = client.perform(get("/games/java-player.html?game=pvz"));
-            player.andExpect(status().isOk());
-            player.andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
-            player.andExpect(header().string("Content-Security-Policy", "frame-ancestors 'self'"));
-            for (String path : java.util.List.of("/Login", "/games/other.html", "/games/java-player.html/extra")) {
+            for (String path : java.util.List.of("/games/java-player.html?game=pvz",
+                    "/games/native-player.html?game=billiards", "/games/billiards/runtime/index.html")) {
+                ResultActions player = client.perform(get(path));
+                player.andExpect(status().isOk());
+                player.andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
+                player.andExpect(header().string("Content-Security-Policy", "frame-ancestors 'self'"));
+            }
+            for (String path : java.util.List.of("/Login", "/games/other.html", "/games/java-player.html/extra",
+                    "/games/native-player.html/extra", "/games/billiards/runtime/other.html")) {
                 ResultActions response = client.perform(get(path));
                 response.andExpect(header().string("X-Frame-Options", "DENY"));
             }
@@ -99,7 +103,8 @@ class GameFrameHeaderTests {
     @TestComponent
     static class TestPages {
         /** 对指定测试页面返回可识别内容，接口由实际安全规则保护 */
-        @GetMapping({"/games/java-player.html", "/Login", "/games/other.html", "/api/check"})
+        @GetMapping({"/games/java-player.html", "/games/native-player.html",
+                "/games/billiards/runtime/index.html", "/Login", "/games/other.html", "/api/check"})
         String page() {
             return "test-page";
         }

@@ -236,7 +236,7 @@
           member
         }}</span> </span
       ><span>{{ roleName }}：{{ displayName }}</span
-      ><span v-reveal="switchNotice" role="status">{{ switchNotice }}</span>
+      ><span v-toast="switchNotice"></span>
       <div class="workspace-status-details">
         <span aria-label="当前版本">{{ version }}</span>
         <time>{{ clock }}</time>
@@ -460,7 +460,10 @@ function groupOpen(id) {
   return !this.closedGroups.includes(id);
 }
 /** 记录分组的折叠选择，页面状态更新时继续使用该选择 */
-function syncGroup(id, event) {
+function syncGroup(
+  id,
+  event,
+) {
   navigation.updateGroup(this.closedGroups, id, event.target.open);
 }
 /** 将切号结果显示在状态栏，切号控件负责读取账号选项 */

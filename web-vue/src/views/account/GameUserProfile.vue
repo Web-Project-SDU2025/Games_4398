@@ -26,7 +26,7 @@
         ></textarea>
       </label>
       <button type="submit">保存</button>
-      <p v-reveal="notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
     </form>
   </section>
 </template>

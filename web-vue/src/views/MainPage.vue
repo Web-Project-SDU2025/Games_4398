@@ -28,7 +28,7 @@
         >
       </div>
     </header>
-    <p v-if="error" class="dashboard-error" role="alert">{{ error }}</p>
+    <span v-toast:error="error"></span>
     <div class="dashboard-stat-grid" :aria-busy="loading">
       <RouterLink
         v-for="stat in statistics"

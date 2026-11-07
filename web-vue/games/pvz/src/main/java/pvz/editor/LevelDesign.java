@@ -354,7 +354,12 @@ public class LevelDesign {
      *
      * 参数：firstRow、firstWave 是第一个格子的坐标；secondRow、secondWave 是第二个格子的坐标
      */
-    public void swapCells(int firstRow, int firstWave, int secondRow, int secondWave) {
+    public void swapCells(
+            int firstRow,
+            int firstWave,
+            int secondRow,
+            int secondWave
+    ) {
         if (!insideGrid(firstRow, firstWave) || !insideGrid(secondRow, secondWave)) {
             return;
         }
@@ -728,7 +733,9 @@ public class LevelDesign {
      * 参数：spawns 是已经按时间排好序的出场表
      * 返回：每一波一个列表
      */
-    private static List<List<ZombieSpawn>> splitIntoWaves(List<ZombieSpawn> spawns) {
+    private static List<List<ZombieSpawn>> splitIntoWaves(
+            List<ZombieSpawn> spawns
+    ) {
         List<List<ZombieSpawn>> waves = new ArrayList<List<ZombieSpawn>>();
         List<ZombieSpawn> current = new ArrayList<ZombieSpawn>();
         current.add(spawns.get(0));
@@ -753,7 +760,10 @@ public class LevelDesign {
      *
      * 参数：spawns 是排好序的出场表；waves 是切好的波次
      */
-    private void readTimingFromWaves(List<ZombieSpawn> spawns, List<List<ZombieSpawn>> waves) {
+    private void readTimingFromWaves(
+            List<ZombieSpawn> spawns,
+            List<List<ZombieSpawn>> waves
+    ) {
         List<ZombieSpawn> firstWave = waves.get(0);
         firstWaveDelay = firstWave.get(0).spawnTime;
 

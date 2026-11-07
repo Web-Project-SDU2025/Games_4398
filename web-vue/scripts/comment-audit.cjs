@@ -20,7 +20,12 @@ const errors = [];
 let checked = 0;
 
 // 记录注释的位置与问题类型，词组只用来定位具体表达
-function inspectComment(text, filename, source, start) {
+function inspectComment(
+  text,
+  filename,
+  source,
+  start,
+) {
   const lines = text.split(/\r?\n/);
   let offset = start;
   for (const line of lines) {

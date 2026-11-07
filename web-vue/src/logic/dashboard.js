@@ -83,7 +83,11 @@ export function createActivity(now, intervalHours) {
 }
 
 // 按记录的游玩时间汇总已筛选的个人记录，空时段保留零值，未来和无效时间直接跳过
-export function aggregateActivity(records, now, intervalHours) {
+export function aggregateActivity(
+  records,
+  now,
+  intervalHours,
+) {
   const hours = activityHours(intervalHours);
   const activity = createActivity(now, hours);
   const firstTime = activity[0].startTime;
@@ -120,7 +124,12 @@ function compareRecords(first, second) {
 }
 
 // 整理个人概览并保留该账户记录，统计粒度切换共用本次刷新时间
-export function summarizeDashboard(games, records, userId, now) {
+export function summarizeDashboard(
+  games,
+  records,
+  userId,
+  now,
+) {
   const library = [];
   let favorites = 0;
   for (const game of games) {

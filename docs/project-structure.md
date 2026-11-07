@@ -2,7 +2,7 @@
 
 [返回项目说明](../README.md)
 
-项目将后端工程放在 `java-server/java-server`，将前端工程放在 `web-vue`。下面按目录说明文件职责。
+后端工程位于 `java-server/java-server`，前端工程位于 `web-vue`。下方目录树展示各文件和目录的职责。
 
 ```text
 4398/
@@ -205,14 +205,36 @@
     │   │       ├── game-play.mjs                                               通用事件、计时、重试与结束保存
     │   │       ├── java-player.html                                            共用游戏运行页源码
     │   │       ├── java-player.css                                             游戏画布与编辑器窗口样式
-    │   │       └── java-player.js                                              自动加载与编辑器交互
-    │   └── pvz/                                                                植物大战僵尸
-    │       ├── game.json                                                       游戏资料、能力与构建参数
-    │       ├── src/                                                            游戏、编辑器、自检及适配器
-    │       ├── assets/                                                         原图片、动画和关卡
-    │       ├── lib/                                                            原依赖及第三方许可
-    │       ├── LICENSE                                                         原代码许可
-    │       └── UPSTREAM.md                                                     原项目说明
+    │   │       ├── java-player.js                                              自动加载与编辑器交互
+    │   │       ├── native-player.html                                          原生游戏运行页
+    │   │       ├── native-player.js                                            原生游戏授权、就绪与关闭
+    │   │       └── native-player.css                                           原生游戏运行区样式
+    │   ├── pvz/                                                                植物大战僵尸
+    │   │   ├── game.json                                                       游戏资料、能力与构建参数
+    │   │   ├── src/                                                            游戏、编辑器、自检及适配器
+    │   │   ├── assets/                                                         原图片、动画和关卡
+    │   │   ├── lib/                                                            原依赖及第三方许可
+    │   │   ├── LICENSE                                                         原代码许可
+    │   │   └── UPSTREAM.md                                                     原项目说明
+    │   └── billiards/                                                          美式八球
+    │       ├── game.json                                                       台球资料、浏览器入口与构建参数
+    │       ├── web/                                                            当前 Canvas 游戏源码
+    │       │   ├── assets/                                                     台球图像和音效
+    │       │   ├── config.mjs                                                  尺寸、物理与交互参数
+    │       │   ├── physics.mjs                                                 Matter 碰撞与台呢摩擦
+    │       │   ├── rules.mjs                                                   对局、判罚和六项成就
+    │       │   ├── render.mjs                                                  Canvas 绘制
+    │       │   ├── aim.mjs                                                     瞄准预览与力度
+    │       │   ├── ai.mjs                                                      电脑选球、摆位、物理预演与小幅误差
+    │       │   ├── assets.mjs                                                  图像加载与浏览器音频
+    │       │   ├── main.mjs                                                    输入、界面与帧循环
+    │       │   ├── index.html                                                  游戏画布与操作区
+    │       │   └── style.css                                                   游戏布局与提示样式
+    │       ├── src/                                                            保留的 Java 迁移参考，不参与发布
+    │       ├── media/table.png                                                 实际游戏画面封面
+    │       ├── AUDIO-SOURCE.txt                                                课程音效来源
+    │       ├── MATTER-LICENSE.txt                                              Matter.js 许可
+    │       └── UPSTREAM.md                                                     原仓库和迁入内容说明
     ├── public/                                                                 静态图片和网站图标
     │   ├── audio/                                                              背景音乐音轨
     │   ├── cursors/                                                            鼠标箭头和点击手形
@@ -229,6 +251,7 @@
     │           └── thinking.png                                                宠物思考图片
     ├── scripts/
     │   ├── build-java-games.mjs                                                编译游戏并生成发布配置
+    │   ├── build-native-game.mjs                                               打包原生网页游戏与来源说明
     │   ├── clean-web-output.cjs                                                按构建清单清理旧指纹资源
     │   ├── import-game.mjs                                                     通用游戏包导入命令
     │   ├── game-project.mjs                                                    共用路径、工程及工具校验

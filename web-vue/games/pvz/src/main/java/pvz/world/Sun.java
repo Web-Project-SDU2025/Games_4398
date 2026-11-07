@@ -41,7 +41,14 @@ public class Sun extends Sprite {
      *       big 表示是不是大阳光；assets 提供图片
      * 说明：大阳光来自天空和向日葵，小阳光只有阳光菇才产
      */
-    public Sun(int center, int bottom, int destinationX, int destinationY, boolean big, Assets assets) {
+    public Sun(
+            int center,
+            int bottom,
+            int destinationX,
+            int destinationY,
+            boolean big,
+            Assets assets
+    ) {
         super("Sun", center, bottom, 0, 1, assets);
         value = 25;
         if (!big) {

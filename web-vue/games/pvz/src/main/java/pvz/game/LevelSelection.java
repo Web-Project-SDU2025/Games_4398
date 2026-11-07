@@ -207,7 +207,12 @@ public class LevelSelection {
     }
 
     /** 参数 bounds、text 和 enabled 描述按钮；禁用态有灰色遮罩且不会改变布局 */
-    private void drawButton(Graphics2D painter, Rectangle bounds, String text, boolean enabled) {
+    private void drawButton(
+            Graphics2D painter,
+            Rectangle bounds,
+            String text,
+            boolean enabled
+    ) {
         painter.drawImage(assets.image("LevelButton"), bounds.x, bounds.y,
             bounds.width, bounds.height, null);
         if (!enabled) {

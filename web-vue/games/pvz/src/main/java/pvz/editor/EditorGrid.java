@@ -577,7 +577,14 @@ public class EditorGrid extends JPanel {
      * 参数：painter 是画笔；kind 是僵尸品种；row 是行号；wave 是波号；
      *       left、top 是格子的左上角
      */
-    private void drawZombie(Graphics2D painter, String kind, int row, int wave, int left, int top) {
+    private void drawZombie(
+            Graphics2D painter,
+            String kind,
+            int row,
+            int wave,
+            int left,
+            int top
+    ) {
         BufferedImage image = icons.icon(kind, ICON_HEIGHT);
         int imageLeft = left + (CELL_WIDTH - image.getWidth()) / 2;
         int imageTop = top + 8;
@@ -644,7 +651,13 @@ public class EditorGrid extends JPanel {
      *
      * 参数：painter 是画笔；row 是行号；wave 是波号；left、top 是格子的左上角
      */
-    private void drawCellBorder(Graphics2D painter, int row, int wave, int left, int top) {
+    private void drawCellBorder(
+            Graphics2D painter,
+            int row,
+            int wave,
+            int left,
+            int top
+    ) {
         boolean isDropTarget = row == dropRow && wave == dropWave;
         boolean isSelected = row == selectedRow && wave == selectedWave;
         if (!isDropTarget && !isSelected) {
@@ -673,7 +686,11 @@ public class EditorGrid extends JPanel {
      * 参数：painter 是画笔，用来量字宽；text 是文字；available 是可用宽度
      * 返回：文字左端相对可用区域左沿的偏移
      */
-    private static int centerOffset(Graphics2D painter, String text, int available) {
+    private static int centerOffset(
+            Graphics2D painter,
+            String text,
+            int available
+    ) {
         int textWidth = painter.getFontMetrics().stringWidth(text);
         return (available - textWidth) / 2;
     }

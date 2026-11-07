@@ -24,6 +24,8 @@ import "~/styles/music.css";
 import "~/styles/messages.css";
 import "~/styles/motion.css";
 import "~/styles/cursor.css";
+import "~/styles/toast.css";
+import { toastDirective } from "./tools/toast.js";
 import { revealDirective } from "./tools/motion.js";
 import { markdownDirective } from "./tools/markdown.js";
 
@@ -37,6 +39,7 @@ app.use(ElementPlus);
 app.use(router);
 app.directive("reveal", revealDirective);
 app.directive("markdown", markdownDirective);
+app.directive("toast", toastDirective);
 // 初始路由确定后挂载页面，刷新时直接显示目标路由
 async function startApp() {
   await router.isReady();

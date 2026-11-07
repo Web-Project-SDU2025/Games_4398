@@ -1,4 +1,5 @@
 import { ElMessageBox } from "element-plus";
+import { showToast } from "./toast.js";
 
 // 提示框使用独立标记，确认与取消的页面顺序和键盘顺序保持一致
 const CONFIRM_BUTTON_CLASS = "platform-confirm-action";
@@ -18,7 +19,7 @@ function alignConfirmButtons() {
 
 // 显示页面提示，self 是当前页面，msg 是需要显示的文字
 export function message(self, msg) {
-  self.$message({ message: msg, type: "warning" });
+  showToast(msg);
 }
 
 // 显示删除确认，用户确认时返回 true，取消时返回 false

@@ -137,7 +137,7 @@
           />
         </label>
       </fieldset>
-      <p v-if="notice" class="settings-notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
       <div class="settings-actions">
         <button class="platform-secondary-button" type="button" @click="reset">
           恢复默认

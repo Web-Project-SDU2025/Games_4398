@@ -327,7 +327,12 @@ public class Almanac {
     }
 
     /** 参数 name、frame 和 area 描述 GIF 与显示区域；按整段可见边界缩放，切帧时不会尺寸跳动 */
-    private void drawAnimation(Graphics2D painter, String name, int frame, Rectangle area) {
+    private void drawAnimation(
+            Graphics2D painter,
+            String name,
+            int frame,
+            Rectangle area
+    ) {
         BufferedImage image = assets.frame(name, frame);
         int[] body = assets.animationBounds(name);
         int sourceWidth = body[2] - body[0];

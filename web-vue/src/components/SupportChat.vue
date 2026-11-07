@@ -153,8 +153,8 @@
         </button>
       </div>
     </form>
-    <div v-if="notice || failedQuestion" class="support-feedback" role="status">
-      <p v-reveal="notice" class="support-notice">{{ notice }}</p>
+    <span v-toast="notice"></span>
+    <div v-if="failedQuestion || failedImages.length" class="support-feedback">
       <button
         v-if="(failedQuestion || failedImages.length) && !pending"
         type="button"
@@ -244,7 +244,10 @@ async function send() {
 }
 
 // 按请求序号接收回复，切换会话、关闭宠物和切号后丢弃旧响应
-async function requestReply(question, images) {
+async function requestReply(
+  question,
+  images,
+) {
   if (!images) {
     images = [];
   }
@@ -331,7 +334,10 @@ function stop() {
 }
 
 // 切换历史时取消旧请求，同时清理上一次输入和错误状态
-function conversationChanged(current, previous) {
+function conversationChanged(
+  current,
+  previous,
+) {
   this.cancelRequest(previous);
   this.question = "";
   this.notice = "";

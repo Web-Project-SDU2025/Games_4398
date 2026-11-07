@@ -26,7 +26,12 @@ public final class GameFiles {
     }
 
     /** 安装素材包；版本更新保留游戏配置中声明的用户数据目录 */
-    public static String install(String archiveName, String directory, String version, String preservedPaths) throws IOException {
+    public static String install(
+            String archiveName,
+            String directory,
+            String version,
+            String preservedPaths
+    ) throws IOException {
         Path root = Path.of(directory).toAbsolutePath().normalize();
         Files.createDirectories(root);
         Path marker = root.resolve(".asset-version");
@@ -102,7 +107,10 @@ public final class GameFiles {
     }
 
     /** 导出配置指定的数据目录为 Base64 压缩包，网页取得后可保存为本机文件 */
-    public static String exportData(String directory, String relative) throws IOException {
+    public static String exportData(
+            String directory,
+            String relative
+    ) throws IOException {
         Path root = Path.of(directory).toAbsolutePath().normalize();
         Path levels = inside(root, relative);
         Files.createDirectories(levels);
@@ -117,7 +125,11 @@ public final class GameFiles {
     }
 
     /** 递归导出指定数据目录，限制单文件体积并保留相对路径 */
-    private static void addDirectory(Path root, Path directory, ZipOutputStream output) throws IOException {
+    private static void addDirectory(
+            Path root,
+            Path directory,
+            ZipOutputStream output
+    ) throws IOException {
         try (java.nio.file.DirectoryStream<Path> files = Files.newDirectoryStream(directory)) {
             for (Path file : files) {
                 if (Files.isDirectory(file)) {
@@ -136,7 +148,11 @@ public final class GameFiles {
     }
 
     /** 写入游戏适配器已验证的文本，目标相对路径始终限定在账户游戏目录中 */
-    public static void writeText(String directory, String relative, String text) throws IOException {
+    public static void writeText(
+            String directory,
+            String relative,
+            String text
+    ) throws IOException {
         byte[] content = text.getBytes(StandardCharsets.UTF_8);
         if (content.length > MAX_TEXT_BYTES) {
             throw new IOException("数据文件应小于两兆字节");

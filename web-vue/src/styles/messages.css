@@ -175,9 +175,6 @@
   color: var(--color-muted);
   font-size: 14px;
 }
-.message-notice {
-  color: var(--color-amber);
-}
 .message-composer-dialog textarea {
   min-height: 180px;
 }
@@ -233,10 +230,6 @@
 }
 .message-composer-dialog .game-actions button:disabled {
   opacity: 0.55;
-}
-.message-composer-dialog .game-form [role="status"] {
-  margin: 0;
-  color: var(--color-error);
 }
 .message-markdown-hint {
   margin: 0;

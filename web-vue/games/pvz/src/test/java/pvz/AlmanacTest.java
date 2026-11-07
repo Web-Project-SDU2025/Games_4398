@@ -84,7 +84,13 @@ public class AlmanacTest {
     }
 
     /** 参数 image 和坐标指定详情窗口，background 是预期草坪；检查未被 GIF 覆盖的背景像素 */
-    private static void checkLawn(Assets assets, BufferedImage image, int left, int top, int background) {
+    private static void checkLawn(
+            Assets assets,
+            BufferedImage image,
+            int left,
+            int top,
+            int background
+    ) {
         BufferedImage lawn = assets.frame("Background", background);
         int width = 190;
         int height = 145;
@@ -125,7 +131,11 @@ public class AlmanacTest {
     }
 
     /** 参数 almanac 是图鉴，name 是截图名；比较详情动画区域的真实像素而不是只判断帧号 */
-    private static void checkAnimation(Almanac almanac, Path root, String name) throws Exception {
+    private static void checkAnimation(
+            Almanac almanac,
+            Path root,
+            String name
+    ) throws Exception {
         BufferedImage first = render(almanac, START_TIME);
         boolean changed = false;
         for (int step = 1; step <= 8; step = step + 1) {

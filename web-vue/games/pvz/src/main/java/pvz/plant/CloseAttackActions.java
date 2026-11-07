@@ -129,7 +129,11 @@ public class CloseAttackActions {
      * 参数：zombie 是待检查的僵尸；left 和 right 是压扁范围的两端
      * 返回：躯干与范围相交时返回真
      */
-    private boolean touchesHorizontalRange(Zombie zombie, double left, double right) {
+    private boolean touchesHorizontalRange(
+            Zombie zombie,
+            double left,
+            double right
+    ) {
         Rectangle zombieBody = zombie.collisionBox(assets, state.time);
         if (zombieBody.getMaxX() < left) {
             return false;

@@ -38,7 +38,12 @@ public final class Cards {
      * 参数：pool 是可出卡池；random 是随机数生成器；time 是当前时刻；assets 提供卡片真实尺寸
      * 返回：一张标记为在移动的新卡片
      */
-    public static Card newMovingCard(List<Integer> pool, Random random, long time, Assets assets) {
+    public static Card newMovingCard(
+            List<Integer> pool,
+            Random random,
+            long time,
+            Assets assets
+    ) {
         int choice = random.nextInt(pool.size());
         int plantIndex = pool.get(choice).intValue();
 

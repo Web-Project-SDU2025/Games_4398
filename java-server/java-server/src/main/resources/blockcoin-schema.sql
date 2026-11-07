@@ -49,7 +49,19 @@ CREATE TABLE IF NOT EXISTS game_play (
     INDEX idx_play_user_updated (user_id, ended_at, updated_at)
 );
 
--- 游戏撤回单独保留操作记录，资金流水与历史购买继续保持原值
+-- 台球每盘保存判罚状态和最近击球序号，用于奖励去重
+CREATE TABLE IF NOT EXISTS billiards_round (
+    round_id VARCHAR(180) NOT NULL PRIMARY KEY,
+    play_id VARCHAR(100) NOT NULL,
+    shot_sequence INT NOT NULL,
+    state_json VARCHAR(12000) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    last_reward BIGINT NOT NULL,
+    last_titles VARCHAR(160) NOT NULL,
+    updated_at DATETIME(6) NOT NULL
+);
+
+-- 游戏撤回保留原业务资料
 CREATE TABLE IF NOT EXISTS game_revocation (
     revocation_id VARCHAR(100) NOT NULL PRIMARY KEY,
     user_id INT NOT NULL,

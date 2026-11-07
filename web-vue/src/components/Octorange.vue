@@ -113,7 +113,7 @@
           >打开 AI 客服</RouterLink
         >
       </footer>
-      <p v-if="notice" class="pet-notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
     </section>
   </div>
 </template>
@@ -231,7 +231,10 @@ function restorePosition() {
 }
 
 // 所有定位入口共用可见范围检查，贴边和缩小窗口时修正坐标
-function applyPosition(left, top) {
+function applyPosition(
+  left,
+  top,
+) {
   if (!this.$refs.pet) {
     return;
   }

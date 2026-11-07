@@ -198,14 +198,7 @@
                 {{ submitText }}
               </button>
             </fieldset>
-            <p
-              v-reveal="notice"
-              class="auth-notice"
-              role="status"
-              aria-live="polite"
-            >
-              {{ notice }}
-            </p>
+            <span v-toast="notice"></span>
           </form>
         </Transition>
       </section>

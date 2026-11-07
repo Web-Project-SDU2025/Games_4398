@@ -83,7 +83,7 @@ export function normalizeManifest(source, address) {
     throw new Error("游戏编号应使用英文小写、数字和连字符");
   }
   const expected = "/games/" + source.id + "/game.json";
-  if (address !== expected || source.runtime !== "java17") {
+  if (address !== expected || !["java17", "html5"].includes(source.runtime)) {
     throw new Error("游戏配置路径或运行类型不正确");
   }
   if (
@@ -123,7 +123,8 @@ export function normalizeManifest(source, address) {
     number: source.number || source.id,
     category: source.category || "小游戏",
     description: source.description || "",
-    runtime: "java17",
+    runtime: source.runtime,
+    entry: "",
     cover: cover,
     classpath: [],
     adapter: "",
@@ -152,6 +153,19 @@ export function normalizeManifest(source, address) {
     resources: {},
     gameplay: {},
   };
+  if (source.runtime === "html5") {
+    result.entry = relativePath(source.entry, "网页入口");
+    if (!result.entry.endsWith(".html") || result.capabilities.editor || result.capabilities.importData
+        || result.capabilities.exportData || result.capabilities.gameplayEvents) {
+      throw new Error("原生网页游戏应使用 HTML 入口和通用游玩计时");
+    }
+    const nativeDisplay = source.display || {};
+    result.display.width = number(nativeDisplay.width, PLAYER_DEFAULTS.width,
+      MANIFEST_LIMITS.minimumWidth, MANIFEST_LIMITS.maximumWidth, "画面宽度");
+    result.display.height = number(nativeDisplay.height, PLAYER_DEFAULTS.height,
+      MANIFEST_LIMITS.minimumHeight, MANIFEST_LIMITS.maximumHeight, "画面高度");
+    return result;
+  }
   if (
     !Array.isArray(source.classpath) ||
     source.classpath.length === 0 ||

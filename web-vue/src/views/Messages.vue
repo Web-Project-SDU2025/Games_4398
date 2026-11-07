@@ -53,7 +53,7 @@
         />仅未读</label
       >
     </form>
-    <p v-if="notice" class="message-notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="message-workspace" :aria-busy="loading">
       <div class="message-list">
         <ol>
@@ -178,7 +178,7 @@
             ></textarea>
           </label>
           <p class="message-markdown-hint">回复支持 Markdown</p>
-          <p v-if="replyNotice" role="status">{{ replyNotice }}</p>
+          <span v-toast="replyNotice"></span>
           <button type="submit" :disabled="replying">
             {{ replySubmitLabel }}
           </button>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>美式八球</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.mjs"></script>
+  </head>
+  <body>
+    <main id="game" aria-label="美式八球">
+      <div class="table-area">
+        <canvas id="table" width="1000" height="550" tabindex="0" aria-label="台球桌"></canvas>
+        <p id="achievement" class="achievement" role="status" hidden></p>
+        <p id="verdict" class="verdict" role="status" hidden></p>
+      </div>
+      <section class="hud" aria-label="对局状态">
+        <div class="players">
+          <section class="player" id="player-one" aria-label="玩家 1">
+            <strong>玩家 1 · 我的账户</strong><span id="group-one">未定组</span><div id="tray-one" class="tray"></div>
+          </section>
+          <span class="eight" aria-hidden="true">8</span>
+          <section class="player" id="player-two" aria-label="玩家 2">
+            <strong>玩家 2 · 本地对手</strong><span id="group-two">未定组</span><div id="tray-two" class="tray"></div>
+          </section>
+        </div>
+        <p id="status" class="status">正在加载球台</p>
+        <div class="actions">
+          <button id="restart" type="button" title="重新开始">重新开始</button>
+          <button id="sound" type="button" aria-pressed="true" title="音效">音效</button>
+          <button id="change-mode" type="button">切换模式</button>
+          <span id="power-label">力度 0%</span><meter id="power" min="0" max="1" value="0" aria-label="击球力度"></meter>
+        </div>
+      </section>
+      <div id="modal" class="modal" hidden>
+        <section class="prompt" aria-labelledby="prompt-title">
+          <div class="medal" aria-hidden="true">8</div>
+          <h1 id="prompt-title">美式八球</h1>
+          <fieldset id="mode-controls" class="mode-controls">
+            <legend>对局模式</legend>
+            <label><input type="radio" name="mode" value="single" checked />单人 · 对抗电脑</label>
+            <label><input type="radio" name="mode" value="local" />双人 · 本地对局</label>
+          </fieldset>
+          <div id="instructions">
+            <p>主球：拖到开球线后，松开落位</p>
+            <p>击球：在主球后方按住左键，向后拖动，松开出杆</p>
+            <p>开球进球不定组，之后首次合法进球确定球组</p>
+            <p>成就 +1～11 字块币 · 单人击败电脑 +20</p>
+          </div>
+          <p id="reason" hidden></p>
+          <p id="summary" class="summary" hidden></p>
+          <button id="start" type="button">点击开始</button>
+        </section>
+      </div>
+      <p id="load-error" role="alert" hidden></p>
+      <p id="reward-status" class="achievement" role="status" hidden></p>
+    </main>
+  </body>
+</html>

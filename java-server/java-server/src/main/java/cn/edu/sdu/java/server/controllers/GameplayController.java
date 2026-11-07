@@ -15,10 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('ADMIN', 'GAME_USER')")
 public class GameplayController {
     private final GameplayService service;
+    private final cn.edu.sdu.java.server.services.BilliardsRewardService billiards;
 
     /** 接口只接收事件，账户校验、计时和奖励交由同一业务服务 */
-    public GameplayController(GameplayService service) {
+    public GameplayController(GameplayService service,
+            cn.edu.sdu.java.server.services.BilliardsRewardService billiards) {
         this.service = service;
+        this.billiards = billiards;
     }
 
     /** 以游戏入口、关卡编号和文件摘要创建会话 */
@@ -37,5 +40,11 @@ public class GameplayController {
     @PostMapping("/finish")
     public DataResponse finish(@RequestBody DataRequest request) {
         return service.finish(request);
+    }
+
+    /** 上报本盘击球证据，账户、轮次、去重与奖励金额由服务端核定 */
+    @PostMapping("/billiards")
+    public DataResponse billiards(@RequestBody DataRequest request) throws Exception {
+        return billiards.report(request);
     }
 }

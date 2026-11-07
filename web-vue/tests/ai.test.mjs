@@ -109,7 +109,11 @@ test("停止或切换对话后丢弃迟到的模型回复", async function testC
     complete = resolve;
   }
   // 测试故意忽略 abort，检查序号保护是否仍有效
-  function askAi(id, question, signal) {
+  function askAi(
+    id,
+    question,
+    signal,
+  ) {
     requestSignal = signal;
     return new Promise(waitForAnswer);
   }
@@ -160,7 +164,13 @@ test("多图问题和失败重试保留图片", async function testMultipleImage
   const source = "data:image/jpeg;base64,AAAA";
   let requests = 0;
   // 检查图片通过共用请求发送，首个请求模拟失败
-  async function askAi(id, question, signal, images, multimodal) {
+  async function askAi(
+    id,
+    question,
+    signal,
+    images,
+    multimodal,
+  ) {
     requests = requests + 1;
     assert.equal(images.length, 2);
     assert.equal(multimodal, true);

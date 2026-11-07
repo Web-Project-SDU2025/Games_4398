@@ -695,7 +695,12 @@ public class LevelEditor extends JFrame implements EditorDragController {
      *
      * 参数：painter 是画笔；image 是僵尸图标；left、top 是图标的左上角
      */
-    private void drawDragCount(Graphics2D painter, BufferedImage image, int left, int top) {
+    private void drawDragCount(
+            Graphics2D painter,
+            BufferedImage image,
+            int left,
+            int top
+    ) {
         // 数字要看得清楚，所以把前面调低的透明度改回不透明
         painter.setComposite(AlphaComposite.SrcOver);
         int badgeLeft = left + image.getWidth() - 8;
@@ -917,7 +922,13 @@ public class LevelEditor extends JFrame implements EditorDragController {
      * 参数：kind 是僵尸品种；count 是只数；fromRow、fromWave 是源格子（来自僵尸列表时是 -1）；
      *       screenPoint 是鼠标在屏幕上的位置
      */
-    public void beginDrag(String kind, int count, int fromRow, int fromWave, Point screenPoint) {
+    public void beginDrag(
+            String kind,
+            int count,
+            int fromRow,
+            int fromWave,
+            Point screenPoint
+    ) {
         dragging = true;
         dragKind = kind;
         dragCount = Math.max(1, count);
@@ -1224,13 +1235,21 @@ public class LevelEditor extends JFrame implements EditorDragController {
      *
      * 参数：assets 提供图片素材；root 是 assets 目录；levelNumber 是一开始编辑第几关
      */
-    public static void open(final Assets assets, final Path root, final int levelNumber) {
+    public static void open(
+            final Assets assets,
+            final Path root,
+            final int levelNumber
+    ) {
         // Swing 规定：创建窗口必须在事件线程里做，所以包一层 Runnable 交过去
         SwingUtilities.invokeLater(new OpenEditorTask(assets, root, levelNumber));
     }
 
     /** 参数 assets、root、levelNumber 是素材、素材目录和关卡号；在事件线程创建可独立关闭的窗口 */
-    public static LevelEditor createWindow(Assets assets, Path root, int levelNumber) {
+    public static LevelEditor createWindow(
+            Assets assets,
+            Path root,
+            int levelNumber
+    ) {
         return createWindow(assets, root, levelNumber, null);
     }
 

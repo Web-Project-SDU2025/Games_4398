@@ -327,17 +327,6 @@
   border: 1px solid var(--color-rule);
   border-radius: 4px;
 }
-.support-notice {
-  min-height: 20px;
-  margin: 0;
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-.support-main > .support-notice {
-  padding: 0 24px 12px;
-}
 .support-markdown {
   white-space: normal;
   min-width: 0;

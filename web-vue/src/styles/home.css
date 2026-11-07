@@ -508,10 +508,6 @@
     min-height: 44px;
   }
 }
-.workspace-home .dashboard-error {
-  color: var(--color-error);
-  margin-bottom: var(--space-md);
-}
 @media (hover: hover) {
   .dashboard-stat:hover {
     border-color: var(--color-accent);
@@ -533,8 +529,7 @@
     min-height: 0;
   }
   .workspace-home-heading,
-  .dashboard-stat-grid,
-  .dashboard-error {
+  .dashboard-stat-grid {
     flex-shrink: 0;
   }
   .dashboard-stat-grid {

@@ -1,6 +1,6 @@
 # 4398 前端
 
-本项目前端主要使用 Vue 3 和 JavaScript。表格与表单采用原生控件，确认弹窗复用 Element Plus。
+本项目前端使用 Vue 3 和 JavaScript。页面以原生表格和表单为主，确认弹窗使用 Element Plus。
 
 ## 安装依赖
 
@@ -10,7 +10,7 @@ npm install
 
 ## 本地开发
 
-开发者先在 IDEA 中启动端口为 `22222` 的后端，再运行前端。开发页面使用端口 `3000`。
+开发者在 IDEA 中启动后端后，再运行前端。前端开发服务使用端口 `3000`，并通过 `22222` 访问后端。
 
 ```bash
 npm run dev
@@ -26,29 +26,32 @@ npm run games:test
 npm run build
 ```
 
-`lint` 检查基础写法、函数说明和注释结尾，测试使用内存数据。构建工具将发布文件写入后端的 `src/main/resources/public`，后端打包时会将这些文件一并放入 JAR。
+`lint` 检查基础写法和注释规范，测试使用内存数据。构建工具将前端文件写入后端的 `src/main/resources/public`，后端打包时会把这些文件放入 JAR。
 
 ## 文件职责
 
-- `src/logic` 保存账号检查、表单复制、菜单和客服资料处理
-- `src/logic/limits.js` 集中维护表单字段上限，页面共用这些参数
-- `src/services` 负责后端请求，写入成功后标记相关缓存过期
-- `src/components` 保存工作区、账号切换、共用聊天窗口和 Octorange 宠物
-- `src/views` 负责页面布局、绑定与事件，`src/styles` 按页面和控件用途维护样式
-- 公共颜色和间距放在 `src/styles/tokens.css`
-- `games/` 保存浏览器游戏的 Java 源码、素材和单份配置，`games/runtime/web/` 保存启动页、样式与共用浏览器模块
-- `public/games/` 由构建工具生成，修改运行器时维护对应源码目录
+- `src/logic` 保存账号、表单、菜单和客服等业务逻辑
+- `src/services` 管理后端请求
+- `src/components` 保存导航、设置、聊天和游戏等共用组件
+- `src/views` 保存功能页面，`src/styles` 按用途维护样式
+- `src/styles/tokens.css` 集中维护公共颜色和间距
+- `games/` 保存浏览器游戏源码、素材和配置；`games/runtime/web/` 保存共用运行器
+- `public/games/` 由构建工具生成
 
 开发者通过 `npm run games:import -- <游戏包目录>` 导入新游戏，再执行 `npm run games:build`。源码工程和预编译 JAR 使用同一套接入配置，具体字段见[游戏接入说明](../docs/game-integration.md)。
 
-页面通过 Vue 过渡切换。列表会保留已加载的数据，并在数据变化、手动查询或失败重试时重新读取。
+当前清单包含植物大战僵尸和美式八球。植物大战僵尸使用 Java 运行器，台球的 Canvas 代码和素材维护在 `games/billiards/web/`，使用原生网页运行器。两种入口都核对购买权限、记录游玩时长，并在关闭时停止游戏任务。
 
-AI 客服与宠物通过 `src/services/aiServ.js` 调用 Java 后端的百炼接口，密钥由后端保存。前端按账号保存对话历史，用户可以停止等待或重试失败的问题，回答内容由接口返回。
+页面操作结果通过 `src/tools/toast.js` 统一显示，默认四秒后关闭，用户也可以手动关闭。`v-toast` 绑定原消息字段，提示不占用页面布局；原生对话框中的提示使用独立顶层，避免被表单裁剪。外观维护在 `src/styles/toast.css`。
 
-客服和宠物共用多图输入。用户可选择、粘贴或拖入最多四张 PNG、JPEG、WebP 图片，浏览器会先缩小和压缩图片，历史消息只保存缩略图。后端通过独立图片入口调用百炼应用的视觉模型，并沿用现有调用额度和并发限制。图片会话默认选择 `qwen3-vl-plus`，后端可通过 `app.ai.image-model` 调整模型；应用账号需要具备对应模型权限。
+Vue Router 负责页面切换，页面过渡沿用 Vue 动画。列表会在数据变化、用户查询或失败重试时重新读取。
 
-两处聊天共用 `src/tools/markdown.js` 渲染 Markdown 回复：`marked` 负责解析，`DOMPurify` 负责清理内容。用户问题以纯文本显示，复制回复时保留原 Markdown，表格和代码块可以在各自区域内滚动。
+AI 客服与宠物通过 `src/services/aiServ.js` 调用 Java 后端接口，密钥由后端保存。前端按账号保存对话历史，并支持停止等待或重试。
 
-消息中心支持账户通知、全站公告和问题反馈。管理员可以设置反馈是否修复并回复提交者；公告、反馈和回复正文共用 Markdown 渲染。
+客服和宠物共用多图输入。浏览器会缩小并压缩图片，后端负责校验并调用视觉模型。
 
-`src/services/genServ.js` 统一发送请求，并在写入成功后更新缓存状态；`src/services/systemServ.js` 处理导航菜单和修改密码请求。管理员通过三个独立页面管理账户、字块币收支和游戏记录，收支页与记录页共用 `src/services/adminServ.js`。构建配置位于 `vite.config.js`，组件样式由本地 CSS 文件维护。
+客服和宠物共用 `src/tools/markdown.js` 显示 Markdown 回复。`marked` 负责解析，`DOMPurify` 负责清理内容。
+
+消息中心支持账户通知、全站公告和问题反馈。管理员可以设置反馈状态并回复，消息正文支持 Markdown。
+
+`src/services/genServ.js` 统一发送请求，`src/services/systemServ.js` 处理导航菜单和密码修改。管理员分别管理账户、字块币收支和游戏记录。构建配置位于 `vite.config.js`，页面样式由 CSS 文件维护。

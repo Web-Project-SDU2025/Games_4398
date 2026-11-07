@@ -11,7 +11,11 @@ export async function generalRequest(url, data) {
 }
 
 // 写入成功后标记指定列表过期，失败时保留原缓存，返回后端处理结果
-export async function writeRequest(url, data, kind) {
+export async function writeRequest(
+  url,
+  data,
+  kind,
+) {
   const store = useAppStore();
   const token = store.userInfo.token;
   const result = await generalRequest(url, data);

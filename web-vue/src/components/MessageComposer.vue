@@ -23,7 +23,7 @@
         ></textarea>
       </label>
       <p class="message-markdown-hint">正文支持 Markdown</p>
-      <p v-if="notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
       <div class="game-actions">
         <button type="submit" :disabled="saving">{{ submitLabel }}</button>
         <button type="button" :disabled="saving" @click="close">取消</button>
@@ -94,7 +94,10 @@ export default {
   },
   methods: {
     // 打开公告或反馈表单，编辑时载入原文并核对当前账户权限
-    open: function open(kind, message) {
+    open: function open(
+      kind,
+      message,
+    ) {
       const user = useAppStore().userInfo;
       if (this.saving || !user.token) {
         return;

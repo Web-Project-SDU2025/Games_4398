@@ -215,6 +215,94 @@ test("游戏撤回通知关闭且保持原奖励", async function testRevokedGam
   assert.equal(requests, 1);
 });
 
+// 开盘与单杆共用顺序队列，服务器返回的奖励才触发账户刷新
+test("台球成就先记录且终局仅通知一次合并结算", async function testBilliardsReports() {
+  const host = testHost();
+  const received = [];
+  const reports = [];
+  // 后端确定先手并返回实际奖励，客户端不传入金额
+  async function fetchResource(address, options) {
+    const values = JSON.parse(options.body).data;
+    if (address.endsWith("/billiards")) {
+      reports.push(values);
+      assert.equal(values.challenge, "ticket");
+      assert.equal(values.amount, undefined);
+      if (values.sequence === 0) {
+        return Response.json({ code: 0, data: { starter: 1, reward: 0, matchMode: "single" } });
+      }
+      if (values.sequence === 1) {
+        return Response.json({ code: 0, data: { reward: 0, titles: "", repeated: false } });
+      }
+      const repeated = reports.length > 3;
+      return Response.json({ code: 0, data: { reward: 21, titles: "开门红 +1、获胜 +20", repeated: repeated } });
+    }
+    return Response.json({ code: 0, data: { challenge: "ticket", reward: 0 } });
+  }
+  // 运行器将服务器先手和入账结果传回当前子游戏
+  function receivedResult(event, result) {
+    received.push({ sequence: event.sequence, result: result });
+  }
+  const tracker = createGameplayTracker(null, { id: "billiards" },
+    { token: "token" }, fetchResource, host, receivedResult);
+  tracker.reportBilliards({ roundId: "round", sequence: 0, matchMode: "single" });
+  tracker.reportBilliards({ roundId: "round", sequence: 1, shot: { first: 1, pots: [1] } });
+  await tracker.flush();
+  assert.equal(reports.length, 2);
+  assert.equal(reports[0].matchMode, "single");
+  assert.equal(received[0].result.data.starter, 1);
+  assert.equal(received[1].result.data.reward, 0);
+  assert.equal(host.messages.some(hasRewardMessage), false);
+  tracker.reportBilliards({ roundId: "round", sequence: 2, shot: { first: 8, pots: [8] } });
+  tracker.reportBilliards({ roundId: "round", sequence: 2, shot: { first: 8, pots: [8] } });
+  await tracker.flush();
+  let notifications = 0;
+  for (const message of host.messages) {
+    if (hasRewardMessage(message)) {
+      notifications = notifications + 1;
+      assert.match(message.message, /本局结算 \+21 字块币/);
+    }
+  }
+  assert.equal(received[2].result.data.reward, 21);
+  assert.equal(notifications, 1);
+  await tracker.stop();
+});
+
+// 被拒的一杆不能直接跳过后继续上报，同步失败只影响原盘，新盘仍可正常开局
+test("台球单杆被拒后停止该盘上报且允许重新开盘", async function testRejectedBilliardsRound() {
+  const host = testHost();
+  const reports = [];
+  const received = [];
+  // 第一盘的第一杆模拟服务器拒收，其余请求按正常协议确认
+  async function fetchResource(address, options) {
+    const values = JSON.parse(options.body).data;
+    if (address.endsWith("/billiards")) {
+      reports.push(values);
+      if (values.roundId === "first" && values.sequence === 1) {
+        return Response.json({ code: 1, msg: "翻袋记录与碰库落袋记录不一致" });
+      }
+      return Response.json({ code: 0, data: { starter: 0, reward: 0 } });
+    }
+    return Response.json({ code: 0, data: { challenge: "ticket", reward: 0 } });
+  }
+  // 保存实际回传，验证不会用后续序号错误覆盖最初的拒收原因
+  function receivedResult(event, result) {
+    received.push({ round: event.roundId, sequence: event.sequence, result: result });
+  }
+  const tracker = createGameplayTracker(null, { id: "billiards" },
+    { token: "token" }, fetchResource, host, receivedResult);
+  tracker.reportBilliards({ roundId: "first", sequence: 0, matchMode: "single" });
+  tracker.reportBilliards({ roundId: "first", sequence: 1, shot: { first: 1, pots: [0] } });
+  tracker.reportBilliards({ roundId: "first", sequence: 2, shot: { first: 2, pots: [] } });
+  tracker.reportBilliards({ roundId: "second", sequence: 0, matchMode: "single" });
+  await tracker.flush();
+  assert.equal(reports.length, 3);
+  assert.equal(reports[1].sequence, 1);
+  assert.equal(reports[2].roundId, "second");
+  assert.equal(received[1].result.code, 1);
+  assert.equal(received[2].result.code, 0);
+  await tracker.stop();
+});
+
 // 记录描述包含账户、北京时间和结果，试玩使用独立标记
 test("关卡结果统一显示为账户与时间描述", function testDescription() {
   const record = {

@@ -38,7 +38,10 @@ public final class LevelScreenshot {
     }
 
     /** 参数 root 是素材目录，relative 是关卡保存的路径；返回图片，路径非法或文件损坏时抛出错误 */
-    public static BufferedImage read(Path root, String relative) throws IOException {
+    public static BufferedImage read(
+            Path root,
+            String relative
+    ) throws IOException {
         Path absoluteRoot = root.toAbsolutePath().normalize();
         Path file = absoluteRoot.resolve(relative).normalize();
         if (!file.startsWith(absoluteRoot) || !Files.isRegularFile(file)) {

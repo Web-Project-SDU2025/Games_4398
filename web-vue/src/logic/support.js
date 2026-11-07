@@ -111,7 +111,11 @@ export function createConversation() {
 }
 
 // 只添加用户问题，回答必须等百炼接口成功后再添加
-export function addQuestion(conversation, question, images) {
+export function addQuestion(
+  conversation,
+  question,
+  images,
+) {
   const trimmed = question.trim();
   const text = trimmed.substring(0, QUESTION_LIMIT);
   const previews = imagePreviews(images);

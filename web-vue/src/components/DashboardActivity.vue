@@ -53,7 +53,10 @@ const MINIMUM_TICK_MINUTES = 1;
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 // 读取指定颜色变量并去掉空格，styles 是工作区的计算样式
-function readColor(styles, name) {
+function readColor(
+  styles,
+  name,
+) {
   const value = styles.getPropertyValue(name);
   return value.trim();
 }

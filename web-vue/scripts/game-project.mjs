@@ -20,7 +20,11 @@ const IMPORT_FILE_LIMIT = 10000;
 const IMPORT_BYTE_LIMIT = 512 * 1024 * 1024;
 
 // 将相对路径限定在指定目录内，并核对符号链接指向的真实位置
-export function inside(root, relative, label) {
+export function inside(
+  root,
+  relative,
+  label,
+) {
   relativePath(relative, label);
   const absolute = path.resolve(root, relative);
   const prefix = path.resolve(root) + path.sep;
@@ -85,8 +89,36 @@ export function readProject(root, descriptor) {
     build: build,
     inputs: [],
   };
+  if (manifest.runtime === "html5") {
+    if (manifest.entry !== "runtime/index.html") {
+      throw new Error("网页构建入口应为 runtime/index.html");
+    }
+    for (const name of ["web", "cover"]) {
+      const filename = inside(root, build[name], "网页构建字段 " + name);
+      if (!fs.existsSync(filename)) {
+        throw new Error("网页游戏缺少文件：" + build[name]);
+      }
+      project.inputs.push(build[name]);
+    }
+    if (!fs.statSync(inside(root, build.web, "网页源码")).isDirectory()
+        || !fs.statSync(inside(root, build.cover, "网页封面")).isFile()) {
+      throw new Error("网页源码应为目录，封面应为普通图片");
+    }
+    for (const file of build.licenses || []) {
+      const filename = inside(root, file, "游戏来源说明");
+      if (!fs.existsSync(filename) || !fs.statSync(filename).isFile()) {
+        throw new Error("游戏来源说明应为已有文件");
+      }
+      project.inputs.push(file);
+    }
+    return project;
+  }
   if (build.tests !== undefined && !Array.isArray(build.tests)) {
     throw new Error("build.tests 应为测试类名数组");
+  }
+  if (build.prepareClass !== undefined &&
+      (typeof build.prepareClass !== "string" || !JAVA_CLASS_PATTERN.test(build.prepareClass))) {
+    throw new Error("prepareClass 应为完整 Java 类名");
   }
   if (
     build.assets &&
@@ -94,7 +126,7 @@ export function readProject(root, descriptor) {
   ) {
     throw new Error("build.assets 应指向素材目录");
   }
-  for (const name of ["source", "jar", "assets", "cover", "testSource"]) {
+  for (const name of ["source", "jar", "assets", "cover", "testSource", "resources"]) {
     if (build[name]) {
       const filename = inside(root, build[name], "构建字段 " + name);
       if (!fs.existsSync(filename)) {
@@ -124,6 +156,12 @@ export function readProject(root, descriptor) {
     !fs.statSync(inside(root, build.source, "源码目录")).isDirectory()
   ) {
     throw new Error("source 应指向 Java 源码目录");
+  }
+  if (
+    build.resources &&
+    !fs.statSync(inside(root, build.resources, "Java 资源目录")).isDirectory()
+  ) {
+    throw new Error("resources 应指向 Java 类路径资源目录");
   }
   for (const key of ["libraries", "licenses", "include"]) {
     const entries = build[key] || [];
@@ -234,7 +272,12 @@ export function findJdk() {
 }
 
 // 使用具名工具执行编译或打包，参数以数组传入，错误时保留完整退出状态
-export function runJava(jdk, tool, argumentsList, workingDirectory) {
+export function runJava(
+  jdk,
+  tool,
+  argumentsList,
+  workingDirectory,
+) {
   let executable = tool;
   if (process.platform === "win32") {
     executable = tool + ".exe";

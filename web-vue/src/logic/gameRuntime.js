@@ -15,6 +15,7 @@ export function installedGameInfo(game) {
     gamePath: "/games/" + game.id + "/game.json",
     cover: "/games/" + game.id + "/" + game.cover,
     capabilities: game.capabilities,
+    runtime: game.runtime,
   };
 }
 
@@ -43,6 +44,7 @@ export function launcherGames(catalog, installedGames) {
       cover: "/favicon.svg",
       capabilities: { editor: false },
       installed: false,
+      runtime: "java17",
       owned: record.owned === true,
       favorite: record.favorite === true,
       price: record.price,
@@ -54,6 +56,7 @@ export function launcherGames(catalog, installedGames) {
       entry.capabilities = installed.capabilities;
       entry.description = installed.description;
       entry.installed = true;
+      entry.runtime = installed.runtime;
     }
     result.push(entry);
   }
@@ -61,7 +64,11 @@ export function launcherGames(catalog, installedGames) {
 }
 
 // 生成当前账户的游戏入口，用户目录与游戏目录分别使用独立参数
-export function gameAddress(game, owner, editor) {
+export function gameAddress(
+  game,
+  owner,
+  editor,
+) {
   if (!game || !GAME_ID_PATTERN.test(game.id)) {
     throw new Error("游戏未登记");
   }
@@ -74,5 +81,9 @@ export function gameAddress(game, owner, editor) {
     }
     parameters.set("mode", "editor");
   }
-  return PLAYER_PAGE + "?" + parameters.toString();
+  let player = PLAYER_PAGE;
+  if (game.runtime === "html5") {
+    player = "/games/native-player.html";
+  }
+  return player + "?" + parameters.toString();
 }

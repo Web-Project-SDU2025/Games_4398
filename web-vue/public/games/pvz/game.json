@@ -5,6 +5,7 @@
   "category": "塔防",
   "description": "一款轻松有趣的策略塔防游戏。收集阳光，种植向日葵、豌豆射手等各具能力的植物，搭配攻击与防御阵容，抵御一波波来袭的僵尸，守护你的家园。",
   "runtime": "java17",
+  "entry": "",
   "cover": "media/menu.png",
   "classpath": [
     "game.jar",
@@ -40,8 +41,8 @@
   "dataDirectory": "levels",
   "resources": {
     "game.jar": {
-      "path": "resources/0-ac1006146235fcfaf026.bin",
-      "bytes": 182530
+      "path": "resources/0-9160b27d19f923294c77.bin",
+      "bytes": 182555
     },
     "gson-2.11.0.jar": {
       "path": "resources/1-57928d6e5a6edeb2abd3.bin",

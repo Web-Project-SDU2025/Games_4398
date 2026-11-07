@@ -12,7 +12,7 @@
         添加游戏
       </button>
     </form>
-    <p v-reveal="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="motion-results" :aria-busy="loading">
       <GameLauncher
         v-if="showLauncher && games.length > 0"
@@ -109,7 +109,7 @@
           <button type="submit">保存</button
           ><button type="button" @click="close">取消</button>
         </div>
-        <p role="status">{{ editorNotice }}</p>
+        <span v-toast="editorNotice"></span>
       </form>
     </dialog>
   </section>

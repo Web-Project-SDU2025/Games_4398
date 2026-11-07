@@ -46,7 +46,7 @@
           required
         ></textarea>
       </label>
-      <p v-if="notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
       <div class="game-actions">
         <button type="submit" :disabled="saving">确定</button>
         <button type="button" :disabled="saving" @click="close">取消</button>

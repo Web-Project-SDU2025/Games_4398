@@ -58,7 +58,11 @@ public final class GameRefreshTest {
     }
 
     /** 先填入可辨认的旧背景，再通过实际绘图入口绘制结算页，检查素材边界之外的残影 */
-    private static BufferedImage drawEndingOver(GameRenderer renderer, GameState state, Color previous) {
+    private static BufferedImage drawEndingOver(
+            GameRenderer renderer,
+            GameState state,
+            Color previous
+    ) {
         BufferedImage image = new BufferedImage(Layout.WINDOW_WIDTH,
             Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D painter = image.createGraphics();
@@ -98,7 +102,10 @@ public final class GameRefreshTest {
     }
 
     /** 按真实绘图入口生成选卡页，验证动画像素而非只检查重绘次数 */
-    private static BufferedImage drawChooser(GameRenderer renderer, GameState state) {
+    private static BufferedImage drawChooser(
+            GameRenderer renderer,
+            GameState state
+    ) {
         BufferedImage image = new BufferedImage(Layout.WINDOW_WIDTH,
             Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D painter = image.createGraphics();
@@ -108,7 +115,10 @@ public final class GameRefreshTest {
     }
 
     /** 比较右侧展示区的像素，选卡面板保持静止时也能确认僵尸本身在播放动画 */
-    private static boolean picturesDiffer(BufferedImage first, BufferedImage second) {
+    private static boolean picturesDiffer(
+            BufferedImage first,
+            BufferedImage second
+    ) {
         for (int row = 0; row < first.getHeight(); row = row + 1) {
             for (int column = first.getWidth() / 2; column < first.getWidth(); column = column + 1) {
                 if (first.getRGB(column, row) != second.getRGB(column, row)) {

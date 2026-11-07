@@ -308,7 +308,10 @@ public class SelfCheckTest {
     }
 
     /** 检查一次性植物触发后会请求的动画 */
-    private static void checkInstantAnimations(PlantDefinition definition, Assets assets) {
+    private static void checkInstantAnimations(
+            PlantDefinition definition,
+            Assets assets
+    ) {
         String effect = "";
         if (definition.name.equals("CherryBomb")) {
             effect = "CherryBombExplode";
@@ -415,7 +418,10 @@ public class SelfCheckTest {
     }
 
     /** 模拟游戏选卡、种植、出怪和传送带流程 */
-    private static void checkInteraction(Assets assets, Path project) throws Exception {
+    private static void checkInteraction(
+            Assets assets,
+            Path project
+    ) throws Exception {
         checkSpeedChoices();
         checkBulletSpeed(assets);
         checkFixedStepMovement(assets);
@@ -1160,7 +1166,10 @@ public class SelfCheckTest {
      * 返回：可以用 step 推进的游戏对象
      * 异常：关卡读取失败时抛出异常
      */
-    private static Game prepareNormalGame(Assets assets, int level) throws Exception {
+    private static Game prepareNormalGame(
+            Assets assets,
+            int level
+    ) throws Exception {
         Game game = new Game(assets, level, false, false);
         game.loadLevel();
         chooseLevelCards(game, assets, level);
@@ -1168,7 +1177,11 @@ public class SelfCheckTest {
     }
 
     /** 按关卡要求选择卡片，并返回实际选中的植物编号 */
-    private static List<Integer> chooseLevelCards(Game game, Assets assets, int level)
+    private static List<Integer> chooseLevelCards(
+            Game game,
+            Assets assets,
+            int level
+    )
             throws Exception {
         Level levelData = new LevelLoader(assets).load(level);
         List<Integer> selected = new ArrayList<Integer>();
@@ -1206,7 +1219,10 @@ public class SelfCheckTest {
     }
 
     /** 正常关卡：按配置选卡、种植和收铲，再核对僵尸出场 */
-    private static void checkNormalLevel(Assets assets, Path project) throws Exception {
+    private static void checkNormalLevel(
+            Assets assets,
+            Path project
+    ) throws Exception {
         int level = findLevelWithBar(assets, Layout.BAR_NORMAL);
         if (level < 0) {
             System.out.println("跳过选卡流程检查：现在没有哪一关是正常选卡模式");
@@ -1276,7 +1292,10 @@ public class SelfCheckTest {
     }
 
     /** 按配置的补卡间隔推进传送带关卡，确认实际生成卡片 */
-    private static void checkConveyorLevel(Assets assets, Path project) throws Exception {
+    private static void checkConveyorLevel(
+            Assets assets,
+            Path project
+    ) throws Exception {
         int level = findLevelWithBar(assets, Layout.BAR_CONVEYOR);
         if (level < 0) {
             System.out.println("跳过传送带检查：现在没有哪一关是传送带模式");
@@ -1291,7 +1310,10 @@ public class SelfCheckTest {
     }
 
     /** 保龄球关卡：出一张卡，点在草坪上应该能种下球 */
-    private static void checkBowlingLevel(Assets assets, Path project) throws Exception {
+    private static void checkBowlingLevel(
+            Assets assets,
+            Path project
+    ) throws Exception {
         int level = findLevelWithBar(assets, Layout.BAR_BOWLING);
         if (level < 0) {
             System.out.println("跳过保龄球检查：现在没有哪一关是保龄球模式");
@@ -1313,7 +1335,10 @@ public class SelfCheckTest {
     /**
      * 把每个动画的第一帧排成一张总览图，方便人工核对名字和图片有没有对错
      */
-    private static void renderGallery(Assets assets, Path project) throws Exception {
+    private static void renderGallery(
+            Assets assets,
+            Path project
+    ) throws Exception {
         int cellWidth = 170;
         int cellHeight = 190;
         int columns = 10;
@@ -1355,7 +1380,11 @@ public class SelfCheckTest {
      * 参数：assets 提供素材；project 是 assets 目录；level 是关卡编号
      * 异常：读关卡或写截图失败时抛出异常
      */
-    private static void renderLevel(Assets assets, Path project, int level) throws Exception {
+    private static void renderLevel(
+            Assets assets,
+            Path project,
+            int level
+    ) throws Exception {
         JsonObject map = Assets.readObject(assets.levelPath(level));
         int expected = Layout.BAR_NORMAL;
         if (map.has("choosebar_type")) {
@@ -1379,7 +1408,10 @@ public class SelfCheckTest {
      * 返回：关卡编号；一关都没用这种模式就返回 -1
      * 异常：读关卡文件失败时抛出异常
      */
-    private static int findLevelWithBar(Assets assets, int barType) throws Exception {
+    private static int findLevelWithBar(
+            Assets assets,
+            int barType
+    ) throws Exception {
         int levelCount = countLevels(assets);
         for (int level = 0; level < levelCount; level = level + 1) {
             JsonObject map = Assets.readObject(assets.levelPath(level));
@@ -1437,7 +1469,10 @@ public class SelfCheckTest {
      * 参数：assets 提供素材和关卡位置；project 是 assets 目录
      * 异常：读写关卡文件失败时抛出异常
      */
-    private static void checkLevelEditor(Assets assets, Path project) throws Exception {
+    private static void checkLevelEditor(
+            Assets assets,
+            Path project
+    ) throws Exception {
         LevelDesign design = new LevelDesign();
         design.initialSun = 125;
         design.skySunInterval = 3500;
@@ -1570,7 +1605,11 @@ public class SelfCheckTest {
      * 参数：assets 提供僵尸图标；project 是 assets 目录；design 是要摆弄的关卡数据
      * 异常：写截图失败时抛出异常
      */
-    private static void checkEditorGrid(Assets assets, Path project, LevelDesign design)
+    private static void checkEditorGrid(
+            Assets assets,
+            Path project,
+            LevelDesign design
+    )
             throws Exception {
         EditorGrid grid = new EditorGrid(design, new EditorIcons(assets), new StubDragController());
 
@@ -1621,7 +1660,10 @@ public class SelfCheckTest {
      * 参数：component 是要画的面板；output 是图片存到哪里
      * 异常：写图片失败时抛出异常
      */
-    private static void renderComponent(JComponent component, Path output) throws Exception {
+    private static void renderComponent(
+            JComponent component,
+            Path output
+    ) throws Exception {
         Dimension size = component.getPreferredSize();
         component.setSize(size);
         component.doLayout();

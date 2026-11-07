@@ -214,11 +214,6 @@
   color: var(--color-ink);
   border-radius: var(--radius-control);
 }
-.auth-notice {
-  min-height: 24px;
-  color: var(--color-error);
-  overflow-wrap: anywhere;
-}
 .auth-introduction {
   text-align: center;
   align-self: center;

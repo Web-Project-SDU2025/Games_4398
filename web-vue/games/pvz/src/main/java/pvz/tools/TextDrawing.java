@@ -12,7 +12,11 @@ public final class TextDrawing {
     }
 
     /** 参数 painter 提供字体和颜色，text 是非空文字，bounds 是区域；按字形的可见范围居中 */
-    public static void drawCentered(Graphics2D painter, String text, Rectangle bounds) {
+    public static void drawCentered(
+            Graphics2D painter,
+            String text,
+            Rectangle bounds
+    ) {
         TextLayout layout = new TextLayout(text, painter.getFont(), painter.getFontRenderContext());
         Rectangle2D ink = layout.getBounds();
         float left = (float) (bounds.getCenterX() - ink.getCenterX());

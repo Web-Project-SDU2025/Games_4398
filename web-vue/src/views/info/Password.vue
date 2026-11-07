@@ -44,7 +44,7 @@
           重置
         </button>
       </div>
-      <p v-reveal="notice" role="status">{{ notice }}</p>
+      <span v-toast="notice"></span>
     </form>
   </section>
 </template>

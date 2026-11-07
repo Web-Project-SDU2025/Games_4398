@@ -290,7 +290,6 @@
   width: auto;
   height: auto;
 }
-.store-notice,
 .store-empty {
   color: var(--store-gold);
   line-height: 1.7;

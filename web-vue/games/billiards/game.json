@@ -1,0 +1,16 @@
+{
+  "id": "billiards",
+  "name": "美式八球",
+  "number": "BILLIARDS",
+  "category": "体育",
+  "description": "选择单人对抗电脑或本地双人对局，随机决定先手。清完本组目标球后打进 8 号球获胜。六项成就奖励 1–11 字块币，单人击败电脑另奖 20 字块币。开球进球不定组，后续首次合法进球确定球组。",
+  "runtime": "html5",
+  "entry": "runtime/index.html",
+  "cover": "media/table.png",
+  "display": { "width": 1000, "height": 700 },
+  "build": {
+    "web": "web",
+    "licenses": ["UPSTREAM.md", "AUDIO-SOURCE.txt", "MATTER-LICENSE.txt"],
+    "cover": "media/table.png"
+  }
+}

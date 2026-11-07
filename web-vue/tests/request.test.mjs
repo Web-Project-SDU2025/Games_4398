@@ -20,7 +20,11 @@ function loadRequests() {
     changed.push(kind);
   }
   // 收集请求参数，并按测试指定的结果完成请求
-  async function post(url, body, options) {
+  async function post(
+    url,
+    body,
+    options,
+  ) {
     request = { url: url, body: body, options: options };
     if (failure) {
       throw failure;

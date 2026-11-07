@@ -56,9 +56,11 @@ export function createGameplayTracker(
   identity,
   fetchResource,
   host,
+  billiardsResult,
 ) {
   const queue = [];
   const sessions = new Map();
+  const failedBilliardsRounds = new Set();
   let busy = null;
   let stopped = false;
   let genericRun = "";
@@ -81,7 +83,7 @@ export function createGameplayTracker(
   function enqueue(event) {
     if (
       !event ||
-      !["begin", "heartbeat", "finish"].includes(event.type) ||
+      !["begin", "heartbeat", "finish", "billiards"].includes(event.type) ||
       typeof event.runId !== "string"
     ) {
       throw new Error("游戏事件格式不正确");
@@ -129,6 +131,10 @@ export function createGameplayTracker(
   // 每次仅处理队首，开局响应丢失时重试取得原凭证，结算响应丢失时复用原结果
   async function send(item) {
     const event = item.event;
+    // 某杆被拒后停止本盘后续报告，避免跳过该杆而连续触发序号错误
+    if (event.type === "billiards" && failedBilliardsRounds.has(event.roundId)) {
+      return;
+    }
     const session = sessions.get(event.runId);
     if (!session || session.finished) {
       return;
@@ -148,6 +154,12 @@ export function createGameplayTracker(
       }
       values.challenge = session.challenge;
       values.outcome = event.outcome;
+      if (event.type === "billiards") {
+        values.roundId = event.roundId;
+        values.sequence = event.sequence;
+        values.shot = event.shot;
+        values.matchMode = event.matchMode;
+      }
     }
     const result = await gameplayRequest(
       event.type,
@@ -156,8 +168,18 @@ export function createGameplayTracker(
       fetchResource,
       false,
     );
+    if (event.type === "billiards" && result.code === 0 && result.data.retry === true) {
+      throw new Error("本杆记录等待计时同步");
+    }
+    if (event.type === "billiards" && billiardsResult) {
+      billiardsResult(event, result);
+    }
     if (result.code !== 0) {
-      session.finished = true;
+      if (event.type === "billiards") {
+        failedBilliardsRounds.add(event.roundId);
+      } else {
+        session.finished = true;
+      }
       notify(GAMEPLAY_MESSAGES.notice, result.msg);
       return;
     }
@@ -170,9 +192,13 @@ export function createGameplayTracker(
       return;
     }
     notify(GAMEPLAY_MESSAGES.recordsChanged, "");
+    if (event.type === "billiards" && result.data.reward > 0 && !result.data.repeated) {
+      notify(GAMEPLAY_MESSAGES.walletChanged,
+        "本局结算 +" + result.data.reward + " 字块币 · " + result.data.titles);
+    }
     if (event.type === "finish") {
       session.finished = true;
-      if (result.data.reward > 0) {
+      if (result.data.reward > 0 && configuration.id !== "billiards") {
         notify(
           GAMEPLAY_MESSAGES.walletChanged,
           "通关奖励 +" + result.data.reward + " 字块币",
@@ -204,6 +230,12 @@ export function createGameplayTracker(
         item.attempts = item.attempts + 1;
         if (item.attempts >= GAMEPLAY_LIMITS.maximumAttempts) {
           queue.shift();
+          if (item.event.type === "billiards") {
+            failedBilliardsRounds.add(item.event.roundId);
+            if (billiardsResult) {
+              billiardsResult(item.event, { code: 1, msg: "台球奖励同步失败，请重新开始本盘" });
+            }
+          }
           notify(GAMEPLAY_MESSAGES.notice, "游戏记录保存失败");
         }
         break;
@@ -297,6 +329,18 @@ export function createGameplayTracker(
     paused = value;
   }
 
+  // 原生台球提供单杆证据，排在开局与心跳之后发送，重试继续使用相同局号和序号
+  function reportBilliards(report) {
+    if (stopped || adapter || configuration.id !== "billiards") {
+      return;
+    }
+    sampleGeneric();
+    enqueue({ type: "billiards", runId: genericRun, roundId: report.roundId,
+      sequence: report.sequence, shot: report.shot, matchMode: report.matchMode,
+      activeMilliseconds: Math.floor(genericMilliseconds) });
+    poll();
+  }
+
   if (!adapter) {
     genericRun = host.crypto.randomUUID();
     enqueue({
@@ -309,5 +353,5 @@ export function createGameplayTracker(
   const timer = host.setInterval(poll, GAMEPLAY_LIMITS.pollMilliseconds);
   host.addEventListener("pagehide", pageHidden, { once: true });
   poll();
-  return { flush: flush, stop: stop, pause: pause };
+  return { flush: flush, stop: stop, pause: pause, reportBilliards: reportBilliards };
 }

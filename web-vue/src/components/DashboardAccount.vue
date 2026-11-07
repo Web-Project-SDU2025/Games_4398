@@ -23,7 +23,7 @@
         <strong>{{ formatCoins(wallet.balance) }}<small>BC</small></strong>
       </RouterLink>
     </div>
-    <p v-if="wallet.notice" role="status">{{ wallet.notice }}</p>
+    <span v-toast:error="wallet.notice"></span>
     <div class="dashboard-signature">
       <span>个性签名</span>
       <p>{{ signature }}</p>

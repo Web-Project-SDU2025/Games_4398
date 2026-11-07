@@ -8,7 +8,7 @@
         <input v-model="showHidden" type="checkbox" />显示隐藏记录
       </label>
     </div>
-    <p v-reveal="notice" role="status">{{ notice }}</p>
+    <span v-toast="notice"></span>
     <div class="motion-results" :aria-busy="loading">
       <div v-if="loaded" class="game-table-wrap">
         <table class="game-table">
@@ -92,7 +92,7 @@
           <button type="submit">保存</button
           ><button type="button" @click="close">取消</button>
         </div>
-        <p role="status">{{ editorNotice }}</p>
+        <span v-toast="editorNotice"></span>
       </form>
     </dialog>
   </section>
@@ -202,7 +202,10 @@ export default {
       this.$refs.editor.close();
     },
     // 隐藏和恢复共用请求状态，成功后只更新当前账号的列表与缓存
-    changeVisibility: async function changeVisibility(record, hidden) {
+    changeVisibility: async function changeVisibility(
+      record,
+      hidden,
+    ) {
       if (this.updating !== null) {
         return;
       }

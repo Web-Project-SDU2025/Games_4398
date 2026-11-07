@@ -22,7 +22,11 @@ public final class AssetToolkit {
      * 参数：source 是原图；width 和 height 是目标大小
      * 返回：预先计算透明色的图片，后续绘制直接复用颜色结果
      */
-    public static BufferedImage resize(BufferedImage source, int width, int height) {
+    public static BufferedImage resize(
+            BufferedImage source,
+            int width,
+            int height
+    ) {
         BufferedImage result = new BufferedImage(width, height,
             BufferedImage.TYPE_INT_ARGB_PRE);
         Graphics2D painter = result.createGraphics();

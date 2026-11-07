@@ -18,7 +18,12 @@ export const useGamePlayerStore = defineStore("gamePlayer", {
   },
   actions: {
     // 同一游戏重复打开时返回原实例，其他游戏等当前实例关闭后再启动
-    open: function open(game, user, routePath, editor) {
+    open: function open(
+      game,
+      user,
+      routePath,
+      editor,
+    ) {
       if (!user.loggedIn || !user.token) {
         return "请先登录";
       }
@@ -48,6 +53,7 @@ export const useGamePlayerStore = defineStore("gamePlayer", {
           name: game.name,
           gamePath: game.gamePath,
           capabilities: game.capabilities,
+          runtime: game.runtime,
         };
         this.address = address;
         this.ownerToken = user.token;

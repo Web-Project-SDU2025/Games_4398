@@ -72,11 +72,6 @@
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-paper-2);
 }
-.game-player-notice {
-  margin: 0;
-  padding: var(--space-sm) var(--space-md);
-  color: var(--color-muted);
-}
 .game-player-heading button {
   display: grid;
   place-items: center;
