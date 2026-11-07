@@ -20,16 +20,18 @@ public class GameService {
     private final GameRecordRepository recordRepository;
     private final GamePlayRepository playRepository;
     private final RecordVisibilityService visibility;
+    private final OfficialLevelCatalog levels;
 
     /** 保存游戏、账户和记录仓库，相关操作共用实体转换方法 */
     public GameService(GameRepository gameRepository, UserRepository userRepository,
                        GameRecordRepository recordRepository, GamePlayRepository playRepository,
-                       RecordVisibilityService visibility) {
+                       RecordVisibilityService visibility, OfficialLevelCatalog levels) {
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
         this.recordRepository = recordRepository;
         this.playRepository = playRepository;
         this.visibility = visibility;
+        this.levels = levels;
     }
 
     /**
@@ -53,6 +55,7 @@ public class GameService {
         info.put("category", game.getCategory());
         info.put("description", game.getDescription());
         info.put("gamePath", game.getGamePath());
+        info.put("levelReward", levels.reward(game));
         return info;
     }
 
@@ -102,6 +105,13 @@ public class GameService {
         if (num == null || num.isBlank() || name == null || name.isBlank()) {
             return CommonMethod.getReturnMessageError("游戏编号和名称不能为空");
         }
+        Long levelReward = null;
+        if (request.get("levelReward") != null) {
+            levelReward = request.getLong("levelReward");
+            if (levelReward == null || levelReward < 0 || levelReward > GameplayRules.MAX_LEVEL_REWARD) {
+                return CommonMethod.getReturnMessageError("通关奖励须为 0–" + GameplayRules.MAX_LEVEL_REWARD + " 的整数");
+            }
+        }
         Game game;
         if (gameId == null) {
             if (gameRepository.existsByNum(num)) {
@@ -119,6 +129,9 @@ public class GameService {
         game.setCategory(request.getString("category"));
         game.setDescription(request.getString("description"));
         game.setGamePath(request.getString("gamePath"));
+        if (levelReward != null) {
+            game.setLevelReward(levelReward);
+        }
         gameRepository.save(game);
         return CommonMethod.getReturnMessageOK();
     }

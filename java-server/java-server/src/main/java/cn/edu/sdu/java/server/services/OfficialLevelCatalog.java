@@ -11,6 +11,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import cn.edu.sdu.java.server.util.BlockcoinRules;
 import cn.edu.sdu.java.server.util.GameplayRules;
+import cn.edu.sdu.java.server.models.Game;
 
 /** 从服务器发布配置读取各游戏的奖励规则，并核对官方关卡文件 */
 @Service
@@ -117,6 +118,15 @@ public class OfficialLevelCatalog {
         } catch (Exception error) {
             return 0;
         }
+    }
+
+    /** 管理员配置优先，空值保留安装配置的默认金额，显式零表示不发通关奖励 */
+    public long reward(Game game) {
+        Long configured = game.getLevelReward();
+        if (configured == null) {
+            return reward(game.getGamePath());
+        }
+        return Math.max(0, Math.min(GameplayRules.MAX_LEVEL_REWARD, configured));
     }
 
     /** 保存一关的指纹与最低经过秒数，字段由服务器素材产生 */

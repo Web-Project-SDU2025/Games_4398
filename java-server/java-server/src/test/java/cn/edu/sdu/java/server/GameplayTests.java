@@ -36,6 +36,32 @@ class GameplayTests {
     /** 测试游戏使用站内通用入口，名称与编号均可替换 */
     private static final String PATH = "/games/example/game.json";
 
+    /** 开局冻结奖励金额，之后管理员改金额不改变已开始的关卡 */
+    @Test
+    void configuredRewardIsFrozenAtStart() {
+        Fixture fixture = new Fixture();
+        when(fixture.levels.reward(fixture.game)).thenReturn(27L);
+        GamePlay play = fixture.start();
+        assertEquals(27L, play.getRewardAmount());
+        when(fixture.levels.reward(fixture.game)).thenReturn(40L);
+        when(fixture.coins.award(fixture.user, fixture.game, play.getPlayId(), play.getLevelName(), 27L))
+                .thenReturn(27L);
+        Map<?, ?> result = (Map<?, ?>) fixture.service.finish(fixture.updateRequest(play, "passed")).getData();
+        assertEquals(27L, result.get("reward"));
+        verify(fixture.coins).award(fixture.user, fixture.game, play.getPlayId(), play.getLevelName(), 27L);
+    }
+
+    /** 零奖励只停发货币，关卡仍保持正式身份与游玩记录 */
+    @Test
+    void zeroConfiguredRewardDisablesOnlyCurrency() {
+        Fixture fixture = new Fixture();
+        when(fixture.levels.reward(fixture.game)).thenReturn(0L);
+        GamePlay play = fixture.start();
+        assertEquals(0L, play.getRewardAmount());
+        assertEquals("official", play.getMode());
+        assertEquals(0, fixture.service.finish(fixture.updateRequest(play, "passed")).getCode());
+        verify(fixture.coins, never()).award(any(), any(), anyString(), anyString(), anyLong());
+    }
     /** 每个测试结束清理身份 */
     @AfterEach
     void clearIdentity() {
@@ -83,6 +109,7 @@ class GameplayTests {
             when(coins.owns(user, game)).thenReturn(true);
             when(records.saveAndFlush(any())).thenAnswer(new AssignRecord());
             when(levels.find(PATH, 0)).thenReturn(new OfficialLevelCatalog.LevelRule("official", 2, 15));
+            when(levels.reward(game)).thenReturn(15L);
             UserDetailsImpl details = UserDetailsImpl.build(user);
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities()));

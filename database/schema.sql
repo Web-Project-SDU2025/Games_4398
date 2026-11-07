@@ -45,6 +45,7 @@ CREATE TABLE `game` (
   `game_path` varchar(255) DEFAULT NULL,
   `category` varchar(50) DEFAULT NULL,
   `description` varchar(1000) DEFAULT NULL,
+  `level_reward` bigint DEFAULT NULL,
   PRIMARY KEY (`game_id`),
   UNIQUE KEY `uk_game_num` (`num`)
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb3;

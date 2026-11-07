@@ -22,5 +22,7 @@ export const GAME_CATEGORY_LIMIT = 50;
 export const GAME_DESCRIPTION_LIMIT = 1000;
 // 游戏入口路径最多字符数
 export const GAME_PATH_LIMIT = 255;
+// 单款游戏每次正式通关奖励的最大整数，与后端 GameplayRules 一致
+export const GAME_REWARD_LIMIT = 1000;
 // 管理员填写分数和秒数时的最大整数
 export const RECORD_NUMBER_LIMIT = 2147483647;

@@ -6,6 +6,7 @@ export function createGameForm(game) {
     category: "",
     description: "",
     gamePath: "",
+    levelReward: 0,
   };
   if (game) {
     form.gameId = game.gameId;
@@ -14,6 +15,9 @@ export function createGameForm(game) {
     form.category = game.category;
     form.description = game.description;
     form.gamePath = game.gamePath;
+    if (Number.isInteger(game.levelReward)) {
+      form.levelReward = game.levelReward;
+    }
   }
   return form;
 }

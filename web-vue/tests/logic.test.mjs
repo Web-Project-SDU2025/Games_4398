@@ -557,13 +557,18 @@ test("游戏和账户编辑不修改原对象", function testCopies() {
     id: 1,
     name: "原名称",
     title: "原标题",
+    levelReward: 27,
   };
   const game = forms.createGameForm(original);
+  assert.equal(game.levelReward, 27);
+  game.levelReward = 0;
   const user = forms.createAccountForm(original);
   game.name = "已修改";
   user.name = "已修改";
   assert.equal(original.name, "原名称");
   assert.equal(original.title, "原标题");
+  assert.equal(original.levelReward, 27);
+  assert.equal(forms.createGameForm(null).levelReward, 0);
 });
 
 // 资料字段保留固定顺序与空值，长签名由组件按原文字展示

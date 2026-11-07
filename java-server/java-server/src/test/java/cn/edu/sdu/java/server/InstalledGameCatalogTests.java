@@ -12,6 +12,19 @@ import static org.mockito.Mockito.*;
 
 /** 使用仓库替身和真实发布清单检查第二款游戏登记，不连接数据库 */
 class InstalledGameCatalogTests {
+    /** 旧商品沿用安装金额，管理员零值和自定义金额优先于安装默认值 */
+    @Test
+    void administratorRewardOverridesManifest() {
+        cn.edu.sdu.java.server.services.OfficialLevelCatalog catalog =
+                new cn.edu.sdu.java.server.services.OfficialLevelCatalog(new ObjectMapper());
+        Game game = new Game();
+        game.setGamePath("/games/pvz/game.json");
+        assertEquals(15L, catalog.reward(game));
+        game.setLevelReward(0L);
+        assertEquals(0L, catalog.reward(game));
+        game.setLevelReward(27L);
+        assertEquals(27L, catalog.reward(game));
+    }
     /** 植物大战僵尸已存在时只补台球，已有资料保持管理员设置的原值 */
     @Test
     void registersSecondGameWithoutReplacingFirst() throws Exception {

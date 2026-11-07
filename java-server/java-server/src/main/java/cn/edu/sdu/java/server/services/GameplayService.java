@@ -122,7 +122,8 @@ public class GameplayService {
         int minimum = 0;
         String hash = "";
         if (rule != null && rule.hash.equals(request.getString("hash")) && "official".equals(mode)) {
-            reward = rule.reward;
+            // 开局冻结该游戏的金额，管理修改只影响之后的新局，客户端金额不能覆盖它
+            reward = levels.reward(game);
             minimum = rule.minimumSeconds;
             hash = rule.hash;
         } else if (level != null && "official".equals(mode)) {

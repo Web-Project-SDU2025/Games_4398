@@ -21,4 +21,6 @@ public class Game {
     private String category;
     private String description;
     private String gamePath;
+    /** 管理员设置的每次正式通关奖励，旧资料为空时沿用发布配置 */
+    private Long levelReward;
 }

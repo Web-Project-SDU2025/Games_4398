@@ -6,8 +6,6 @@ public final class BlockcoinRules {
     public static final long INITIAL_BALANCE = 100;
     /** 当前商城的单款游戏售价 */
     public static final long GAME_PRICE = 100;
-    /** 每次正式通关的收入 */
-    public static final long LEVEL_REWARD = 15;
     /** 余额上限，计算奖励前检查剩余空间 */
     public static final long MAX_BALANCE = 2000000000;
     /** 一次正式关卡尝试的最长有效秒数 */

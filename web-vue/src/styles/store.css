@@ -89,23 +89,6 @@
   font-size: 14px;
   color: var(--store-gold);
 }
-.store-earning {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding-left: 24px;
-  border-left: 1px solid var(--color-rule);
-}
-.store-earning > span {
-  width: 26px;
-  height: 26px;
-  color: var(--store-gold);
-  flex-shrink: 0;
-}
-.store-earning strong {
-  font-size: 15px;
-  font-weight: 500;
-}
 .store-page button,
 .store-page select,
 .store-page input {
@@ -295,10 +278,6 @@
   line-height: 1.7;
 }
 @media (max-width: 65rem) {
-  .store-earning {
-    border: 0;
-    padding-left: 0;
-  }
   .store-account {
     flex-wrap: wrap;
   }

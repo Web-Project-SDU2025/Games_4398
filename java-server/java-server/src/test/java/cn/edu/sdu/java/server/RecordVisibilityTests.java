@@ -74,7 +74,8 @@ class RecordVisibilityTests {
         private final GamePlay play = new GamePlay();
         private final RecordVisibilityService service =
             new RecordVisibilityService(records, visibility, users);
-        private final GameService gameService = new GameService(games, users, records, plays, service);
+        private final GameService gameService = new GameService(games, users, records, plays, service,
+                mock(cn.edu.sdu.java.server.services.OfficialLevelCatalog.class));
 
         /** 仓库只返回内存对象，初始记录由玩家二号持有 */
         Fixture() {

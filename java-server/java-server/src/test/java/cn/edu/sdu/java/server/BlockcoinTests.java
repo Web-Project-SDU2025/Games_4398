@@ -326,7 +326,7 @@ class BlockcoinTests {
         private final MessageService messages = mock(MessageService.class);
         private final OfficialLevelCatalog levels = mock(OfficialLevelCatalog.class);
         private final GameService gameService = new GameService(games, users,
-            mock(GameRecordRepository.class), mock(GamePlayRepository.class), mock(RecordVisibilityService.class));
+            mock(GameRecordRepository.class), mock(GamePlayRepository.class), mock(RecordVisibilityService.class), levels);
         private final BlockcoinService service =
             new BlockcoinService(users, games, wallets, entries, levels, gameService, revocations, messages);
     }

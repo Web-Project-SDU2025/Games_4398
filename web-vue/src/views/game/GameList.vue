@@ -47,6 +47,7 @@
               <th>游戏名称</th>
               <th>分类</th>
               <th>介绍</th>
+              <th>每次通关奖励</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -62,6 +63,7 @@
               </td>
               <td>{{ game.category }}</td>
               <td>{{ game.description }}</td>
+              <td>{{ game.levelReward }} BC</td>
               <td class="game-actions">
                 <template v-if="admin && mode === 'catalog'">
                   <button @click="editGame(game)">编辑</button
@@ -104,6 +106,15 @@
           >入口路径<input
             v-model="form.gamePath"
             :maxlength="limits.GAME_PATH_LIMIT"
+        /></label>
+        <label
+          >每次通关奖励（字块币）<input
+            v-model.number="form.levelReward"
+            type="number"
+            min="0"
+            :max="limits.GAME_REWARD_LIMIT"
+            step="1"
+            required
         /></label>
         <div class="game-actions">
           <button type="submit">保存</button

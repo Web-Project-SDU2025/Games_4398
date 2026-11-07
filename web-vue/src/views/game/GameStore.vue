@@ -20,10 +20,6 @@
           <strong>{{ formatCoins(wallet.balance) }}<small>BC</small></strong>
         </div>
       </div>
-      <div class="store-earning">
-        <span class="i-ep-trophy" aria-hidden="true"></span>
-        <strong>通关奖励 {{ wallet.levelReward }} BC</strong>
-      </div>
       <button
         class="store-refresh"
         type="button"

@@ -127,7 +127,6 @@ public class BlockcoinService {
         info.put("currency", "字块币");
         info.put("currencyCode", "Blockcoin");
         info.put("initialBalance", BlockcoinRules.INITIAL_BALANCE);
-        info.put("levelReward", BlockcoinRules.LEVEL_REWARD);
         PageRequest page = PageRequest.of(0, BlockcoinRules.HISTORY_SIZE);
         info.put("history", entries.findByUserIdOrderByCreatedAtDesc(wallet.getUserId(), page));
         return info;
@@ -144,7 +143,7 @@ public class BlockcoinService {
             info.put("owned", owns(user, game));
             info.put("favorite", user.getFavorites().contains(game));
             info.put("price", BlockcoinRules.GAME_PRICE);
-            info.put("reward", levels.reward(game.getGamePath()));
+            info.put("reward", levels.reward(game));
             products.add(info);
         }
         Map<String, Object> result = walletInfo(wallet);

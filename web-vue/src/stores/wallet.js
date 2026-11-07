@@ -10,7 +10,6 @@ export const useWalletStore = defineStore("blockcoinWallet", {
       balance: null,
       history: [],
       games: [],
-      levelReward: 0,
       initialBalance: 0,
       notice: "",
       pending: null,
@@ -22,7 +21,6 @@ export const useWalletStore = defineStore("blockcoinWallet", {
       this.balance = null;
       this.history = [];
       this.games = [];
-      this.levelReward = 0;
       this.initialBalance = 0;
       this.notice = "";
       this.pending = null;
@@ -60,7 +58,6 @@ export const useWalletStore = defineStore("blockcoinWallet", {
         this.balance = result.data.balance;
         this.games = result.data.games;
         this.history = result.data.history;
-        this.levelReward = result.data.levelReward;
         this.initialBalance = result.data.initialBalance;
         this.notice = "";
       } catch (error) {
