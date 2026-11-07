@@ -311,6 +311,7 @@
         │   └── index.js                                                        状态仓库初始化
         ├── styles/
         │   ├── tokens.css                                                      公共颜色、间距和动效参数
+        │   ├── cursor.css                                                      平台和游戏共用指针与滚动条
         │   ├── game.css                                                        游戏和账户表格布局
         │   ├── game-runtime.css                                                游戏入口与运行窗口布局
         │   ├── store.css                                                       商城、商品和字块币账户布局

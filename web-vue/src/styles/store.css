@@ -111,12 +111,6 @@
 .store-page input {
   font: inherit;
 }
-.store-page button {
-  cursor: var(--cursor-link);
-}
-.store-page button:disabled {
-  cursor: not-allowed;
-}
 .store-page .store-refresh {
   margin-left: auto;
   display: grid;

@@ -23,6 +23,7 @@ import "~/styles/settings.css";
 import "~/styles/music.css";
 import "~/styles/messages.css";
 import "~/styles/motion.css";
+import "~/styles/cursor.css";
 import { revealDirective } from "./tools/motion.js";
 import { markdownDirective } from "./tools/markdown.js";
 

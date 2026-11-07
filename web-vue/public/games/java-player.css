@@ -42,7 +42,6 @@ textarea,
 }
 button {
   font: inherit;
-  cursor: pointer;
   color: var(--color-ink);
   background: var(--color-paper-3);
   border: 1px solid var(--color-rule);
@@ -77,6 +76,15 @@ button {
 #java-display > #cheerpjDisplay {
   position: absolute;
   box-shadow: none;
+}
+/* Java 画布使用平台箭头，运行时设置的编辑和拖动指针按原状态显示 */
+#java-display canvas,
+#java-display .cjWindow {
+  cursor: var(--cursor-default);
+}
+#java-display .cjControls,
+#java-display .cjControls * {
+  cursor: var(--cursor-link);
 }
 #java-display .cjWindow {
   border-radius: var(--player-window-radius);

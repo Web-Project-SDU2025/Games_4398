@@ -10,13 +10,15 @@
 
 ## 更新日志
 
-### v1.9.5（2026/11/07）
+### v1.9.6（2026/11/07）
 
 消息中心新增问题反馈，所有账户都可以向管理员提交反馈；管理员可以设置“会修复”“不会修复”或“已解决”，并添加回复。
 
 公告、反馈和回复正文现在支持 Markdown 了，且公告与反馈均支持发布后编辑。
 
 用户现在可以从右上角直接打开反馈表单了。
+
+全站使用了全新定制的鼠标光标。
 
 ### v1.8.6（2026/11/06）
 
@@ -48,15 +50,21 @@ AI 客服 Octorange 现在会结合 4398 网站操作指南回答平台使用的
 
 ## 界面预览
 
-以下截图展示登录、注册、首页和界面设置。
-
-首页与设置截图使用示例账户，游戏库和记录均为空。
+以下截图取自本地 Chrome 中的实际运行页面，首页的邮箱和电话已遮盖。
 
 | 登录页面 | 注册页面 |
 | :---: | :---: |
 | [![登录页面](docs/images/login.png)](docs/images/login.png) | [![注册页面](docs/images/register.png)](docs/images/register.png) |
-| **游戏概览** | **界面设置** |
-| [![游戏概览](docs/images/dashboard.png)](docs/images/dashboard.png) | [![界面设置](docs/images/settings.png)](docs/images/settings.png) |
+| **游戏概览** | **游戏商城** |
+| [![游戏概览](docs/images/dashboard.png)](docs/images/dashboard.png) | [![游戏商城](docs/images/store.png)](docs/images/store.png) |
+| **我的游戏库** | **游戏运行** |
+| [![我的游戏库](docs/images/library.png)](docs/images/library.png) | [![游戏运行](docs/images/game.png)](docs/images/game.png) |
+| **关卡编辑器** | **消息中心** |
+| [![关卡编辑器](docs/images/editor.png)](docs/images/editor.png) | [![消息中心](docs/images/messages.png)](docs/images/messages.png) |
+| **问题反馈** | **界面设置** |
+| [![问题反馈](docs/images/feedback.png)](docs/images/feedback.png) | [![界面设置](docs/images/settings.png)](docs/images/settings.png) |
+| **登录背景设置** | |
+| [![登录背景设置](docs/images/login-settings.png)](docs/images/login-settings.png) | |
 
 ## 其余项目文档
 

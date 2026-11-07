@@ -1,0 +1,105 @@
+/* 平台与游戏运行页共用指针，画布通过自身交互状态切换形状 */
+html,
+body {
+  cursor: var(--cursor-default);
+}
+button,
+a[href],
+summary,
+select,
+label[for],
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]),
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+[role="button"],
+[role="link"],
+[role="tab"],
+[role="menuitem"] {
+  cursor: var(--cursor-link);
+}
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not(
+    [type="checkbox"]
+  ):not([type="radio"]):not([type="range"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+/* 组件自身声明的指针在弹窗挂到页面根部后仍沿用平台主题 */
+.el-button,
+.el-message-box__headerbtn,
+.el-message__closeBtn,
+.el-notification__closeBtn {
+  cursor: var(--cursor-link) !important;
+}
+/* 图表和 Java 运行环境会直接写入行内样式，按原交互类型映射主题指针 */
+[style*="cursor: default"],
+[style*="cursor:default"],
+[style*="cursor: auto"],
+[style*="cursor:auto"] {
+  cursor: var(--cursor-default) !important;
+}
+[style*="cursor: pointer"],
+[style*="cursor:pointer"] {
+  cursor: var(--cursor-link) !important;
+}
+/* 禁用控件和内部图标共用禁用提示，鼠标停在图标上时状态保持一致 */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"],
+.el-button.is-disabled,
+button:disabled *,
+[aria-disabled="true"] *,
+.el-button.is-disabled * {
+  cursor: not-allowed !important;
+}
+/* 滑块把手使用点击手形，轨道和把手沿用同一操作提示 */
+input[type="range"]::-webkit-slider-thumb {
+  cursor: var(--cursor-link);
+}
+input[type="range"]::-moz-range-thumb {
+  cursor: var(--cursor-link);
+}
+input[type="range"]:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+input[type="range"]:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
+/* 浏览器绘制滚动条时同步指针，轨道和把手用主题颜色区分 */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  cursor: var(--cursor-default);
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: var(--color-header);
+  cursor: var(--cursor-default);
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--color-header);
+  border-radius: var(--radius-control);
+  background: var(--color-rule);
+  cursor: var(--cursor-link);
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-accent);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+/* 使用标准滚动条接口的浏览器按自身交互规则呈现相同配色 */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule) var(--color-header);
+  }
+}

@@ -293,7 +293,6 @@
 .dashboard-activity-intervals label {
   position: relative;
   display: block;
-  cursor: var(--cursor-link);
 }
 .dashboard-activity-intervals input {
   position: absolute;
@@ -328,7 +327,6 @@
   overflow-y: auto;
 }
 .dashboard-chart-data summary {
-  cursor: var(--cursor-link);
   width: fit-content;
   min-height: 32px;
   align-content: center;

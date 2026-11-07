@@ -17,7 +17,9 @@ import {
 const RUNTIME_SOURCE = "games/runtime/src/main/java";
 const RUNTIME_TEST_SOURCE = "games/runtime/src/test/java";
 const RUNTIME_WEB_SOURCE = "games/runtime/web";
-const THEME_SOURCE = "src/styles/tokens.css";
+// 平台与游戏共用颜色、指针和滚动条样式，运行页通过构建副本加载
+const SHARED_STYLE_SOURCE = "src/styles";
+const SHARED_STYLE_FILES = ["tokens.css", "cursor.css"];
 const RUNTIME_WEB_FILES = [
   "game-manifest.mjs",
   "game-resources.mjs",
@@ -267,10 +269,12 @@ export function buildGames(frontendRoot, tests) {
       path.join(publicDirectory, filename),
     );
   }
-  fs.copyFileSync(
-    path.join(frontendRoot, THEME_SOURCE),
-    path.join(publicDirectory, "platform-tokens.css"),
-  );
+  for (const filename of SHARED_STYLE_FILES) {
+    fs.copyFileSync(
+      path.join(frontendRoot, SHARED_STYLE_SOURCE, filename),
+      path.join(publicDirectory, "platform-" + filename),
+    );
+  }
 }
 
 if (

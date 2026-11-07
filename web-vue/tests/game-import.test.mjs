@@ -22,10 +22,12 @@ function fixture() {
   const source = path.join(root, "package");
   fs.mkdirSync(path.join(frontend, "games"), { recursive: true });
   fs.mkdirSync(path.join(frontend, "src/styles"), { recursive: true });
-  fs.copyFileSync(
-    path.join(FRONTEND_ROOT, "src/styles/tokens.css"),
-    path.join(frontend, "src/styles/tokens.css"),
-  );
+  for (const filename of ["tokens.css", "cursor.css"]) {
+    fs.copyFileSync(
+      path.join(FRONTEND_ROOT, "src/styles", filename),
+      path.join(frontend, "src/styles", filename),
+    );
+  }
   fs.writeFileSync(path.join(frontend, "games/registry.json"), "[]");
   fs.cpSync(
     path.join(FRONTEND_ROOT, "games/runtime"),
