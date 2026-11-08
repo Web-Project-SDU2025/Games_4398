@@ -214,6 +214,10 @@
   color: var(--color-ink);
   border-radius: var(--radius-control);
 }
+/* 演示模式按钮与普通登录按钮上下排列，收紧间距 */
+.demo-login {
+  margin-top: var(--space-sm);
+}
 .auth-introduction {
   text-align: center;
   align-self: center;

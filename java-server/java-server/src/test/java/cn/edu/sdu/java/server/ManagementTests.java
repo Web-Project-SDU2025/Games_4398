@@ -82,9 +82,9 @@ class ManagementTests {
         AuthService auth = mock(AuthService.class);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("127.0.0.1");
-        LocalAccountController disabled = new LocalAccountController(users, auth, false);
+        LocalAccountController disabled = new LocalAccountController(users, auth, false, false);
         assertFalse(disabled.available(request));
-        LocalAccountController enabled = new LocalAccountController(users, auth, true);
+        LocalAccountController enabled = new LocalAccountController(users, auth, true, false);
         assertTrue(enabled.available(request));
         request.setRemoteAddr("192.0.2.20");
         request.addHeader("X-Forwarded-For", "127.0.0.1");
@@ -103,7 +103,7 @@ class ManagementTests {
     void accountSwitchRejectsProxyHeadersOnLoopback() {
         UserRepository users = mock(UserRepository.class);
         AuthService auth = mock(AuthService.class);
-        LocalAccountController controller = new LocalAccountController(users, auth, true);
+        LocalAccountController controller = new LocalAccountController(users, auth, true, false);
         for (String address : List.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")) {
             MockHttpServletRequest direct = new MockHttpServletRequest();
             direct.setRemoteAddr(address);
@@ -150,7 +150,7 @@ class ManagementTests {
         request.setRemoteAddr("127.0.0.1");
         User player = user(2, "player", "ROLE_GAME_USER");
         when(users.findByUserName("player")).thenReturn(Optional.of(player));
-        LocalAccountController controller = new LocalAccountController(users, auth, true);
+        LocalAccountController controller = new LocalAccountController(users, auth, true, false);
         DataRequest data = new DataRequest();
         data.add("username", "player");
 
@@ -159,6 +159,45 @@ class ManagementTests {
         assertEquals(0, response.getCode());
         verify(auth).recordSuccessfulLogin(player);
         verify(auth).createSession(player);
+    }
+
+    /** 演示模式对远端来源直接开放免密切号，供课程在线检查使用 */
+    @Test
+    void demoModeAllowsRemoteSwitchWithoutLocalFlag() {
+        UserRepository users = mock(UserRepository.class);
+        AuthService auth = mock(AuthService.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("192.0.2.30");
+        User admin = user(1, "admin", "ROLE_ADMIN");
+        when(users.findByUserName("admin")).thenReturn(Optional.of(admin));
+        LocalAccountController demo = new LocalAccountController(users, auth, false, true);
+        assertTrue(demo.available(request));
+        DataRequest data = new DataRequest();
+        data.add("username", "admin");
+
+        DataResponse response = demo.switchAccount(data, request);
+
+        assertEquals(0, response.getCode());
+        verify(auth).recordSuccessfulLogin(admin);
+        verify(auth).createSession(admin);
+    }
+
+    /** 演示模式关闭时保持原有语义：非本机直连即使打开本机开关也拒绝 */
+    @Test
+    void withoutDemoModeRemoteSwitchStaysRejected() {
+        UserRepository users = mock(UserRepository.class);
+        AuthService auth = mock(AuthService.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("192.0.2.30");
+        LocalAccountController controller = new LocalAccountController(users, auth, true, false);
+        assertFalse(controller.available(request));
+        try {
+            controller.switchAccount(new DataRequest(), request);
+            fail("演示关闭时远端请求不应签发登录凭证");
+        } catch (ResponseStatusException expected) {
+            assertEquals(403, expected.getStatusCode().value());
+        }
+        verifyNoInteractions(users, auth);
     }
 
     /** 统一登录入口按数据库角色生成会话，普通账户保持游戏用户身份 */

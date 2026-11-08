@@ -1,5 +1,6 @@
 package cn.edu.sdu.java.server.configs;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -33,17 +34,20 @@ import java.util.List;
 public class SecurityConfiguration {
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final boolean demoMode;
 
     /**
      * 构造函数
-     * 保存认证服务和登录过滤器，供过滤链装配使用
+     * 保存认证服务和登录过滤器，演示开关决定切号接口是否公开
      */
     public SecurityConfiguration(
         JwtAuthenticationFilter jwtAuthenticationFilter,
-        AuthenticationProvider authenticationProvider
+        AuthenticationProvider authenticationProvider,
+        @Value("${app.demo-mode:true}") boolean demoMode
     ) {
         this.authenticationProvider = authenticationProvider;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.demoMode = demoMode;
     }
 
     /**
@@ -55,7 +59,7 @@ public class SecurityConfiguration {
         http.csrf(new DisableCsrf());
         http.cors(new ConfigureCors(corsConfigurationSource()));
         http.headers(new ConfigureGameHeaders());
-        http.authorizeHttpRequests(new ConfigureAccess());
+        http.authorizeHttpRequests(new ConfigureAccess(demoMode));
         http.sessionManagement(new ConfigureSessions());
         http.authenticationProvider(authenticationProvider);
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -108,11 +112,21 @@ public class SecurityConfiguration {
         }
     }
 
-    /** API 要求登录，其他页面沿用公开访问规则 */
+    /** API 要求登录，其他页面沿用公开访问规则；演示模式下切号接口对未登录访客开放 */
     private static class ConfigureAccess implements Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> {
-        /** 配置请求地址与访问条件 */
+        private final boolean demoMode;
+
+        /** 保存演示开关，决定免密切号接口是否公开 */
+        private ConfigureAccess(boolean demoMode) {
+            this.demoMode = demoMode;
+        }
+
+        /** 配置请求地址与访问条件，公开规则必须写在 API 登录要求之前 */
         @Override
         public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry configuration) {
+            if (demoMode) {
+                configuration.requestMatchers("/api/localAccount/**").permitAll();
+            }
             configuration.requestMatchers("/api/**").authenticated();
             configuration.anyRequest().permitAll();
         }

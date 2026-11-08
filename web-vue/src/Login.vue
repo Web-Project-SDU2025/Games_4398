@@ -197,6 +197,16 @@
               >
                 {{ submitText }}
               </button>
+              <!-- 演示模式专用：免密进入管理员账户，方便验收老师快速检查 -->
+              <button
+                v-if="demoEnabled"
+                class="auth-submit demo-login"
+                type="button"
+                :disabled="demoBusy"
+                @click="demoLogin"
+              >
+                {{ demoBusy ? "正在进入…" : "演示登录（管理员）" }}
+              </button>
             </fieldset>
             <span v-toast="notice"></span>
           </form>
@@ -228,6 +238,7 @@ import * as account from "./logic/account.js";
 import * as auth from "./logic/auth.js";
 import * as limits from "./logic/limits.js";
 import { usePreferencesStore } from "./stores/preferences.js";
+import { getSwitchAccounts } from "./services/userServ.js";
 import {
   LOGIN_MOTION_SPEED,
   normalizePreferences,
@@ -274,6 +285,8 @@ export default {
     form.starLayers = createStarLayers();
     form.settingsOpen = false;
     form.motionSpeedRange = LOGIN_MOTION_SPEED;
+    form.demoEnabled = false;
+    form.demoBusy = false;
     return form;
   },
   computed: {
@@ -310,9 +323,10 @@ export default {
       return "登录";
     },
   },
-  // 页面加载后获取验证码
+  // 页面加载后获取验证码，并探测演示模式是否开启
   created: function loadCaptcha() {
     this.refreshCaptcha();
+    this.loadDemoStatus();
   },
   methods: {
     // 为每层星点设置循环时间，速度倍数越大移动越快
@@ -378,6 +392,32 @@ export default {
       }
       this.password = "";
       await this.$router.replace("/MainPage");
+    },
+    // 读取切号接口的开启状态，演示模式开启时登录页显示一键进入按钮
+    loadDemoStatus: async function loadDemoStatus() {
+      try {
+        const status = await getSwitchAccounts("");
+        this.demoEnabled = status.enabled === true;
+      } catch (error) {
+        this.demoEnabled = false;
+      }
+    },
+    // 演示模式下免密进入管理员账户，凭证由后端按目标账户重新签发
+    demoLogin: async function demoLogin() {
+      if (this.demoBusy) {
+        return;
+      }
+      this.notice = "";
+      this.demoBusy = true;
+      try {
+        const store = useAppStore();
+        await store.switchAccount("admin");
+        await this.$router.replace("/MainPage");
+      } catch (error) {
+        this.notice = account.getErrorMessage(error, "演示登录失败，请稍后重试");
+      } finally {
+        this.demoBusy = false;
+      }
     },
     // 检查表单后执行登录或注册，并显示请求结果
     submit: async function submit() {

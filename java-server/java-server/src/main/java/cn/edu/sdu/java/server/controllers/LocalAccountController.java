@@ -22,7 +22,7 @@ import java.util.Enumeration;
  * 本地账户控制器
  *
  * 已登录用户在本机检查时可免密切号
- * 关闭开关后接口不提供该能力
+ * 演示模式开启时对任意来源开放，两个开关都关闭后接口不提供该能力
  */
 @RestController
 @RequestMapping("/api/localAccount")
@@ -32,23 +32,29 @@ public class LocalAccountController {
     private final UserRepository users;
     private final AuthService auth;
     private final boolean enabled;
+    private final boolean demoMode;
 
     /**
      * 构造函数
-     * 从配置读取检查开关，本机默认可用，部署时可以显式关闭
+     * 从配置读取检查开关和演示开关，本机检查默认可用，演示模式默认开启
      */
     public LocalAccountController(UserRepository users, AuthService auth,
-            @Value("${app.local-account-switch:true}") boolean enabled) {
+            @Value("${app.local-account-switch:true}") boolean enabled,
+            @Value("${app.demo-mode:true}") boolean demoMode) {
         this.users = users;
         this.auth = auth;
         this.enabled = enabled;
+        this.demoMode = demoMode;
     }
 
     /**
      * 检查本地访问
-     * 按实际连接来源判断本机访问，带代理标记的请求不提供免密切号
+     * 演示模式对任意来源开放；本机检查按实际连接来源判断，带代理标记的请求不提供免密切号
      */
     public boolean available(HttpServletRequest request) {
+        if (demoMode) {
+            return true;
+        }
         if (!enabled || hasProxyHeaders(request)) {
             return false;
         }
