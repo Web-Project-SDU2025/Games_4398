@@ -5,6 +5,9 @@ security:
     expiration-time: 86400000
 server:
   port: 22222
+  compression:
+    # 页面脚本和样式体积较大，开启 gzip 后浏览器下载量明显减少
+    enabled: true
 spring:
   config:
     import: optional:classpath:application-local.properties
