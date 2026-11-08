@@ -8,28 +8,31 @@ import lombok.Setter;
 
 import java.util.*;
 
-/*
- * DataRequest 请求参数数据类
- * Map data 保存前端请求参数的Map集合
+/**
+ * 通用请求参数封装
+ *
+ * 前端传来的参数统一用Map存储，提供各种类型转换方法
+ * 这样设计的好处是接口参数灵活，新增字段时不需要修改类定义
  */
 @Getter
 @Setter
 public class DataRequest {
     private Map<String,Object> data;
 
-    /** 创建独立参数表，每个请求分别保存字段 */
+    /** 创建空的参数表，每个请求独立存储参数 */
     public DataRequest() {
         data = new HashMap<>();
     }
 
-    /** 写入指定字段，重复键由最新值覆盖 */
+    /** 写入参数，同名的键会被新值覆盖 */
     public void add(String key, Object obj){
         if (data == null) {
             data = new HashMap<>();
         }
         data.put(key,obj);
     }
-    /** 读取原始字段，字段缺失时返回空值 */
+
+    /** 读取原始参数值，不存在时返回null */
     public Object get(String key){
         if (data == null) {
             return null;
@@ -37,7 +40,7 @@ public class DataRequest {
         return data.get(key);
     }
 
-    /** 将字段转换为文字，字段缺失时返回空值 */
+    /** 转成字符串，不存在时返回null */
     public String getString(String key){
         Object obj = get(key);
         if(obj == null)
@@ -46,7 +49,8 @@ public class DataRequest {
             return (String)obj;
         return obj.toString();
     }
-    /** 读取布尔值，字段缺失时使用 false */
+
+    /** 读取布尔值，不存在时默认false */
     public Boolean getBoolean(String key){
         Object obj = get(key);
         if(obj == null)
@@ -56,7 +60,7 @@ public class DataRequest {
         return "true".equals(obj.toString());
     }
 
-    /** 读取列表，缺失或类型不符时返回空列表 */
+    /** 读取列表，不存在或类型不对时返回空列表 */
     public List<?> getList(String key){
         Object obj = get(key);
         if(obj == null)
@@ -66,7 +70,8 @@ public class DataRequest {
         else
             return new ArrayList<>();
     }
-    /** 读取嵌套参数表，缺失或类型不符时返回空表 */
+
+    /** 读取嵌套Map，不存在或类型不对时返回空Map */
     public Map<String,Object> getMap(String key){
         if(data == null)
             return new HashMap<>();
@@ -79,13 +84,14 @@ public class DataRequest {
             return new HashMap<>();
     }
 
-    /** 读取整数，转换失败时返回空值，数字转换沿用现有接口规则 */
+    /** 读取整数，转换失败时返回null，兼容老接口的数字转换规则 */
     public Integer getInteger(String key) {
         if(data == null)
             return null;
         return CommonMethod.getInteger(data, key);
     }
-    /** 读取长整数，字段缺失或转换失败时返回空值 */
+
+    /** 读取长整数，不存在或转换失败时返回null */
     public Long getLong(String key) {
         if(data == null)
             return null;
@@ -102,33 +108,7 @@ public class DataRequest {
         }
     }
 
-    /** 读取小数，字段缺失或转换失败时返回空值 */
-    public Double getDouble(String key) {
-        if(data == null)
-            return null;
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Double)
-            return (Double)obj;
-        String str = obj.toString();
-        try {
-            return Double.parseDouble(str);
-        }catch(Exception e) {
-            return null;
-        }
-    }
-    /** 按年月日读取日期，解析结果由共用日期工具提供 */
-    public Date getDate( String key) {
-        Object obj = get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Date)
-            return (Date)obj;
-        String str = obj.toString();
-        return DateTimeTool.formatDateTime(str,"yyyy-MM-dd");
-    }
-    /** 按年月日和时分秒读取时间，解析失败时返回空值 */
+    /** 按"yyyy-MM-dd HH:mm:ss"格式解析时间，失败时返回null */
     public Date getTime(String key) {
         Object obj = get(key);
         if(obj == null)
@@ -138,15 +118,4 @@ public class DataRequest {
         String str = obj.toString();
         return DateTimeTool.formatDateTime(str,"yyyy-MM-dd HH:mm:ss");
     }
-    /** 将从一开始的页面编号转换为从零开始，缺失或非正数时返回零 */
-    public Integer getCurrentPage(){
-        Integer cPage = this.getInteger("currentPage");
-        if(cPage != null && cPage >0 )
-            cPage = cPage -1;
-        else
-            cPage = 0;
-        return cPage;
-
-    }
-
 }

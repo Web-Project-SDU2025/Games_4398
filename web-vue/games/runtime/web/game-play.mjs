@@ -6,7 +6,7 @@ export const GAMEPLAY_MESSAGES = {
   accessRevoked: "4398-game-access-revoked",
 };
 // 事件读取间隔、普通游戏计时间隔和失败重试次数
-export const GAMEPLAY_LIMITS = {
+const GAMEPLAY_LIMITS = {
   pollMilliseconds: 1000,
   heartbeatMilliseconds: 5000,
   maximumAttempts: 8,

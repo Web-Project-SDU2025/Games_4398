@@ -5,37 +5,71 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 按服务器保存的球组与在台球重新判定单杆，客户端不提交奖励金额或奖励名称 */
+/**
+ * 台球判定工具类
+ *
+ * 按服务器保存的球组重新判定单杆得分
+ * 客户端只提交击球事件，不提交奖励金额或名称
+ */
 public final class BilliardsJudge {
     /** 每盘默认十六颗球，目标球落袋后不会在后续杆重复计分 */
     public static final int BALL_COUNT = 16;
 
-    /** 纯判定工具不需要创建对象 */
+    /** 工具类禁止实例化 */
     private BilliardsJudge() {
     }
 
-    /** 保存可序列化的局面，整数球组零为未定，一为全色，二为花色 */
+    /**
+     * 台球局面状态类
+     * 保存可序列化的局面，整数球组：0未定，1全色，2花色
+     */
     public static final class State {
+        /** 每个球是否还在台上 */
         public boolean[] active = new boolean[BALL_COUNT];
+
+        /** 两个玩家的球组 */
         public int[] groups = new int[2];
+
+        /** 当前轮到哪个玩家 */
         public int current;
+
+        /** 是否在开球阶段 */
         public boolean breaking = true;
+
+        /** 连击中的玩家，-1表示无人连击 */
         public int runPlayer = -1;
+
+        /** 当前连击杆数 */
         public int runShots;
+
+        /** 已领取的奖励位掩码 */
         public int earned;
-        /** 只暂存本盘尚未入账的奖励编号，结束时由奖励服务合并结算 */
+
+        /** 本盘尚未入账的奖励编号，结束时由奖励服务合并结算 */
         public List<String> pendingRewards = new ArrayList<>();
+
+        /** 本盘是否已结束 */
         public boolean ended;
+
+        /** 是否为人机对战 */
         public boolean aiMatch;
+
+        /** 开球方，服务器登记本盘时随机确定 */
         public int starter;
 
-        /** 新盘开始全部球在台上，开球方在服务器登记本盘时随机确定 */
+        /**
+         * 构造初始局面
+         * 新盘开始全部球在台上
+         */
         public State() {
             java.util.Arrays.fill(active, true);
         }
     }
 
-    /** 返回本杆首次解锁的服务器奖励编号，其余结果只更新传入局面 */
+    /**
+     * 应用击球结果
+     * 返回本杆首次解锁的服务器奖励编号，其他结果更新传入的局面
+     */
     public static List<String> apply(State state, JsonNode shot) {
         if (state.ended || shot.path("player").asInt(-1) != state.current) {
             throw new IllegalArgumentException("台球轮次不正确");
@@ -172,7 +206,10 @@ public final class BilliardsJudge {
         return result;
     }
 
-    /** 严格读取去重球号列表，异常类型和越界值直接拒绝 */
+    /**
+     * 解析球号列表
+     * 严格读取去重球号列表，异常类型和越界值直接拒绝
+     */
     private static List<Integer> ids(JsonNode source) {
         if (!source.isArray() || source.size() > BALL_COUNT) {
             throw new IllegalArgumentException("台球事件应为球号数组");
@@ -188,7 +225,10 @@ public final class BilliardsJudge {
         return result;
     }
 
-    /** 返回目标球组，主球和八号不属于任何玩家的普通目标组 */
+    /**
+     * 获取球组
+     * 返回目标球组，主球和八号不属于任何玩家的普通目标组
+     */
     private static int groupOf(int id) {
         if (id >= 1 && id <= 7) {
             return 1;
@@ -199,7 +239,10 @@ public final class BilliardsJudge {
         return 0;
     }
 
-    /** 统计指定球组仍在台上的球数，未定组时返回零 */
+    /**
+     * 统计剩余球数
+     * 统计指定球组仍在台上的球数，未定组时返回零
+     */
     private static int remaining(State state, int group) {
         int count = 0;
         for (int id = 1; id < BALL_COUNT; id = id + 1) {
@@ -210,7 +253,10 @@ public final class BilliardsJudge {
         return count;
     }
 
-    /** 按固定奖励顺序记录是否已领取，同项成就重复出现不再入账 */
+    /**
+     * 解锁奖励
+     * 按固定奖励顺序记录是否已领取，同项成就重复出现时不再入账
+     */
     private static void unlock(State state, String id, List<String> result) {
         int index = BilliardsRewards.IDS.indexOf(id);
         int bit = 1;

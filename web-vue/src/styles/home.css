@@ -1,7 +1,10 @@
 /* 首页概览样式，颜色使用公共变量，小屏统计排列为两列 */
 .workspace-home {
-  /* 封面宽度与比例保持固定，新增游戏按可用空间换行 */
-  --dashboard-cover-width: 160px;
+  /* 窄屏使用基础封面宽度，桌面按栏目剩余高度等比缩放 */
+  --dashboard-cover-width: 192px;
+  /* 为游戏名称和封面间距预留空间，放大图片时不遮挡文字 */
+  --dashboard-cover-title-height: 20px;
+  --dashboard-cover-gap: 10px;
   /* 桌面首页的宽度、内边距与行列间距集中维护 */
   --dashboard-max-width: 1600px;
   --dashboard-padding: 24px;
@@ -9,9 +12,8 @@
   /* 小屏图表和空状态的基础高度，桌面按分栏剩余空间伸缩 */
   --dashboard-chart-height: 208px;
   --dashboard-empty-height: 140px;
-  /* 明细展开时保留图表空间，时段列表在自己的区域中滚动 */
+  /* 桌面栏目高度不足时仍保留可辨认的图表区域 */
   --dashboard-chart-min-height: 80px;
-  --dashboard-data-max-height: 100px;
   /* 统计粒度控件高度，手机尺寸扩大点击范围 */
   --dashboard-interval-height: 32px;
   /* 账户资料按两列排列，窄屏时合为一列 */
@@ -199,8 +201,7 @@
     display: none;
   }
   .dashboard-icon-button,
-  .dashboard-primary-link,
-  .dashboard-chart-data summary {
+  .dashboard-primary-link {
     min-height: 44px;
   }
 }
@@ -240,7 +241,7 @@
 }
 .dashboard-library-list a {
   display: grid;
-  gap: 10px;
+  gap: var(--dashboard-cover-gap);
   color: var(--color-ink);
   font-size: 13px;
 }
@@ -317,28 +318,6 @@
 .dashboard-activity-intervals input:focus-visible + span {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
-}
-.dashboard-chart-data {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-.dashboard-chart-data[open] {
-  max-height: var(--dashboard-data-max-height);
-  overflow-y: auto;
-}
-.dashboard-chart-data summary {
-  width: fit-content;
-  min-height: 32px;
-  align-content: center;
-}
-.dashboard-chart-data dl {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-sm);
-}
-.dashboard-chart-data dd {
-  margin: var(--space-xs) 0;
-  color: var(--color-ink);
 }
 .dashboard-chart-placeholder {
   display: grid;
@@ -541,7 +520,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }
-  /* 四栏共用剩余高度，长记录和展开的数据在所属栏目内滚动 */
+  /* 四栏共用剩余高度，过长的内容在所属栏目内滚动 */
   .dashboard-section {
     overflow: auto;
     scrollbar-width: thin;
@@ -562,10 +541,28 @@
     height: 0;
     min-height: var(--dashboard-chart-min-height);
   }
-  .dashboard-chart-data {
-    flex-shrink: 0;
-  }
   .dashboard-library-list {
-    align-content: start;
+    /* 容器高度用于计算封面尺寸，使游戏整体与栏目底部对齐 */
+    container-type: size;
+    display: flex;
+    align-items: flex-end;
+    flex: 1;
+    min-height: 0;
+  }
+  .dashboard-library-list li {
+    /* 先按可用高度放大，多款游戏并排时再按可用宽度收缩 */
+    flex: 0 1 max(
+      0px,
+      calc(
+        (100cqh - var(--dashboard-cover-title-height) - var(--dashboard-cover-gap)) * 4 / 3
+      )
+    );
+    min-width: 0;
+  }
+  .dashboard-library-list strong {
+    line-height: var(--dashboard-cover-title-height);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

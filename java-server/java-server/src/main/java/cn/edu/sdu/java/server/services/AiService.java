@@ -16,7 +16,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-/** 调用百炼游戏助手，云端会话只在后端保存，并按登录账号隔离 */
+/**
+ * AI游戏助手服务
+ *
+ * 接入阿里云百炼平台的游戏助手，专门回答游戏相关问题
+ * 云端会话保存在后端内存里，每个用户的会话是隔离的，张三看不到李四在问什么
+ */
 @Service
 public class AiService {
     public static final String APPLICATION_ID = "08f487dd5e10446287bec082430afe7f";
@@ -42,13 +47,19 @@ public class AiService {
     private final AiRequestGuard guard;
     private final Map<String, CloudSession> sessions = new HashMap<>();
 
-    /** 从后端配置取得密钥，创建带连接超时的请求客户端 */
+    /**
+     * 依赖注入
+     * 从配置文件读取百炼API密钥，创建带超时的HTTP客户端
+     */
     @Autowired
     public AiService(@Value("${app.ai.api-key:}") String apiKey, ObjectMapper mapper, AiRequestGuard guard) {
         this(apiKey, mapper, createClient(), guard);
     }
 
-    /** 允许测试替换网络客户端，测试不消耗真实模型额度 */
+    /**
+     * 可注入自定义客户端的构造方法
+     * 测试时可以传入mock客户端，避免消耗真实的模型调用额度
+     */
     public AiService(String apiKey, ObjectMapper mapper, HttpClient client, AiRequestGuard guard) {
         this.apiKey = apiKey;
         this.mapper = mapper;
@@ -56,14 +67,20 @@ public class AiService {
         this.guard = guard;
     }
 
-    /** 连接超时与回答超时分开设置，连接失败时尽早给出结果 */
+    /**
+     * 创建HTTP客户端
+     * 连接超时和读取超时分开设置，连接不上时能尽快失败，避免用户等太久
+     */
     private static HttpClient createClient() {
         HttpClient.Builder builder = HttpClient.newBuilder();
         builder.connectTimeout(Duration.ofSeconds(10));
         return builder.build();
     }
 
-    /** 只返回配置状态和公共限制，不把密钥发送到浏览器 */
+    /**
+     * 获取AI服务状态
+     * 返回是否配置了密钥和公共限制参数，密钥本身不发到前端防止泄露
+     */
     public Map<String, Object> status() {
         Map<String, Object> result = new HashMap<>();
         result.put("configured", !apiKey.isBlank());
@@ -72,7 +89,11 @@ public class AiService {
         return result;
     }
 
-    /** 检查输入与频率后发出一次真实请求，失败时保留用户可理解的说明 */
+    /**
+     * 发送一次聊天请求
+     * 会检查输入长度、对话编号格式、请求频率等
+     * 成功后返回AI的回答，失败会抛出带友好提示的异常
+     */
     public Map<String, Object> chat(Integer userId, String conversationId, String message, String address) {
         if (userId == null) {
             throw new IllegalArgumentException("请先登录");
@@ -107,7 +128,11 @@ public class AiService {
         }
     }
 
-    /** 根据账号与本地编号查云端会话，浏览器不能指定他人的云端编号 */
+    /**
+     * 读取云端会话ID
+     * 根据账户和本地对话编号查找对应的百炼会话ID
+     * 会话过期或达到轮数上限时会自动清除，返回空字符串让下次创建新会话
+     */
     private synchronized String readSession(String key) {
         CloudSession session = sessions.get(key);
         if (session == null) {
@@ -121,7 +146,11 @@ public class AiService {
         return session.id;
     }
 
-    /** 仅保存云端编号，不保留问题正文，旧会话和超额会话及时移除 */
+    /**
+     * 保存云端会话ID
+     * 只存会话ID不存聊天内容，节省内存
+     * 会定期清理过期会话，超出数量限制时会删除最老的
+     */
     private synchronized void saveSession(String key, String sessionId) {
         long now = System.currentTimeMillis();
         Iterator<CloudSession> iterator = sessions.values().iterator();
@@ -151,7 +180,11 @@ public class AiService {
         sessions.put(key, session);
     }
 
-    /** 使用参考项目的百炼应用协议，凭证只用于云端请求头 */
+    /**
+     * 调用百炼应用API
+     * 把用户问题和系统提示词组合起来发给百炼，等待回答
+     * 启用联网搜索功能，让AI能查到最新的游戏资讯
+     */
     private Map<String, Object> callApplication(String message, String sessionId) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", INSTRUCTIONS + "\n\n用户问题：" + message);
@@ -200,7 +233,10 @@ public class AiService {
         }
     }
 
-    /** 将云端状态翻译为提示，不把上游响应中的内部信息直接显示 */
+    /**
+     * 将HTTP状态码转换为友好提示
+     * 把百炼的错误码翻译成用户能看懂的话，比如401就是密钥配置问题
+     */
     private void checkResponse(int status) {
         if (status == 401 || status == 403) {
             throw new IllegalArgumentException("百炼鉴权失败，请检查后端密钥和应用权限");
@@ -213,7 +249,10 @@ public class AiService {
         }
     }
 
-    /** 保存有有效期的云端会话编号 */
+    /**
+     * 云端会话数据结构
+     * 保存会话ID、最后更新时间和对话轮数，用于判断会话是否过期
+     */
     private static class CloudSession {
         private String id;
         private long updatedAt;

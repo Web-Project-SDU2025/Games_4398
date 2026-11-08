@@ -1,5 +1,5 @@
 // 社区署名留白集中维护，署名保持在可见画面下方
-export const DISPLAY_OPTIONS = {
+const DISPLAY_OPTIONS = {
   creditHeight: 38,
 };
 

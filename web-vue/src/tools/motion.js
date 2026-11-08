@@ -3,7 +3,7 @@ const REVEAL_START_OPACITY = 0.65;
 const activeReveals = new WeakMap();
 
 // 数据更新后淡入，重复刷新先取消旧动画，表格保持原位置
-export function revealContent(element) {
+function revealContent(element) {
   const previous = activeReveals.get(element);
   if (previous) {
     previous.cancel();

@@ -19,7 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** 管理员统一维护游玩记录的游戏、分数、时长与时间 */
+/**
+ * 管理员记录服务
+ *
+ * 管理员统一维护游玩记录的游戏、分数、时长与时间
+ */
 @Service
 public class AdminRecordService {
     private final GameRecordRepository records;
@@ -28,7 +32,10 @@ public class AdminRecordService {
     private final GameService gameService;
     private final GamePlayRepository plays;
 
-    /** 共用现有记录仓库和字段转换方法 */
+    /**
+     * 依赖注入
+     * 共用现有记录仓库和字段转换方法
+     */
     public AdminRecordService(GameRecordRepository records, GameRepository games,
             UserRepository users, GameService gameService, GamePlayRepository plays) {
         this.records = records;
@@ -38,7 +45,10 @@ public class AdminRecordService {
         this.plays = plays;
     }
 
-    /** 按账号或游戏名搜索记录，管理员可查看全部用户的数据 */
+    /**
+     * 搜索记录列表
+     * 按账号或游戏名搜索记录，管理员可查看全部用户的数据
+     */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
         String search = request.getString("search");
@@ -56,7 +66,10 @@ public class AdminRecordService {
         return CommonMethod.getReturnData(result);
     }
 
-    /** 读取非负整数，小数和超范围数字返回空值供调用方校验 */
+    /**
+     * 读取非负整数
+     * 小数和超范围数字返回null供调用方校验
+     */
     private Integer readNumber(DataRequest request, String key) {
         String text = request.getString(key);
         try {
@@ -70,7 +83,10 @@ public class AdminRecordService {
         return null;
     }
 
-    /** 新增或修改记录；管理员可以指定用户，但用户和游戏必须真实存在 */
+    /**
+     * 新增或修改记录
+     * 管理员可以指定用户，但用户和游戏必须真实存在
+     */
     @Transactional
     public DataResponse save(DataRequest request) {
         Integer userId = request.getInteger("userId");
@@ -118,12 +134,18 @@ public class AdminRecordService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 管理员隐藏当前视图中的记录，其他账户继续使用自己的显示选择 */
+    /**
+     * 隐藏记录
+     * 管理员隐藏当前视图中的记录，其他账户继续使用自己的显示选择
+     */
     public DataResponse hide(DataRequest request) {
         return gameService.hideRecord(request);
     }
 
-    /** 恢复当前管理员的记录显示，玩家的显示选择继续独立保存 */
+    /**
+     * 恢复记录显示
+     * 恢复当前管理员的记录显示，玩家的显示选择继续独立保存
+     */
     public DataResponse restore(DataRequest request) {
         return gameService.restoreRecord(request);
     }

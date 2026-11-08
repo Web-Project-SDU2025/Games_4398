@@ -1,6 +1,6 @@
 spring.datasource.password=YOUR_DATABASE_PASSWORD
 security.jwt.secret-key=YOUR_BASE64_JWT_SECRET
-# 只在本机检查时开启免密切号，普通运行和部署应保持关闭
-app.local-account-switch=false
+# 下载后本机运行可直接切号，部署时改为 false
+app.local-account-switch=true
 # 百炼应用沿用参考项目的 ID，实际密钥只填写在本地配置
 app.ai.api-key=YOUR_DASHSCOPE_API_KEY

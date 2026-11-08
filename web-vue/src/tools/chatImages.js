@@ -11,7 +11,7 @@ export const CHAT_IMAGE_LIMITS = {
   shrinkRatio: 0.75,
 };
 // 浏览器只接收常见光栅图片，压缩后统一发送 JPEG
-export const CHAT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const CHAT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // 将本地文件读入内存，失败时返回可显示的文件名
 function readImage(file) {

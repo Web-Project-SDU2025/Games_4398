@@ -6,6 +6,11 @@ const POCKET_AUDIO = new URL("./assets/pocket.wav", import.meta.url).href;
 const AUDIO_GAIN = { ball: 0.5, pocket: 0.65 };
 // 同种撞击短时间合并，避免开球产生大量重复声音，单位为毫秒
 const AUDIO_WINDOW_MS = 40;
+// 原始录音前导静音的秒数，裁剪后让碰撞与声音同步
+const AUDIO_LEAD_SECONDS = { ball: 0.057, pocket: 0.1 };
+// 轻于此速度的接触不播放，速度达到满音量基准后不再继续增大
+const AUDIO_MINIMUM_SPEED = 45;
+const AUDIO_FULL_SPEED = 1500;
 
 // 加载一张图像，成功后返回可直接用于 Canvas 的 Image 对象
 function loadImage(address) {
@@ -79,7 +84,10 @@ export function createAudio() {
       }
       await context.resume();
       if (!loading) {
-        loading = Promise.all([decode("ball", BALL_AUDIO, 0.057), decode("pocket", POCKET_AUDIO, 0.1)]);
+        loading = Promise.all([
+          decode("ball", BALL_AUDIO, AUDIO_LEAD_SECONDS.ball),
+          decode("pocket", POCKET_AUDIO, AUDIO_LEAD_SECONDS.pocket),
+        ]);
       }
       await loading;
     } catch (error) {
@@ -100,14 +108,14 @@ export function createAudio() {
     const now = performance.now();
     for (const kind of Object.keys(strongest)) {
       const speed = strongest[kind];
-      if (speed < 45 || !buffers[kind] || now - previous[kind] < AUDIO_WINDOW_MS) {
+      if (speed < AUDIO_MINIMUM_SPEED || !buffers[kind] || now - previous[kind] < AUDIO_WINDOW_MS) {
         continue;
       }
       previous[kind] = now;
       const source = context.createBufferSource();
       const gain = context.createGain();
       source.buffer = buffers[kind];
-      gain.gain.value = AUDIO_GAIN[kind] * Math.min(1, Math.sqrt(speed / 1500));
+      gain.gain.value = AUDIO_GAIN[kind] * Math.min(1, Math.sqrt(speed / AUDIO_FULL_SPEED));
       source.connect(gain);
       gain.connect(context.destination);
       source.start();

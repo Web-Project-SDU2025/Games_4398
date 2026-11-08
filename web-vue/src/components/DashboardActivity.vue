@@ -16,15 +16,6 @@
       </fieldset>
     </div>
     <VChart :option="option" autoresize :aria-label="chartLabel" />
-    <details class="dashboard-chart-data">
-      <summary>查看时段数据</summary>
-      <dl>
-        <div v-for="period in activity" :key="period.startTime">
-          <dt>{{ period.label }}</dt>
-          <dd>{{ period.minutes.toFixed(minuteDecimals) }} 分钟</dd>
-        </div>
-      </dl>
-    </details>
   </div>
 </template>
 
@@ -127,14 +118,13 @@ export default {
   // 切换只重算本地记录，保留当前图表范围与时长精度
   data: function activityState() {
     return {
-      minuteDecimals: DURATION_DECIMALS,
       intervals: ACTIVITY_INTERVALS,
       intervalHours: DEFAULT_ACTIVITY_HOURS,
     };
   },
   computed: {
     option: activityOption,
-    // 图表与明细共用同一组时段，刷新记录时保持当前选择
+    // 按所选粒度汇总图表数据，刷新记录时保持当前选择
     activity: function activity() {
       const now = new Date(this.generatedAt);
       return aggregateActivity(this.records, now, this.intervalHours);

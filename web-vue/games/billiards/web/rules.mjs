@@ -250,7 +250,7 @@ export function judgeShot(shot, record) {
 }
 
 // 将判决应用到对局，八号开球落袋和异常飞球按原规则重新置位
-export function resolveShot(match) {
+function resolveShot(match) {
   const shot = match.shot;
   const record = match.world.record;
   const verdict = judgeShot(shot, record);

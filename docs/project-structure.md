@@ -114,7 +114,6 @@
 │           │   │                       │   ├── FeedbackResolutionRepository.java
 │           │   │                       │   ├── MessageReceiptRepository.java   当前页已读回执读取
 │           │   │                       │   ├── MenuInfoRepository.java
-│           │   │                       │   ├── ModifyLogRepository.java
 │           │   │                       │   ├── StatisticsDayRepository.java
 │           │   │                       │   ├── SystemInfoRepository.java
 │           │   │                       │   ├── UserRepository.java
@@ -211,7 +210,7 @@
     │   │       └── native-player.css                                           原生游戏运行区样式
     │   ├── pvz/                                                                植物大战僵尸
     │   │   ├── game.json                                                       游戏资料、能力与构建参数
-    │   │   ├── src/                                                            游戏、编辑器、自检及适配器
+    │   │   ├── src/                                                            游戏、编辑器、自检及适配器，编辑器外观由 EditorAppearance 维护
     │   │   ├── assets/                                                         原图片、动画和关卡
     │   │   ├── lib/                                                            原依赖及第三方许可
     │   │   ├── LICENSE                                                         原代码许可
@@ -226,11 +225,15 @@
     │       │   ├── render.mjs                                                  Canvas 绘制
     │       │   ├── aim.mjs                                                     瞄准预览与力度
     │       │   ├── ai.mjs                                                      电脑选球、摆位、物理预演与小幅误差
+    │       │   ├── ai-worker.mjs                                               后台选杆线程入口
+    │       │   ├── computer.mjs                                                电脑回合、等待、后台计算与取消
+    │       │   ├── hud.mjs                                                     比赛文字、球组托盘与开场浮层
+    │       │   ├── stroke.mjs                                                  瞄准、蓄力、出杆与触球动作
     │       │   ├── assets.mjs                                                  图像加载与浏览器音频
-    │       │   ├── main.mjs                                                    输入、界面与帧循环
+    │       │   ├── main.mjs                                                    输入、平台消息与帧循环
     │       │   ├── index.html                                                  游戏画布与操作区
     │       │   └── style.css                                                   游戏布局与提示样式
-    │       ├── src/                                                            保留的 Java 迁移参考，不参与发布
+    │       ├── tests/                                                          台球规则、物理、渲染与电脑控制测试
     │       ├── media/table.png                                                 实际游戏画面封面
     │       ├── AUDIO-SOURCE.txt                                                课程音效来源
     │       ├── MATTER-LICENSE.txt                                              Matter.js 许可

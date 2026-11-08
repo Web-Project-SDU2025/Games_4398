@@ -10,18 +10,29 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 图片会话使用独立入口，原文本接口和服务器连接代码保留原样 */
+/**
+ * AI图片控制器
+ *
+ * 图片会话使用独立入口
+ * 原文本接口和服务器连接代码保留原样
+ */
 @RestController
 @PreAuthorize("hasAnyRole('ADMIN', 'GAME_USER')")
 public class AiImageController {
     private final AiImageService service;
 
-    /** 控制器只负责参数形状与身份，图片解码和额度交给服务处理 */
+    /**
+     * 构造函数
+     * 控制器只负责参数形状与身份,图片解码和额度交给服务处理
+     */
     public AiImageController(AiImageService service) {
         this.service = service;
     }
 
-    /** 接受同一问题的多张内存图片，远程图片地址由服务拒绝 */
+    /**
+     * 图片聊天接口
+     * 接受同一问题的多张内存图片,远程图片地址由服务拒绝
+     */
     @PostMapping("/api/ai/image-chat")
     public DataResponse chat(@RequestBody DataRequest request, HttpServletRequest http) {
         try {

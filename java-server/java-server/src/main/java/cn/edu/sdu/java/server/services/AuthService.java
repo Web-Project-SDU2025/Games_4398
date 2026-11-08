@@ -18,7 +18,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 
-/** 处理验证码、登录和注册，角色与密码由后端校验 */
+/**
+ * 认证服务
+ *
+ * 处理验证码生成、登录验证和用户注册
+ * 角色和密码都由后端校验，前端不能绕过
+ */
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -26,7 +31,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final GameUserService gameUserService;
 
-    /** 保存认证依赖，登录成功后统一签发会话资料 */
+    /**
+     * 依赖注入
+     * 保存认证所需的各种依赖，登录成功后统一签发JWT令牌
+     */
     public AuthService(UserRepository userRepository, AuthenticationManager authenticationManager,
                        JwtService jwtService, GameUserService gameUserService) {
         this.userRepository = userRepository;
@@ -36,9 +44,8 @@ public class AuthService {
     }
 
     /**
-     * 检查验证码和账号密码，登录成功后生成 JWT 登录令牌
-     * @param loginRequest 包含账号、密码和验证码
-     * @return 登录结果，成功时包含 JWT 和账户基本信息
+     * 用户登录
+     * 检查验证码和账号密码，验证通过后生成JWT令牌
      */
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(
@@ -61,7 +68,10 @@ public class AuthService {
         return ResponseEntity.ok(createSession(user));
     }
 
-    /** 更新成功登录时间和次数，并保存账户资料 */
+    /**
+     * 记录成功登录
+     * 更新最后登录时间和登录次数
+     */
     public void recordSuccessfulLogin(User user) {
         user.setLastLoginTime(DateTimeTool.parseDateTime(new Date()));
         Integer count = user.getLoginCount();
@@ -72,7 +82,11 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    /** 根据数据库账户签发登录信息，本地检查切号与普通登录共用同一格式 */
+    /**
+     * 创建登录会话
+     * 根据数据库账户信息生成JWT令牌和基本资料
+     * 本地测试切号和正常登录共用这个格式
+     */
     public JwtResponse createSession(User user) {
         UserDetailsImpl details = UserDetailsImpl.build(user);
         String token = jwtService.generateToken(details);
@@ -80,18 +94,16 @@ public class AuthService {
                 user.getName(), user.getUserType().getName());
     }
     /**
-     * 生成一张新的图形验证码并保存验证码内容
-     * @param request 当前接口不需要业务参数
-     * @return 验证码编号和图片数据
+     * 生成图形验证码
+     * 返回验证码ID和图片数据，前端用这个ID来校验用户输入
      */
     public DataResponse getValidateCode(DataRequest request) {
         return CommonMethod.getReturnData(LoginControlUtil.getInstance().getValidateCodeDataMap());
     }
 
     /**
-     * 检查请求中的验证码是否正确
-     * @param request data 中包含 validateCodeId 和 validateCode
-     * @return 验证成功或失败的响应
+     * 校验验证码
+     * 注册页面用这个接口实时验证用户输入的验证码是否正确
      */
     public DataResponse testValidateInfo(DataRequest request) {
         Integer codeId = request.getInteger("validateCodeId");
@@ -106,9 +118,10 @@ public class AuthService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /*
-     * 注册时在同一条记录中保存账号和资料
-     * 注册角色固定为游戏用户，管理员角色由账户管理入口维护
+    /**
+     * 用户注册
+     * 注册时在同一条记录里保存账号和资料
+     * 注册角色固定为游戏用户，管理员需要从账户管理里设置
      */
     public DataResponse registerUser(DataRequest request) {
         boolean valid = LoginControlUtil.getInstance().checkAndRemoveCode(

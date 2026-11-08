@@ -9,23 +9,36 @@ import java.util.List;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-/** 按本地发布清单补齐商城商品，已存在的游戏按入口匹配并保留管理员维护的资料 */
+/**
+ * 已安装游戏目录服务
+ *
+ * 按本地发布清单补齐商城商品
+ * 已存在的游戏按入口匹配，保留管理员维护的资料
+ */
 @Service
 public class InstalledGameCatalog {
     /** 注册表与前端构建的发布位置一致，只读取服务器包内的游戏配置 */
     private static final String REGISTRY = "public/games/registry.json";
+
     /** 游戏入口只接受发布目录中的英文编号，避免配置越过资源目录 */
     private static final String GAME_PATH = "/games/[a-z][a-z0-9-]{0,39}/game\\.json";
+
     private final GameRepository games;
     private final ObjectMapper mapper;
 
-    /** 参数 games 是现有商品仓库，mapper 是后端共用的 JSON 解析器 */
+    /**
+     * 依赖注入
+     * games是现有商品仓库，mapper是后端共用的JSON解析器
+     */
     public InstalledGameCatalog(GameRepository games, ObjectMapper mapper) {
         this.games = games;
         this.mapper = mapper;
     }
 
-    /** 启动时登记清单中的缺失商品，重复执行不新增相同入口 */
+    /**
+     * 注册缺失商品
+     * 启动时登记清单中的缺失商品，重复执行时不新增相同入口
+     */
     public void registerMissing() throws Exception {
         List<Game> existing = games.findAll();
         try (InputStream input = new ClassPathResource(REGISTRY).getInputStream()) {
@@ -45,7 +58,10 @@ public class InstalledGameCatalog {
         }
     }
 
-    /** 按入口查找已有商品，名称修改后仍可识别同一个游戏 */
+    /**
+     * 检查游戏是否存在
+     * 按入口查找已有商品，名称修改后仍可识别同一个游戏
+     */
     private boolean contains(List<Game> existing, String path) {
         for (Game game : existing) {
             if (path.equals(game.getGamePath())) {
@@ -55,7 +71,10 @@ public class InstalledGameCatalog {
         return false;
     }
 
-    /** 读取单款游戏的发布资料并写入现有商品表，编号冲突时报告明确错误 */
+    /**
+     * 注册单个游戏
+     * 读取游戏的发布资料并写入商品表，编号冲突时报告明确错误
+     */
     private void register(String path) throws Exception {
         try (InputStream input = new ClassPathResource("public" + path).getInputStream()) {
             JsonNode manifest = mapper.readTree(input);

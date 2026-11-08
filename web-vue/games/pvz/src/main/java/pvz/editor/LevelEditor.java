@@ -8,7 +8,6 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -25,7 +24,6 @@ import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.BorderFactory;
@@ -45,7 +43,6 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import javax.swing.UIManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -101,9 +98,6 @@ public class LevelEditor extends JFrame implements EditorDragController {
 
     /** 拖动预览使用半透明僵尸图，指针下方的格子仍然可见 */
     private static final float DRAG_ICON_ALPHA = 0.8f;
-
-    /** 界面文字的字号，和 Windows 自带程序差不多大 */
-    private static final int INTERFACE_FONT_SIZE = 12;
 
     /**
      * 时钟显示的时区，固定用北京时间
@@ -1256,7 +1250,7 @@ public class LevelEditor extends JFrame implements EditorDragController {
     /** 参数 selectionGame 是原选关游戏，独立启动时传 null；共用创建流程以保留试玩返回目标 */
     public static LevelEditor createWindow(Assets assets, Path root, int levelNumber,
             Game selectionGame) {
-        useSystemLookAndFeel();
+        EditorAppearance.apply();
         int number = Math.max(0, Math.min(MAX_LEVEL_NUMBER, levelNumber));
         LevelEditor editor = new LevelEditor(assets, root, number);
         editor.selectionGame = selectionGame;
@@ -1297,65 +1291,6 @@ public class LevelEditor extends JFrame implements EditorDragController {
             editor.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             editor.setVisible(true);
         }
-    }
-
-    /**
-     * 让按钮、输入框这些控件用上当前系统的外观
-     *
-     * Swing 默认用的是自带的那一套跨平台外观，摆在 Windows 上一眼就看得出不是本地程序
-     * 换成系统外观之后，控件和文件对话框都会跟系统保持一致
-     * 必须赶在创建任何控件之前换，换晚了已经造好的控件不会跟着变
-     */
-    private static void useSystemLookAndFeel() {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            useInterfaceFont();
-        } catch (Exception failure) {
-            // 系统外观加载失败时保留默认外观，并输出具体原因
-            System.out.println("套用系统外观失败，改用默认外观：" + failure.getMessage());
-        }
-    }
-
-    /**
-     * 把界面文字换成系统界面字体
-     *
-     * 浏览器采用 Java 逻辑字体，本机安装微软雅黑时采用该字体，其他环境保留系统字体
-     */
-    private static void useInterfaceFont() {
-        String preferred = "Microsoft YaHei UI";
-        // 浏览器使用 Java 逻辑字体，按需加载字形即可显示中文界面
-        if (Boolean.getBoolean("pvz.browser")) {
-            preferred = Font.DIALOG;
-        } else if (!isFontInstalled(preferred)) {
-            return;
-        }
-
-        // 外观的设置表里有几十项字体（按钮的、标签的、菜单的……），逐项换掉才不会漏
-        Font font = new Font(preferred, Font.PLAIN, INTERFACE_FONT_SIZE);
-        List<Object> keys = new ArrayList<Object>(UIManager.getLookAndFeelDefaults().keySet());
-        for (int index = 0; index < keys.size(); index = index + 1) {
-            Object key = keys.get(index);
-            if (UIManager.get(key) instanceof Font) {
-                UIManager.put(key, font);
-            }
-        }
-    }
-
-    /**
-     * 查这台机器上装没装某个字体
-     *
-     * 参数：name 是字体名
-     * 返回：装了就返回真
-     */
-    private static boolean isFontInstalled(String name) {
-        GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        String[] installed = environment.getAvailableFontFamilyNames();
-        for (int index = 0; index < installed.length; index = index + 1) {
-            if (installed[index].equals(name)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** 保存后启动试玩，复用原入口确保预览使用已保存的文件 */

@@ -141,13 +141,13 @@
                 v-if="game.cover"
                 :src="game.cover"
                 :alt="game.name"
-                width="160"
-                height="120"
+                width="192"
+                height="144"
               />
               <span v-else class="dashboard-cover-empty" aria-hidden="true">
                 <span class="i-ep-monitor"></span>
               </span>
-              <strong>{{ game.name }}</strong>
+              <strong :title="game.name">{{ game.name }}</strong>
             </RouterLink>
           </li>
         </ul>

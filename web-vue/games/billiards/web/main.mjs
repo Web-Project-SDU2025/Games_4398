@@ -1,10 +1,11 @@
-import { TABLE, PHYSICS, PLAY, DISPLAY, groupOf, groupName } from "./config.mjs";
-import { createMatch, resetMatch, openRound, participantName, placeCue, takeShot, stepMatch } from "./rules.mjs";
+import { TABLE, PHYSICS, PLAY, DISPLAY } from "./config.mjs";
+import { createMatch, resetMatch, openRound, placeCue, takeShot, stepMatch } from "./rules.mjs";
 import { canPlace } from "./physics.mjs";
 import { aimDirection, shotPower, limitPullAnchor } from "./aim.mjs";
 import { loadImages, createAudio } from "./assets.mjs";
 import { drawFrame } from "./render.mjs";
-import { AI, planAiPlacement } from "./ai.mjs";
+import { createComputer } from "./computer.mjs";
+import { createHud } from "./hud.mjs";
 import { createStroke, beginStroke, advanceStroke, cancelStroke } from "./stroke.mjs";
 
 const canvas = document.getElementById("table");
@@ -14,29 +15,17 @@ const audio = createAudio();
 const ui = { cursor: null, direction: { x: 1, y: 0 }, anchor: null, power: 0,
   lastPower: 0, placeValid: false, dirty: true, stopped: false, stroke: createStroke() };
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const computer = createComputer(match, ui, reducedMotion, cancelPull);
 let images = null;
+let hud = null;
 let lastTime = 0;
 let pending = 0;
 let frameId = 0;
 let lastDrawTime = -Infinity;
 let lastRevision = -1;
-let lastHud = "";
-let traySignature = "";
-const playerPanels = [document.getElementById("player-one"), document.getElementById("player-two")];
-const groupLabels = [document.getElementById("group-one"), document.getElementById("group-two")];
-const trays = [document.getElementById("tray-one"), document.getElementById("tray-two")];
-const modal = document.getElementById("modal");
 const start = document.getElementById("start");
-const status = document.getElementById("status");
-const verdict = document.getElementById("verdict");
-const achievement = document.getElementById("achievement");
 const reportedRounds = new Map();
 let awaitingRound = "";
-let aiWait = 0;
-let aiPhase = "";
-let aiWorker = null;
-let aiRequest = 0;
-let aiPlanning = false;
 let rewardHideAt = 0;
 const modeControls = document.getElementById("mode-controls");
 const rewardStatus = document.getElementById("reward-status");
@@ -143,20 +132,13 @@ function restart() {
   match.message = "正在确定开球方";
   modeControls.hidden = true;
   start.disabled = true;
-  aiWait = 0;
-  aiPhase = "";
-  stopAiPlanning();
+  computer.reset();
   cancelStroke(ui.stroke);
   rewardStatus.hidden = true;
   cancelPull();
   ui.direction = { x: 1, y: 0 };
   ui.lastPower = 0;
   canvas.focus();
-}
-
-// 开场和终局共用主操作，点击后直接进入新局摆球阶段
-function startMatch() {
-  restart();
 }
 
 // 返回模式选择只在重新开盘时生效，不能修改服务器已确认的本盘模式
@@ -167,107 +149,11 @@ function chooseMode() {
   cancelPull();
   cancelStroke(ui.stroke);
   match.mode = "local";
-  stopAiPlanning();
+  computer.reset();
   match.phase = "start";
   match.message = "选择模式后开始对局";
   modeControls.hidden = false;
   match.revision = match.revision + 1;
-}
-
-// 电脑每次摆球与出杆分开等待，连续进球后重新判断局面，不重复使用旧目标
-function updateAi(seconds) {
-  if (ui.stroke.active || aiPlanning) {
-    return;
-  }
-  if (match.mode !== "single" || match.current !== 1
-      || !["placement", "aiming"].includes(match.phase)) {
-    aiWait = 0;
-    aiPhase = "";
-    return;
-  }
-  if (aiPhase !== match.phase) {
-    aiPhase = match.phase;
-    aiWait = 0;
-    ui.cursor = null;
-    ui.placeValid = false;
-    cancelPull();
-    match.message = "电脑思考中…";
-    match.revision = match.revision + 1;
-  }
-  aiWait = aiWait + seconds;
-  if (aiWait < AI.thinkSeconds) {
-    return;
-  }
-  aiWait = 0;
-  aiPhase = "";
-  if (match.phase === "placement") {
-    const position = planAiPlacement(match);
-    if (position) {
-      placeCue(match, position.x, position.y);
-    }
-    ui.cursor = null;
-  } else {
-    requestAiShot();
-  }
-  ui.dirty = true;
-}
-
-// 只复制球号、在台状态和位置，避免把 Matter 内部循环引用传给后台线程
-function requestAiShot() {
-  aiPlanning = true;
-  aiRequest = aiRequest + 1;
-  const balls = [];
-  for (const ball of match.world.balls) {
-    const position = ball.body.position;
-    balls.push({ id: ball.id, active: ball.active,
-      body: { position: { x: position.x, y: position.y } } });
-  }
-  try {
-    if (!aiWorker) {
-      aiWorker = new Worker(new URL("./ai-worker.mjs", import.meta.url), { type: "module" });
-      aiWorker.addEventListener("message", receiveAiPlan);
-      aiWorker.addEventListener("error", aiPlanningFailed);
-    }
-    aiWorker.postMessage({ request: aiRequest, balls: balls, groups: match.groups.slice(),
-      current: match.current, breakShot: match.breakShot });
-  } catch (error) {
-    aiPlanningFailed();
-  }
-}
-
-// 后台完成后才显示最终方向，旧盘或已取消请求不能触发出杆
-function receiveAiPlan(event) {
-  if (event.data.request !== aiRequest || !aiPlanning || ui.stopped
-      || match.mode !== "single" || match.current !== 1 || match.phase !== "aiming") {
-    return;
-  }
-  if (event.data.error) {
-    aiPlanningFailed();
-    return;
-  }
-  const plan = event.data.plan;
-  aiPlanning = false;
-  beginStroke(ui.stroke, plan.direction, plan.power, match.world.balls[0].body.position,
-    true, reducedMotion.matches);
-  ui.direction = ui.stroke.direction;
-  ui.dirty = true;
-}
-
-// 后台失败时保留当前球局并显示原因，不能反复在画面线程执行重计算
-function aiPlanningFailed() {
-  match.message = "电脑选杆失败，请重新开始本盘";
-  match.revision = match.revision + 1;
-  ui.dirty = true;
-}
-
-// 重开、换模式和关闭页面终止旧计算，让返回结果不会串到下一盘
-function stopAiPlanning() {
-  aiRequest = aiRequest + 1;
-  aiPlanning = false;
-  if (aiWorker) {
-    aiWorker.terminate();
-    aiWorker = null;
-  }
 }
 
 // 动作按显示帧推进，先展示杆头触球，再调用现有规则出杆，避免在物理补步里跳过动作
@@ -312,99 +198,6 @@ function keyPressed(event) {
   }
 }
 
-// 球组或落袋球变化时才重建托盘，运动帧不反复修改 DOM
-function updateTrays() {
-  let signature = match.groups.join(",");
-  for (const ball of match.world.balls) {
-    signature = signature + ":" + String(ball.active);
-  }
-  if (signature === traySignature) {
-    return;
-  }
-  traySignature = signature;
-  for (let player = 0; player < 2; player = player + 1) {
-    trays[player].replaceChildren();
-    let count = 0;
-    for (const ball of match.world.balls) {
-      if (!ball.active && match.groups[player] && groupOf(ball.id) === match.groups[player]) {
-        const image = document.createElement("img");
-        image.src = images["ball-" + ball.id].src;
-        image.alt = ball.id + " 号球已落袋";
-        trays[player].appendChild(image);
-        count = count + 1;
-      }
-    }
-    for (let slot = count; slot < 7; slot = slot + 1) {
-      const empty = document.createElement("i");
-      empty.setAttribute("aria-hidden", "true");
-      trays[player].appendChild(empty);
-    }
-  }
-}
-
-// 只在阶段和文字变化时更新状态区，Canvas 负责球位，DOM 负责可读文字与按钮
-function updateHud() {
-  let power = ui.power;
-  if (match.phase === "moving") {
-    power = ui.lastPower;
-  }
-  const percent = Math.round(power * 100);
-  const signature = match.mode + match.phase + match.current + match.message + match.notice + percent + match.winner;
-  if (signature === lastHud) {
-    return;
-  }
-  lastHud = signature;
-  status.textContent = match.message;
-  status.dataset.tone = match.tone;
-  document.getElementById("power").value = power;
-  document.getElementById("power-label").textContent = "力度 " + percent + "%";
-  for (let player = 0; player < 2; player = player + 1) {
-    playerPanels[player].classList.toggle("active", match.current === player
-      && match.phase !== "start" && match.phase !== "over");
-    groupLabels[player].textContent = groupName(match.groups[player]);
-    let label = "玩家 1 · 我的账户";
-    if (player === 1) {
-      label = "玩家 2 · 本地对手";
-      if (match.mode === "single") {
-        label = "电脑";
-      }
-    } else if (match.mode === "single") {
-      label = "你 · 我的账户";
-    }
-    playerPanels[player].querySelector("strong").textContent = label;
-  }
-  verdict.hidden = match.phase !== "resolving";
-  verdict.textContent = match.message;
-  verdict.dataset.tone = match.tone;
-  achievement.hidden = !match.notice || match.phase === "over";
-  achievement.textContent = match.notice;
-  modal.hidden = !["start", "over", "opening"].includes(match.phase);
-  document.getElementById("instructions").hidden = match.phase !== "start";
-  document.getElementById("reason").hidden = match.phase !== "over";
-  document.getElementById("reason").textContent = match.reason;
-  document.querySelector(".prompt").dataset.outcome = String(match.phase === "over");
-  let title = "美式八球";
-  start.textContent = "点击开始";
-  if (match.phase === "over") {
-    title = participantName(match, match.winner) + " 获胜";
-    start.textContent = "再来一局";
-    const earned = [];
-    for (const item of match.achievements[match.winner]) {
-      earned.push(item);
-    }
-    document.getElementById("summary").textContent = earned.join(" / ");
-    document.getElementById("summary").hidden = earned.length === 0;
-  } else {
-    document.getElementById("summary").hidden = true;
-  }
-  document.getElementById("prompt-title").textContent = title;
-  if (match.phase === "opening") {
-    document.getElementById("prompt-title").textContent = "正在确定开球方";
-    start.textContent = "正在开局";
-  }
-  updateTrays();
-}
-
 // 固定物理步与显示帧解耦，页面暂时卡顿时限制追赶数量，避免长任务阻塞输入
 function animate(now) {
   if (ui.stopped) {
@@ -425,7 +218,7 @@ function animate(now) {
   if (steps === PHYSICS.maximumSteps) {
     pending = 0;
   }
-  updateAi(elapsed);
+  computer.update(elapsed);
   updateStroke(elapsed);
   audio.play(match.world.record.events);
   reportShots();
@@ -436,7 +229,7 @@ function animate(now) {
       && now - lastDrawTime >= 1000 / DISPLAY.maximumFps) {
     drawFrame(context, match, ui, images);
     ui.stroke.presented = true;
-    updateHud();
+    hud.update();
     lastRevision = match.revision;
     ui.dirty = false;
     lastDrawTime = now;
@@ -458,7 +251,7 @@ function stop() {
     return;
   }
   ui.stopped = true;
-  stopAiPlanning();
+  computer.reset();
   cancelStroke(ui.stroke);
   document.body.dataset.stopped = "true";
   cancelAnimationFrame(frameId);
@@ -474,7 +267,7 @@ function stop() {
   document.getElementById("restart").removeEventListener("click", restart);
   document.getElementById("sound").removeEventListener("click", toggleSound);
   document.getElementById("change-mode").removeEventListener("click", chooseMode);
-  start.removeEventListener("click", startMatch);
+  start.removeEventListener("click", restart);
   document.removeEventListener("visibilitychange", visibilityChanged);
 }
 
@@ -528,12 +321,13 @@ async function initialize() {
     document.getElementById("restart").addEventListener("click", restart);
     document.getElementById("sound").addEventListener("click", toggleSound);
     document.getElementById("change-mode").addEventListener("click", chooseMode);
-    start.addEventListener("click", startMatch);
+    start.addEventListener("click", restart);
     window.addEventListener("keydown", keyPressed);
     window.addEventListener("blur", visibilityChanged);
     document.addEventListener("visibilitychange", visibilityChanged);
     drawFrame(context, match, ui, images);
-    updateHud();
+    hud = createHud(match, ui, images);
+    hud.update();
     document.body.dataset.ready = "true";
     window.parent.postMessage({ type: "4398-native-ready" }, location.origin);
     frameId = requestAnimationFrame(animate);

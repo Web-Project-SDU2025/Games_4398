@@ -11,19 +11,30 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 
-/** 使用现有数据源创建增量记账表，并根据游戏发布清单补齐商城商品 */
+/**
+ * 字块币系统初始化配置
+ *
+ * 使用现有数据源创建增量记账表
+ * 并根据游戏发布清单补齐商城商品
+ */
 @Component
 public class BlockcoinSetup implements ApplicationRunner {
     private final DataSource source;
     private final InstalledGameCatalog catalog;
 
-    /** 参数 source 是原数据源，catalog 读取本地已发布游戏 */
+    /**
+     * 构造函数
+     * source是原数据源，catalog读取本地已发布游戏
+     */
     public BlockcoinSetup(DataSource source, InstalledGameCatalog catalog) {
         this.source = source;
         this.catalog = catalog;
     }
 
-    /** 启动时补齐新增表，已有商品按入口匹配，重启时保留原资料和余额 */
+    /**
+     * 应用启动时执行
+     * 启动时补齐新增表，已有商品按入口匹配，重启时保留原资料和余额
+     */
     @Override
     public void run(ApplicationArguments arguments) throws Exception {
         ResourceDatabasePopulator script = new ResourceDatabasePopulator(
@@ -33,7 +44,10 @@ public class BlockcoinSetup implements ApplicationRunner {
         catalog.registerMissing();
     }
 
-    /** 只为旧游戏表补上可空奖励字段，不覆盖管理员资料或旧游戏的默认奖励 */
+    /**
+     * 添加奖励字段
+     * 只为旧游戏表补上可空奖励字段，不覆盖管理员资料或旧游戏的默认奖励
+     */
     private void addGameRewardColumn() throws Exception {
         try (Connection connection = source.getConnection()) {
             boolean exists;

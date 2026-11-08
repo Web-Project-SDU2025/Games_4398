@@ -5,21 +5,26 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
-/*
- * LoginRequest 登录请求数据类
- * String username 用户名
- * String password 密码
+/**
+ * 登录请求类
+ *
+ * 封装用户登录所需的信息
+ * 包含用户名、密码和验证码
  */
 @Getter
 @Setter
 public class LoginRequest {
+    /** 用户名，必填 */
     @NotBlank
     private String username;
 
+    /** 密码，必填 */
     @NotBlank
     private String password;
 
+    /** 验证码ID */
     private Integer validateCodeId;
-    private String validateCode;
 
+    /** 验证码 */
+    private String validateCode;
 }

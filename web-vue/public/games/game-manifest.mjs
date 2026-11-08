@@ -10,20 +10,20 @@ export const PLAYER_DEFAULTS = {
   // 独立游戏页采用原始像素比例，主平台继续使用浏览器自己的屏幕比例
   pixelRatio: 1,
 };
-export const IMPORT_DEFAULTS = {
+const IMPORT_DEFAULTS = {
   minimum: 0,
   maximum: 99,
   maxBytes: 2097152,
   accept: ".json,application/json",
   label: "关卡编号",
 };
-export const DEFAULT_CAPABILITIES = {
+const DEFAULT_CAPABILITIES = {
   editor: false,
   importData: false,
   exportData: false,
   gameplayEvents: false,
 };
-export const MANIFEST_LIMITS = {
+const MANIFEST_LIMITS = {
   nameLength: 50,
   dependencyCount: 32,
   argumentCount: 32,

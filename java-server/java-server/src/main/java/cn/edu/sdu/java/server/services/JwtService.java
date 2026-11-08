@@ -15,7 +15,12 @@ import org.springframework.stereotype.Service;
 import java.security.Key;
 import java.util.Date;
 
-/** 生成和验证登录令牌，密钥与有效期由后端配置提供 */
+/**
+ * JWT令牌服务
+ *
+ * 生成和验证登录令牌
+ * 密钥和有效期由配置文件提供
+ */
 @Service
 public class JwtService {
     @Value("${security.jwt.secret-key}")
@@ -23,13 +28,19 @@ public class JwtService {
     @Value("${security.jwt.expiration-time}")
     private long jwtExpiration;
 
-    /** 验证签名并读取令牌中的账号名称 */
+    /**
+     * 提取用户名
+     * 验证签名并从令牌中读取账号名称
+     */
     public String extractUsername(String token) {
         Claims claims = extractAllClaims(token);
         return claims.getSubject();
     }
 
-    /** 根据账户生成带有效期的登录令牌 */
+    /**
+     * 生成JWT令牌
+     * 根据用户信息生成带有效期的登录令牌
+     */
     public String generateToken(UserDetails userDetails) {
         long now = System.currentTimeMillis();
         JwtBuilder builder = Jwts.builder();
@@ -40,7 +51,10 @@ public class JwtService {
         return builder.compact();
     }
 
-    /** 校验令牌账号和有效期，签名错误由解析器抛出异常 */
+    /**
+     * 验证令牌有效性
+     * 检查令牌中的账号和有效期，签名错误会抛出异常
+     */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         Claims claims = extractAllClaims(token);
         String username = claims.getSubject();
@@ -54,7 +68,10 @@ public class JwtService {
         return expiration.after(new Date());
     }
 
-    /** 解析令牌并验证签名，返回其中的账户和有效期字段 */
+    /**
+     * 解析令牌内容
+     * 验证签名并提取账户和有效期字段
+     */
     private Claims extractAllClaims(String token) {
         JwtParserBuilder builder = Jwts.parserBuilder();
         builder.setSigningKey(getSignInKey());
@@ -63,7 +80,10 @@ public class JwtService {
         return parsed.getBody();
     }
 
-    /** 将配置中的 Base64 密钥转换为签名密钥 */
+    /**
+     * 获取签名密钥
+     * 将配置中的Base64密钥转换为签名密钥
+     */
     private Key getSignInKey() {
         byte[] bytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(bytes);

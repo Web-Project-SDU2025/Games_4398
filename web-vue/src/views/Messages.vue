@@ -358,12 +358,11 @@ export default {
       }
       this.selected = message;
       this.replyDecision = "";
-      if (message.feedbackDecision === "will_fix") {
-        this.replyDecision = "will_fix";
-      } else if (message.feedbackDecision === "will_not_fix") {
-        this.replyDecision = "will_not_fix";
-      } else if (message.feedbackDecision === "resolved") {
-        this.replyDecision = "resolved";
+      for (const decision of this.feedbackDecisions) {
+        if (message.feedbackDecision === decision.value) {
+          this.replyDecision = decision.value;
+          break;
+        }
       }
       this.replyContent = message.adminReply || "";
       this.replyNotice = "";

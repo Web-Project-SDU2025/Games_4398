@@ -10,35 +10,55 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
-/** 装配密码与认证组件，登录失败由认证组件按原规则处理 */
+/**
+ * 应用配置类
+ *
+ * 装配密码与认证组件
+ * 登录失败由认证组件按原规则处理
+ */
 @Configuration
 public class ApplicationConfiguration {
     private final UserDetailsServiceImpl userDetailsService;
 
-    /** 保存用户查询服务，认证时读取数据库中的当前账户 */
+    /**
+     * 构造函数
+     * 保存用户查询服务，认证时读取数据库中的当前账户
+     */
     public ApplicationConfiguration(UserDetailsServiceImpl userDetailsService) {
         this.userDetailsService = userDetailsService;
     }
 
-    /** 提供 BCrypt 密码编码器，注册和登录使用相同算法 */
+    /**
+     * 密码编码器Bean
+     * 提供BCrypt密码编码器，注册和登录使用相同算法
+     */
     @Bean
     BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /** 在当前请求中保存认证结果，请求结束后由框架清理 */
+    /**
+     * 安全上下文存储Bean
+     * 在当前请求中保存认证结果，请求结束后由框架清理
+     */
     @Bean
     public RequestAttributeSecurityContextRepository getRequestAttributeSecurityContextRepository() {
         return new RequestAttributeSecurityContextRepository();
     }
 
-    /** 取得框架认证管理器，配置异常交给启动过程报告 */
+    /**
+     * 认证管理器Bean
+     * 取得框架认证管理器，配置异常交给启动过程报告
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /** 连接用户查询和密码校验，账号缺失时由认证服务返回失败 */
+    /**
+     * 认证提供者Bean
+     * 连接用户查询和密码校验，账号缺失时由认证服务返回失败
+     */
     @Bean
     AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();

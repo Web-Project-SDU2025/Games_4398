@@ -9,19 +9,30 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 全站公告通过独立管理员接口发布，阅读仍走当前账户消息接口 */
+/**
+ * 公告控制器
+ *
+ * 全站公告通过独立管理员接口发布
+ * 阅读仍走当前账户消息接口
+ */
 @RestController
 @RequestMapping("/api/admin/announcements")
 @PreAuthorize("hasRole('ADMIN')")
 public class AnnouncementController {
     private final MessageService service;
 
-    /** 发布权限在控制器和业务服务分别核对 */
+    /**
+     * 构造函数
+     * 发布权限在控制器和业务服务分别核对
+     */
     public AnnouncementController(MessageService service) {
         this.service = service;
     }
 
-    /** 发布标题与正文，重试使用原操作编号 */
+    /**
+     * 发布公告
+     * 发布标题与正文，重试使用原操作编号
+     */
     @PostMapping("/publish")
     public DataResponse publish(@RequestBody DataRequest request) {
         return service.publish(request);

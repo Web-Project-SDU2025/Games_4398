@@ -8,9 +8,9 @@ Both files are byte-for-byte copies of audio supplied with the Shandong
 University Object-Oriented Technology course example project. The lecturer
 approved their use in this project.
 
-The source recordings are kept unchanged. At runtime, SampleBank converts the
-stereo files to mono, removes leading silence, and normalizes their peak level.
-AudioConfig contains the related playback settings.
+The source recordings are kept unchanged in web/assets. At runtime, assets.mjs
+decodes them to mono, removes leading silence, and applies the playback gain.
+The related playback settings are maintained at the beginning of that module.
 
 Original format: 48000 Hz, 16-bit stereo. The two channels contain the same
 mono recording. The leading silence is approximately 57 ms for ball.wav and

@@ -13,8 +13,11 @@ npm install
 开发者在 IDEA 中启动后端后，再运行前端。前端开发服务使用端口 `3000`，并通过 `22222` 访问后端。
 
 ```bash
+npm run games:build
 npm run dev
 ```
+
+首次下载先构建游戏资源，再启动 IDEA 后端，最后运行前端。网页通过 `localhost` 或 `127.0.0.1` 访问时，登录后默认可以在右上角切换已有账户。
 
 ## 检查和打包
 
@@ -41,6 +44,8 @@ npm run build
 开发者通过 `npm run games:import -- <游戏包目录>` 导入新游戏，再执行 `npm run games:build`。源码工程和预编译 JAR 使用同一套接入配置，具体字段见[游戏接入说明](../docs/game-integration.md)。
 
 当前清单包含植物大战僵尸和美式八球。植物大战僵尸使用 Java 运行器，台球的 Canvas 代码和素材维护在 `games/billiards/web/`，使用原生网页运行器。两种入口都核对购买权限、记录游玩时长，并在关闭时停止游戏任务。
+
+八球的规则、物理、渲染与电脑控制测试集中在 `games/billiards/tests/`，`npm test` 同时运行平台与八球测试。平台共用的启动、计时和账户协议留在 `games/runtime/`，后端的奖励结算与数据库业务留在后端工程。
 
 页面操作结果通过 `src/tools/toast.js` 统一显示，默认四秒后关闭，用户也可以手动关闭。`v-toast` 绑定原消息字段，提示不占用页面布局；原生对话框中的提示使用独立顶层，避免被表单裁剪。外观维护在 `src/styles/toast.css`。
 

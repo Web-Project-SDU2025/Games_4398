@@ -27,7 +27,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 消息中心处理通知、公告、反馈与个人已读状态 */
+/**
+ * 消息中心服务
+ *
+ * 处理四种类型的消息：系统通知、全站公告、问题反馈和管理员回复
+ * 每条消息都有全局唯一的正文，但每个账户的已读状态是单独存储的
+ * 比如张三读过的公告，李四那边还是未读状态
+ */
 @Service
 public class MessageService {
     private final SiteMessageRepository messages;
@@ -35,7 +41,10 @@ public class MessageService {
     private final FeedbackResolutionRepository feedbackResolutions;
     private final UserRepository users;
 
-    /** 消息正文和个人回执分别存储，账户锁用于串行处理重复写入 */
+    /**
+     * 依赖注入
+     * 消息正文和个人已读回执分开存储，用账户锁防止并发写入时产生重复记录
+     */
     public MessageService(SiteMessageRepository messages, MessageReceiptRepository receipts,
             FeedbackResolutionRepository feedbackResolutions, UserRepository users) {
         this.messages = messages;
@@ -44,7 +53,10 @@ public class MessageService {
         this.users = users;
     }
 
-    /** 按数据库中的账户角色判断管理员身份 */
+    /**
+     * 从账户ID判断管理员身份
+     * 优先从数据库读取最新的角色信息，避免用户被降级后还能执行管理员操作
+     */
     private boolean isAdministrator(Integer userId) {
         Optional<User> found = users.findById(userId);
         if (found.isEmpty()) {
@@ -53,7 +65,10 @@ public class MessageService {
         return isAdministrator(found.get());
     }
 
-    /** 角色资料缺失时按普通账户处理 */
+    /**
+     * 从账户对象判断管理员身份
+     * 如果角色数据缺失就当普通用户处理，宁可限制权限也不能误开放
+     */
     private boolean isAdministrator(User user) {
         if (user.getUserType() == null) {
             return false;
@@ -61,7 +76,10 @@ public class MessageService {
         return "ROLE_ADMIN".equals(user.getUserType().getName());
     }
 
-    /** 检查当前账户能否阅读指定消息 */
+    /**
+     * 判断用户是否有权限阅读某条消息
+     * 账户通知只能自己看，公告所有人都能看，反馈提交者和管理员可以看
+     */
     private boolean canReadMessage(User reader, SiteMessage message) {
         Integer recipientId = message.getRecipientId();
         if (recipientId != null) {
@@ -80,7 +98,10 @@ public class MessageService {
         return false;
     }
 
-    /** 检查操作编号是否为标准 UUID */
+    /**
+     * 校验操作编号格式
+     * 必须是标准的UUID格式，防止用户随便传个字符串过来
+     */
     private boolean validRequestId(String requestId) {
         if (requestId == null) {
             return false;
@@ -92,7 +113,10 @@ public class MessageService {
         }
     }
 
-    /** 标题和正文不能为空，长度按消息统一上限校验 */
+    /**
+     * 校验消息文本
+     * 标题和内容都不能为空，长度也要在合理范围内
+     */
     private boolean validMessageText(String title, String content) {
         if (title == null || title.isBlank()) {
             return false;
@@ -106,7 +130,11 @@ public class MessageService {
         return content.trim().length() <= MessageRules.CONTENT_LIMIT;
     }
 
-    /** 业务调用方已核对接收账户，通知与原业务沿用同一事务提交 */
+    /**
+     * 发送账户通知
+     * 业务服务调用这个方法给用户发通知，比如购买成功、字块币到账等
+     * 和业务操作在同一个事务里，业务回滚的话通知也不会发
+     */
     @Transactional
     public void notifyAccount(String id, int userId, String title, String content) {
         SiteMessage message = new SiteMessage();
@@ -120,7 +148,10 @@ public class MessageService {
         messages.save(message);
     }
 
-    /** 解析正整数分页参数，小数、溢出和无效文本都返回参数错误 */
+    /**
+     * 解析分页参数
+     * 只接受纯整数，小数和超大数字会抛异常让调用方返回参数错误
+     */
     private int pageNumber(DataRequest request, String field, int fallback, int limit) {
         String text = request.getString(field);
         if (text == null) {
@@ -133,7 +164,42 @@ public class MessageService {
         return value;
     }
 
-    /** 列表只返回当前账户可见消息，未读状态按个人回执整理 */
+    /**
+     * 组装消息数据
+     * 把消息正文、已读状态、反馈处理结果打包成前端需要的格式
+     */
+    private Map<String, Object> messageInfo(SiteMessage message, boolean read,
+            FeedbackResolution resolution) {
+        Map<String, Object> row = new HashMap<String, Object>();
+        row.put("messageId", message.getMessageId());
+        row.put("kind", message.getKind());
+        row.put("senderId", message.getSenderId());
+        row.put("title", message.getTitle());
+        row.put("content", message.getContent());
+        row.put("senderName", message.getSenderName());
+        row.put("createdAt", message.getCreatedAt());
+        row.put("read", read);
+        if ("feedback".equals(message.getKind())) {
+            String decision = MessageRules.FEEDBACK_PENDING;
+            String reply = "";
+            Instant updatedAt = null;
+            if (resolution != null) {
+                decision = resolution.getDecision();
+                reply = resolution.getReply();
+                updatedAt = resolution.getUpdatedAt();
+            }
+            row.put("feedbackDecision", decision);
+            row.put("adminReply", reply);
+            row.put("replyUpdatedAt", updatedAt);
+        }
+        return row;
+    }
+
+    /**
+     * 获取消息列表
+     * 支持按类型筛选、只看未读、分页等功能
+     * 会同时返回未读总数，方便顶栏显示红点提示
+     */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
         try {
@@ -168,30 +234,10 @@ public class MessageService {
             }
             List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
             for (SiteMessage message : page.getContent()) {
-                Map<String, Object> row = new HashMap<String, Object>();
-                row.put("messageId", message.getMessageId());
-                row.put("kind", message.getKind());
-                row.put("senderId", message.getSenderId());
-                row.put("title", message.getTitle());
-                row.put("content", message.getContent());
-                row.put("senderName", message.getSenderName());
-                row.put("createdAt", message.getCreatedAt());
-                row.put("read", read.contains(message.getMessageId()));
-                if ("feedback".equals(message.getKind())) {
-                    FeedbackResolution resolution = resolutions.get(message.getMessageId());
-                    String decision = MessageRules.FEEDBACK_PENDING;
-                    String reply = "";
-                    Instant replyUpdatedAt = null;
-                    if (resolution != null) {
-                        decision = resolution.getDecision();
-                        reply = resolution.getReply();
-                        replyUpdatedAt = resolution.getUpdatedAt();
-                    }
-                    row.put("feedbackDecision", decision);
-                    row.put("adminReply", reply);
-                    row.put("replyUpdatedAt", replyUpdatedAt);
-                }
-                rows.add(row);
+                String id = message.getMessageId();
+                boolean alreadyRead = read.contains(id);
+                FeedbackResolution resolution = resolutions.get(id);
+                rows.add(messageInfo(message, alreadyRead, resolution));
             }
             Map<String, Object> result = new HashMap<String, Object>();
             result.put("messages", rows);
@@ -205,7 +251,10 @@ public class MessageService {
         }
     }
 
-    /** 顶栏轻量查询未读数量，页面隐藏时前端暂停轮询 */
+    /**
+     * 查询未读消息数量
+     * 顶栏会定时调这个接口刷新红点，页面隐藏时前端会暂停轮询节省资源
+     */
     @Transactional(readOnly = true)
     public DataResponse unread() {
         Integer userId = CommonMethod.getUserId();
@@ -213,7 +262,10 @@ public class MessageService {
         return CommonMethod.getReturnData(messages.unreadCount(userId, administrator));
     }
 
-    /** 已读回执使用账户和消息共同编号，相同消息重复读取保持原回执 */
+    /**
+     * 记录一条已读回执
+     * 用账户ID和消息ID拼接成唯一键，重复调用会保持原来的已读时间
+     */
     private void receipt(int userId, String messageId, Instant now) {
         MessageReceipt receipt = new MessageReceipt();
         receipt.setReceiptId(userId + ":" + messageId);
@@ -223,7 +275,11 @@ public class MessageService {
         receipts.save(receipt);
     }
 
-    /** 阅读单条消息先检查接收范围，跨账户请求保持原状态 */
+    /**
+     * 标记单条消息为已读
+     * 会检查消息是否存在、当前用户是否有权限查看
+     * 已读过的消息重复调用也没关系，保持已读状态不变
+     */
     @Transactional
     public DataResponse read(DataRequest request) {
         int userId = CommonMethod.getUserId();
@@ -249,7 +305,11 @@ public class MessageService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 全部已读以请求开始时间为界，分批刷新回执后再读取下一批 */
+    /**
+     * 一键全部已读
+     * 会分批处理避免一次更新太多记录导致数据库超时
+     * 以请求开始时间为界，这个时间之后新来的消息不受影响
+     */
     @Transactional
     public DataResponse readAll() {
         int userId = CommonMethod.getUserId();
@@ -271,7 +331,28 @@ public class MessageService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 公告发布核对数据库中的管理员身份，原请求重试返回原公告编号 */
+    /**
+     * 公告和反馈的通用保存逻辑
+     * 填充消息正文的公共字段，具体的权限检查和重复处理由各自的接口负责
+     */
+    private void saveAuthoredMessage(String id, User sender, String kind,
+            String title, String content, Instant now) {
+        SiteMessage message = new SiteMessage();
+        message.setMessageId(id);
+        message.setSenderId(sender.getUserId());
+        message.setSenderName(sender.getUserName());
+        message.setKind(kind);
+        message.setTitle(title.trim());
+        message.setContent(content.trim());
+        message.setCreatedAt(now);
+        messages.save(message);
+    }
+
+    /**
+     * 发布全站公告
+     * 只有管理员能发，会检查发布频率防止刷屏
+     * 操作编号保证网络抖动时重复点击不会发两遍
+     */
     @Transactional
     public DataResponse publish(DataRequest request) {
         if (!"ROLE_ADMIN".equals(CommonMethod.getRoleName())) {
@@ -310,19 +391,15 @@ public class MessageService {
                 latest.getCreatedAt().plusSeconds(MessageRules.PUBLISH_INTERVAL_SECONDS))) {
             return CommonMethod.getReturnMessageError("请稍后再发布公告");
         }
-        SiteMessage message = new SiteMessage();
-        message.setMessageId(id);
-        message.setSenderId(actor.getUserId());
-        message.setSenderName(actor.getUserName());
-        message.setKind("announcement");
-        message.setTitle(title.trim());
-        message.setContent(content.trim());
-        message.setCreatedAt(now);
-        messages.save(message);
+        saveAuthoredMessage(id, actor, "announcement", title, content, now);
         return CommonMethod.getReturnData(id, "公告已发布");
     }
 
-    /** 保存反馈正文，消息只向管理员和提交者开放 */
+    /**
+     * 提交问题反馈
+     * 所有用户都可以向管理员提交反馈，只有管理员和提交者能看到这条反馈
+     * 提交后会自动标记为已读，这样提交者在消息列表里就能看到它
+     */
     @Transactional
     public DataResponse feedback(DataRequest request) {
         int userId = CommonMethod.getUserId();
@@ -357,20 +434,17 @@ public class MessageService {
             return CommonMethod.getReturnMessageError("当前没有可接收反馈的管理员");
         }
         Instant now = Instant.now();
-        SiteMessage message = new SiteMessage();
-        message.setMessageId(id);
-        message.setSenderId(sender.getUserId());
-        message.setSenderName(sender.getUserName());
-        message.setKind("feedback");
-        message.setTitle(title.trim());
-        message.setContent(content.trim());
-        message.setCreatedAt(now);
-        messages.save(message);
+        saveAuthoredMessage(id, sender, "feedback", title, content, now);
         receipt(sender.getUserId(), id, now);
         return CommonMethod.getReturnData(id, "反馈已发送");
     }
 
-    /** 修改本人反馈或管理员可管理的公告，并让收件人重新看到未读状态 */
+    /**
+     * 编辑消息
+     * 管理员可以编辑公告，提交者可以编辑自己的反馈
+     * 编辑后会清空所有人的已读状态，让大家重新看到更新后的内容
+     * 反馈编辑后会清除管理员的处理状态，因为内容变了需要重新审核
+     */
     @Transactional
     public DataResponse edit(DataRequest request) {
         int userId = CommonMethod.getUserId();
@@ -425,7 +499,11 @@ public class MessageService {
         return CommonMethod.getReturnData(id, "消息已修改");
     }
 
-    /** 管理员保存反馈处理决定和 Markdown 回复 */
+    /**
+     * 管理员回复问题反馈
+     * 可以设置处理状态（将会修复、不会修复、已解决）并填写回复内容
+     * 提交者会收到未读提醒，但管理员自己提交的反馈不会给自己发未读
+     */
     @Transactional
     public DataResponse respondFeedback(DataRequest request) {
         int administratorId = CommonMethod.getUserId();
@@ -489,7 +567,10 @@ public class MessageService {
         return feedbackResult(id, resolution);
     }
 
-    /** 整理管理员回复结果，供页面立即更新处理状态 */
+    /**
+     * 组装反馈处理结果
+     * 给前端返回管理员的回复内容和处理状态，用于立即更新页面
+     */
     private DataResponse feedbackResult(String id, FeedbackResolution resolution) {
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("messageId", id);
