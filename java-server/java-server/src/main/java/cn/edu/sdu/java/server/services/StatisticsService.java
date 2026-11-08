@@ -10,18 +10,30 @@ import cn.edu.sdu.java.server.util.DateTimeTool;
 import org.springframework.stereotype.Service;
 import java.util.*;
 
-/** 汇总原首页统计，返回字段继续供已有图表接口使用 */
+/**
+ * 统计服务
+ *
+ * 汇总首页统计数据
+ * 返回字段供已有图表接口使用
+ */
 @Service
 public class StatisticsService {
     private final UserRepository userRepository;
     private final StatisticsDayRepository statisticsDayRepository;
-    /** 保存账户和日统计仓库，空统计表交给列表整理流程处理 */
+
+    /**
+     * 依赖注入
+     * 保存账户和日统计仓库，空统计表交给列表整理流程处理
+     */
     public StatisticsService(UserRepository userRepository, StatisticsDayRepository statisticsDayRepository) {
         this.userRepository = userRepository;
         this.statisticsDayRepository = statisticsDayRepository;
     }
 
-    /** 返回账户、角色和日统计，字段名称保持原接口格式 */
+    /**
+     * 获取首页数据
+     * 返回账户、角色和日统计，字段名称保持原接口格式
+     */
     public DataResponse getMainPageData(DataRequest dataRequest) {
         Date today = new Date();
         Date previousMonth = DateTimeTool.prevMonth(today);

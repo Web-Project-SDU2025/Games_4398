@@ -24,7 +24,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 所有游戏共用开局、计时和结束流程，关卡结果与奖励在同一事务中保存 */
+/**
+ * 通用游戏会话管理
+ *
+ * 所有游戏（植物大战僵尸、台球等）都用这套统一的开局、心跳、结束流程
+ * 这样设计的好处是新游戏接入时不用重复写这些逻辑，只需要调用这几个接口就行
+ * 关卡结果和奖励发放在同一个数据库事务里完成，要么全成功要么全回滚
+ */
 @Service
 public class GameplayService {
     private final UserRepository users;
@@ -34,7 +40,10 @@ public class GameplayService {
     private final BlockcoinService coins;
     private final OfficialLevelCatalog levels;
 
-    /** 复用现有账户、游戏、记录与账本，只新增会话状态仓库 */
+    /**
+     * 依赖注入
+     * 复用用户、游戏、记录这些老表，只多加了plays表来保存游戏会话状态
+     */
     public GameplayService(UserRepository users, GameRepository games, GameRecordRepository records,
             GamePlayRepository plays, BlockcoinService coins, OfficialLevelCatalog levels) {
         this.users = users;
@@ -45,7 +54,10 @@ public class GameplayService {
         this.levels = levels;
     }
 
-    /** 请求中的整数按文字严格读取，小数和越界数值交给调用方返回输入错误 */
+    /**
+     * 从请求中解析整数参数
+     * 必须是纯数字字符串才行，小数和超大数字会抛异常让调用方处理
+     */
     private long number(DataRequest request, String name, long fallback) {
         String value = request.getString(name);
         if (value == null) {
@@ -54,7 +66,11 @@ public class GameplayService {
         return Long.parseLong(value);
     }
 
-    /** 会话主键同时包含认证账户，跨账户请求只能查到各自的会话 */
+    /**
+     * 生成会话唯一标识
+     * 用账户ID和runId拼接，这样张三的会话和李四的会话不会冲突
+     * 而且张三无法通过伪造runId来操作李四的游戏会话
+     */
     private String key(User user, DataRequest request) {
         String run = request.getString("runId");
         if (run == null || !run.matches(GameplayRules.RUN_PATTERN)) {
@@ -63,7 +79,11 @@ public class GameplayService {
         return user.getUserId() + ":" + run;
     }
 
-    /** 根据已登记入口匹配商品，客户端名称、价格与奖励保持独立 */
+    /**
+     * 根据游戏路径找到对应的游戏
+     * 客户端告诉我们gamePath，我们从数据库里找到对应的游戏信息
+     * 游戏名称、价格、奖励这些数据都以数据库为准，不信任客户端传的
+     */
     private Game game(DataRequest request) {
         String path = request.getString("gamePath");
         for (Game game : games.findAll()) {
@@ -74,7 +94,11 @@ public class GameplayService {
         throw new IllegalArgumentException("游戏尚未登记");
     }
 
-    /** 返回会话和计时参数，所有重试复用同一挑战码 */
+    /**
+     * 组装游戏会话信息返回给客户端
+     * 包含挑战码、记录ID、游戏结果、时长、奖励等字段
+     * 同一个runId多次请求会返回同样的挑战码，这样断线重连也能继续玩
+     */
     private DataResponse response(GamePlay play) {
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("challenge", play.getChallenge());
@@ -86,7 +110,10 @@ public class GameplayService {
         return CommonMethod.getReturnData(result);
     }
 
-    /** 只有拥有游戏的账户可以开局，试玩另行检查管理员身份 */
+    /**
+     * 检查游戏启动权限
+     * 正式模式需要先购买游戏，试玩模式只有管理员能用
+     */
     private void access(User user, Game game, String mode) {
         if (!List.of("official", "practice").contains(mode)) {
             throw new IllegalArgumentException("游戏模式不正确");
@@ -100,7 +127,12 @@ public class GameplayService {
         }
     }
 
-    /** 生成单局状态，官方文件匹配后才保存奖励，其他关卡照常记录结果 */
+    /**
+     * 创建一个新的游戏会话
+     * 会生成挑战码、记录ID、冻结奖励金额等信息
+     * 只有官方关卡且文件哈希匹配的才能拿奖励，自定义关卡只记录不发钱
+     * 这里"冻结"奖励金额是为了防止管理员中途改价格影响正在玩的局
+     */
     private GamePlay create(User user, Game game, DataRequest request, String id, Instant now) {
         long levelValue = number(request, "level", -1);
         if (levelValue < -1 || levelValue > GameplayRules.MAX_LEVEL_NUMBER) {
@@ -157,7 +189,12 @@ public class GameplayService {
         return play;
     }
 
-    /** 开局先锁账户并检查频率，同一编号重试只返回原会话 */
+    /**
+     * 开局接口
+     * 客户端要开始玩游戏时先调这个接口
+     * 会检查是否频繁开局、是否同时开太多游戏等
+     * 同一个runId重复请求会返回原来的会话，不会重复创建
+     */
     @Transactional
     public DataResponse begin(DataRequest request) {
         User user = users.lockAccount(CommonMethod.getUserId()).orElseThrow();
@@ -188,7 +225,12 @@ public class GameplayService {
         }
     }
 
-    /** 计算可以接受的累计时长，校验阶段保留实体原值 */
+    /**
+     * 计算实际游玩时长
+     * 客户端会上报一个时长，但我们不能完全信任它（可能作弊改时长）
+     * 所以会用服务器的时间戳来校验，只接受合理范围内的时长
+     * 考虑到网络延迟和时钟误差，会给一些宽容度
+     */
     private long acceptedDuration(GamePlay play, DataRequest request, Instant now) {
         long reported = number(request, "activeMilliseconds", play.getReportedMilliseconds());
         if (reported < play.getReportedMilliseconds() || reported > GameplayRules.MAX_PLAY_MILLISECONDS) {
@@ -202,7 +244,11 @@ public class GameplayService {
         return Math.min(play.getActiveMilliseconds() + increase, totalLimit);
     }
 
-    /** 自动记录与会话同步更新，用户已删除的展示记录继续保持删除状态 */
+    /**
+     * 同步更新游戏记录
+     * 每次心跳或结算时都会更新对应的记录表，保持时长和时间同步
+     * 如果用户在游戏库里删了这条记录，这里不会恢复它（尊重用户选择）
+     */
     private void updateRecord(GamePlay play) {
         Optional<GameRecord> found = records.findById(play.getRecordId());
         if (found.isPresent()) {
@@ -213,7 +259,12 @@ public class GameplayService {
         }
     }
 
-    /** 计时和结算共用身份、挑战码和过期检查，已结束会话直接返回原结果 */
+    /**
+     * 更新游戏会话（心跳和结算的通用逻辑）
+     * finish=false表示只是心跳保活，finish=true表示这局游戏结束了
+     * 会检查挑战码是否正确、会话是否超时、游戏归属是否变更等
+     * 通关且有奖励的话会在这里调用字块币服务发钱
+     */
     private DataResponse update(DataRequest request, boolean finish) {
         User user = users.lockAccount(CommonMethod.getUserId()).orElseThrow();
         try {
@@ -268,13 +319,21 @@ public class GameplayService {
         }
     }
 
-    /** 定期保存游玩时长，重复累计值只更新存活时间 */
+    /**
+     * 心跳接口
+     * 游戏运行过程中客户端会定期调这个接口上报时长，防止会话超时
+     * 即使上报的时长和上次一样也没关系，只要调了就能续命
+     */
     @Transactional
     public DataResponse heartbeat(DataRequest request) {
         return update(request, false);
     }
 
-    /** 结束时一并保存结果、时长与奖励，事务失败时全部回滚 */
+    /**
+     * 结算接口
+     * 游戏结束时调用，会保存结果（passed/failed/abandoned）、时长和奖励
+     * 所有操作在一个事务里，失败的话会全部回滚
+     */
     @Transactional
     public DataResponse finish(DataRequest request) {
         return update(request, true);

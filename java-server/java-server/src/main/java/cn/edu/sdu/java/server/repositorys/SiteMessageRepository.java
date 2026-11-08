@@ -9,9 +9,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** 个人通知限定接收账户，公告和反馈按角色及回执判断可见状态 */
+/**
+ * 站点消息数据访问接口
+ *
+ * 个人通知限定接收账户
+ * 公告和反馈按角色及回执判断可见状态
+ */
 public interface SiteMessageRepository extends JpaRepository<SiteMessage, String> {
-    /** 分页查询当前账户可见消息，反馈只对管理员和提交者开放 */
+    /**
+     * 查询收件箱
+     * 分页查询当前账户可见消息，反馈只对管理员和提交者开放
+     */
     @Query("select message from SiteMessage message "
         + "where (message.recipientId = :userId "
         + "or (message.recipientId is null and message.kind = 'announcement') "
@@ -25,7 +33,10 @@ public interface SiteMessageRepository extends JpaRepository<SiteMessage, String
         @Param("administrator") boolean administrator, @Param("kind") String kind,
         @Param("unreadOnly") boolean unreadOnly, Pageable page);
 
-    /** 未读数量只统计当前账户能够阅读的消息 */
+    /**
+     * 统计未读消息数
+     * 未读数量只统计当前账户能够阅读的消息
+     */
     @Query("select count(message) from SiteMessage message "
         + "where (message.recipientId = :userId "
         + "or (message.recipientId is null and message.kind = 'announcement') "
@@ -36,7 +47,10 @@ public interface SiteMessageRepository extends JpaRepository<SiteMessage, String
     long unreadCount(@Param("userId") Integer userId,
         @Param("administrator") boolean administrator);
 
-    /** 全部已读按固定开始时间分批处理，之后的新消息继续保持未读 */
+    /**
+     * 查询未读消息批次
+     * 全部已读按固定开始时间分批处理，之后的新消息继续保持未读
+     */
     @Query("select message from SiteMessage message "
         + "where (message.recipientId = :userId "
         + "or (message.recipientId is null and message.kind = 'announcement') "
@@ -50,6 +64,9 @@ public interface SiteMessageRepository extends JpaRepository<SiteMessage, String
         @Param("administrator") boolean administrator, @Param("cutoff") Instant cutoff,
         Pageable page);
 
-    /** 读取同一管理员的最近公告，发布流程先锁定管理员账户 */
+    /**
+     * 查询最近公告
+     * 读取同一管理员的最近公告，发布流程先锁定管理员账户
+     */
     SiteMessage findFirstBySenderIdAndKindOrderByCreatedAtDesc(Integer senderId, String kind);
 }

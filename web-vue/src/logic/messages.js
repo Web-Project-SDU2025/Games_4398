@@ -38,14 +38,10 @@ export function messageKind(kind) {
 
 // 将反馈处理状态转为中文文字
 export function feedbackDecisionName(decision) {
-  if (decision === "will_fix") {
-    return "会修复";
-  }
-  if (decision === "will_not_fix") {
-    return "不会修复";
-  }
-  if (decision === "resolved") {
-    return "已解决";
+  for (const item of FEEDBACK_DECISIONS) {
+    if (item.value === decision) {
+      return item.label;
+    }
   }
   return "待处理";
 }

@@ -21,7 +21,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-/** 统一装配登录与访问规则，每次 API 请求独立校验身份 */
+/**
+ * 安全配置类
+ *
+ * 统一装配登录与访问规则
+ * 每次API请求独立校验身份
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -29,7 +34,10 @@ public class SecurityConfiguration {
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /** 保存认证服务和登录过滤器，供过滤链装配使用 */
+    /**
+     * 构造函数
+     * 保存认证服务和登录过滤器，供过滤链装配使用
+     */
     public SecurityConfiguration(
         JwtAuthenticationFilter jwtAuthenticationFilter,
         AuthenticationProvider authenticationProvider
@@ -38,7 +46,10 @@ public class SecurityConfiguration {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    /** 配置 API 登录校验和无状态会话，返回网站过滤链 */
+    /**
+     * 安全过滤链Bean
+     * 配置API登录校验和无状态会话，返回网站过滤链
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(new DisableCsrf());

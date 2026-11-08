@@ -27,10 +27,16 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 认证会话中的台球奖励结算，账户锁、击球序号和唯一账本编号共同防止重复收入 */
+/**
+ * 台球奖励结算服务
+ *
+ * 处理美式八球游戏的成就奖励发放
+ * 用账户锁、击球序号和唯一业务编号共同防止重复入账
+ * 开球先手由服务器随机决定，客户端不能指定
+ */
 @Service
 public class BilliardsRewardService {
-    /** 服务端随机开球，不由客户端通过提交先手字段选择 */
+    /** 服务端随机决定开球顺序，防止客户端选择对自己有利的先手 */
     private static final SecureRandom RANDOM = new SecureRandom();
     private final UserRepository users;
     private final GameRepository games;
@@ -39,7 +45,10 @@ public class BilliardsRewardService {
     private final BlockcoinService coins;
     private final ObjectMapper mapper;
 
-    /** 复用认证、游戏持有关系和原字块币账本，新增仓库只保存每盘台球状态 */
+    /**
+     * 依赖注入
+     * 复用认证、游戏归属和字块币账本，新增台球局状态仓库
+     */
     public BilliardsRewardService(UserRepository users, GameRepository games, GamePlayRepository plays,
             BilliardsRoundRepository rounds, BlockcoinService coins, ObjectMapper mapper) {
         this.users = users;
@@ -50,7 +59,12 @@ public class BilliardsRewardService {
         this.mapper = mapper;
     }
 
-    /** 接收零号开盘或顺序击球报告，奖励金额始终由服务器成就规则决定 */
+    /**
+     * 接收击球报告并发放奖励
+     * sequence=0表示开局，其他值表示第几杆
+     * 奖励金额完全由服务器的成就规则决定，客户端不能指定
+     * 同一击球序号重复提交会返回首次结果，不会重复发钱
+     */
     @Transactional(rollbackFor = Exception.class)
     public DataResponse report(DataRequest request) throws Exception {
         User user = users.lockAccount(CommonMethod.getUserId()).orElseThrow();
@@ -131,7 +145,8 @@ public class BilliardsRewardService {
             }
             BilliardsJudge.State state = mapper.readValue(current.getStateJson(), BilliardsJudge.State.class);
             List<String> earned = BilliardsJudge.apply(state, shot);
-            // 每杆只保存新解锁项目，金额仍由服务端读取，未结束时不写钱包和消息
+            // 每杆只记录新解锁的成就，金额由服务端规则计算
+            // 本局未结束时不写钱包和消息，等整盘打完一次性结算
             for (String achievement : earned) {
                 state.pendingRewards.add(achievement);
             }
@@ -146,7 +161,8 @@ public class BilliardsRewardService {
                     details.add(BilliardsRewards.TITLES.get(index) + " +" + amount);
                 }
                 titles = String.join("、", details);
-                // 整盘使用唯一业务编号，一次入账只生成一笔流水和一条站内通知
+                // 整盘使用同一个业务编号，所有成就在本局结束时一次性入账
+                // 只生成一笔流水和一条站内通知，防止刷屏
                 if (total > 0) {
                     total = coins.awardBilliards(user, game, id + ":settlement", "本局结算：" + titles, total);
                 }
@@ -168,14 +184,23 @@ public class BilliardsRewardService {
         }
     }
 
-    /** 返回实际入账金额，重复请求仍返回首次结果但不会重新记账 */
+    /**
+     * 返回奖励结算结果
+     * repeated标志位告诉客户端这是重复请求，不是新的入账
+     */
     private DataResponse result(long amount, String titles, boolean repeated) {
         return CommonMethod.getReturnData(Map.of("reward", amount, "titles", titles, "repeated", repeated));
     }
 
-    /** 仓库缺少会话时提供明确的业务错误，不通过匿名回调构造异常 */
+    /**
+     * 会话缺失异常
+     * 当游戏会话不存在时提供明确的业务错误提示
+     */
     private static final class MissingPlay implements java.util.function.Supplier<IllegalArgumentException> {
-        /** 返回无会话错误，只有真实仓库为空时调用 */
+        /**
+         * 返回会话不存在的异常
+         * 只在仓库查询为空时被调用
+         */
         @Override
         public IllegalArgumentException get() {
             return new IllegalArgumentException("游戏会话不存在");

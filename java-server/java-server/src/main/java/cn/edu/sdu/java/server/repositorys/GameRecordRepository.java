@@ -4,18 +4,45 @@ import cn.edu.sdu.java.server.models.GameRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
-/* GameRecord 数据操作接口，用于查询和删除游戏记录 */
+/**
+ * 游戏记录数据访问接口
+ *
+ * 提供游戏记录的查询和删除操作
+ */
 public interface GameRecordRepository extends JpaRepository<GameRecord, Integer> {
-    /** 按时间倒序读取全部记录，空表返回空列表 */
+    /**
+     * 查询全部记录
+     * 按时间倒序返回，空表返回空列表
+     */
     List<GameRecord> findAllByOrderByPlayedAtDesc();
-    /** 按账户筛选记录，空结果返回空列表 */
+
+    /**
+     * 按用户查询记录
+     * 按时间倒序返回该用户的记录
+     */
     List<GameRecord> findByUserUserIdOrderByPlayedAtDesc(Integer userId);
-    /** 检查游戏是否存在记录，删除游戏前据此检查关联 */
+
+    /**
+     * 检查游戏是否有记录
+     * 删除游戏前检查是否有关联记录
+     */
     boolean existsByGameGameId(Integer gameId);
-    /** 删除管理员已确认清理的游戏记录，与游戏及收藏关系在同一事务提交 */
+
+    /**
+     * 删除游戏的全部记录
+     * 与游戏删除在同一事务中提交
+     */
     void deleteByGameGameId(Integer gameId);
-    /** 删除指定账户的记录，与账户删除事务一起提交 */
+
+    /**
+     * 删除用户的全部记录
+     * 与用户删除在同一事务中提交
+     */
     void deleteByUserUserId(Integer userId);
-    /** 查询账户的游戏记录条数，账户列表按此展示活动数量 */
+
+    /**
+     * 统计用户记录数
+     * 账户列表用此展示活动数量
+     */
     long countByUserUserId(Integer userId);
 }

@@ -209,7 +209,7 @@ function testProject(
 }
 
 // 发布一个游戏，源码构建与 JAR 接入共用素材、封面、许可和运行配置
-export function buildProject(
+function buildProject(
   project,
   jdk,
   frontendRoot,

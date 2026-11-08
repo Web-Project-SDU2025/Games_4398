@@ -12,7 +12,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
-/** 管理账户资料和角色，删除时同时清理账户关联 */
+/**
+ * 用户账户管理服务
+ *
+ * 处理账户的增删改查、资料修改、角色变更等操作
+ * 删除账户时会同步清理游戏库、收藏和游戏记录，保持数据一致性
+ */
 @Service
 public class GameUserService {
     private final UserRepository userRepository;
@@ -22,7 +27,10 @@ public class GameUserService {
     private final BlockcoinWalletRepository walletRepository;
     private final MessageService messages;
 
-    /** 保存账户、角色和记录仓库，密码操作复用同一编码器 */
+    /**
+     * 依赖注入
+     * 保存账户、角色和记录仓库，密码加密复用同一个编码器保证一致性
+     */
     public GameUserService(UserRepository userRepository, UserTypeRepository userTypeRepository,
                            GameRecordRepository gameRecordRepository, PasswordEncoder encoder,
                            BlockcoinWalletRepository walletRepository, MessageService messages) {
@@ -34,7 +42,11 @@ public class GameUserService {
         this.messages = messages;
     }
 
-    /** 比较资料字段后只记录发生变化的字段名，通知正文保留联系方式隐私 */
+    /**
+     * 比对资料变更字段
+     * 返回发生变化的字段名列表，通知消息里会显示这些字段名
+     * 不显示具体的邮箱和电话，保护隐私
+     */
     private List<String> profileChanges(User user, DataRequest request) {
         List<String> changes = new ArrayList<String>();
         if (!Objects.equals(user.getName(), request.getString("name"))) {
@@ -52,7 +64,11 @@ public class GameUserService {
         return changes;
     }
 
-    /** 一次资料保存只发送一条通知，重复保存相同字段时保持消息列表原值 */
+    /**
+     * 发送资料变更通知
+     * 一次保存操作只发一条消息，列出所有变更的字段
+     * 角色变更会额外显示当前身份
+     */
     private void notifyChanges(User user, List<String> changes) {
         if (changes.isEmpty()) {
             return;
@@ -66,6 +82,17 @@ public class GameUserService {
             content = content + "\n当前身份：" + role;
         }
         messages.notifyAccount("profile:" + UUID.randomUUID(), user.getUserId(), "账户资料变更", content);
+    }
+
+    /**
+     * 应用资料修改
+     * 把请求里的新资料写入用户对象，账号和密码在其他接口处理
+     */
+    private void applyProfile(User user, DataRequest request) {
+        user.setName(request.getString("name"));
+        user.setEmail(request.getString("email"));
+        user.setPhone(request.getString("phone"));
+        user.setSignature(request.getString("signature"));
     }
 
     /**
@@ -128,9 +155,9 @@ public class GameUserService {
     }
 
     /**
-     * 创建一个新的管理员或游戏用户账户，并保存密码哈希
-     * @param request data 中包含账号、密码、昵称、邮箱、签名和角色
-     * @return 创建成功或失败的响应
+     * 创建新账户
+     * 支持创建管理员或普通用户，密码会加密存储
+     * 创建成功后发送欢迎通知
      */
     @Transactional
     public DataResponse createAccount(DataRequest request) {
@@ -184,20 +211,16 @@ public class GameUserService {
         }
         User user = userRepository.findById(userId).orElseThrow();
         List<String> changes = profileChanges(user, request);
-        user.setName(request.getString("name"));
-        user.setEmail(request.getString("email"));
-        user.setPhone(request.getString("phone"));
-        user.setSignature(request.getString("signature"));
+        applyProfile(user, request);
         userRepository.save(user);
         notifyChanges(user, changes);
         return CommonMethod.getReturnMessageOK();
     }
 
-    // 删除账号时保护系统 admin 和当前账号
     /**
-     * 删除账号，并清理账户关联的游戏库、收藏和游戏记录
-     * @param request data 中包含 userId
-     * @return 删除成功或失败的响应
+     * 删除账户
+     * 会同步清理游戏库、收藏和游戏记录
+     * 保护系统admin账户和当前登录账户不能删
      */
     @Transactional
     public DataResponse deleteAccount(DataRequest request) {
@@ -219,7 +242,10 @@ public class GameUserService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 管理员保存资料与角色，系统账号和当前账号保持管理员身份 */
+    /**
+     * 管理员修改账户信息
+     * 可以修改资料和角色，系统admin和当前账号的管理员身份不能取消
+     */
     @Transactional
     public DataResponse saveAccount(DataRequest request) {
         Integer id = request.getInteger("userId");
@@ -243,10 +269,7 @@ public class GameUserService {
         if (!user.getUserType().getName().equals(role)) {
             changes.add("账户身份");
         }
-        user.setName(request.getString("name"));
-        user.setEmail(request.getString("email"));
-        user.setPhone(request.getString("phone"));
-        user.setSignature(request.getString("signature"));
+        applyProfile(user, request);
         user.setUserType(userTypeRepository.findByName(role));
         userRepository.save(user);
         notifyChanges(user, changes);

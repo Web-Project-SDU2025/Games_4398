@@ -25,7 +25,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 管理字块币、购买归属与正式通关结算，所有资金变动先锁账户并在同一事务提交 */
+/**
+ * 字块币核心服务
+ *
+ * 管理整个平台的虚拟货币流转，包括购买游戏、通关奖励和管理员操作
+ * 为了保证数据一致性，所有涉及金额变动的操作都会先锁定账户，然后在一个事务里完成
+ * 比如用户购买游戏时，扣款、更新游戏库、记录流水这三步要么全成功要么全回滚
+ */
 @Service
 public class BlockcoinService {
     private final UserRepository users;
@@ -37,7 +43,10 @@ public class BlockcoinService {
     private final GameRevocationRepository revocations;
     private final MessageService messages;
 
-    /** 共用现有账户与游戏仓库，新仓库只保存资金流水和关卡尝试 */
+    /**
+     * 依赖注入
+     * 复用已有的用户和游戏仓库，新增钱包、流水、撤回记录等字块币专用的表
+     */
     public BlockcoinService(UserRepository users, GameRepository games,
             BlockcoinWalletRepository wallets, BlockcoinEntryRepository entries,
             OfficialLevelCatalog levels, GameService gameService, GameRevocationRepository revocations,
@@ -52,12 +61,18 @@ public class BlockcoinService {
         this.messages = messages;
     }
 
-    /** 读取并锁定当前真实账户，其他账户编号始终来自认证结果 */
+    /**
+     * 获取当前登录账户并加锁
+     * 用悲观锁防止并发修改，比如张三同时在两个浏览器购买游戏，加锁后第二个请求会等第一个完成
+     */
     private User account() {
         return users.lockAccount(CommonMethod.getUserId()).orElseThrow();
     }
 
-    /** 首次使用时发放一次初始余额，已存在钱包始终保留原余额 */
+    /**
+     * 获取或创建用户钱包
+     * 首次使用商城的用户会自动获得100字块币的新手礼包，老用户直接返回原来的钱包
+     */
     private BlockcoinWallet wallet(User user) {
         Optional<BlockcoinWallet> found = wallets.findById(user.getUserId());
         if (found.isPresent()) {
@@ -71,7 +86,11 @@ public class BlockcoinService {
         return wallet;
     }
 
-    /** 写入唯一编号的资金流水，金额、余额和原因由服务端生成 */
+    /**
+     * 记录一笔字块币流水
+     * 每笔流水都有唯一ID防止重复记账，金额可正可负（正数是收入，负数是支出）
+     * 同时会给用户发送系统通知，让大家知道自己的余额变化
+     */
     private void record(BlockcoinWallet wallet, String id, long amount, String reason, String path) {
         BlockcoinEntry entry = new BlockcoinEntry();
         entry.setEntryId(id);
@@ -90,12 +109,19 @@ public class BlockcoinService {
             reason + "\n变动：" + change + " BC\n当前余额：" + wallet.getBalance() + " BC");
     }
 
-    /** 根据账户和游戏生成购买编号，相同请求重复执行时复用已有购买 */
+    /**
+     * 生成购买记录的唯一ID
+     * 用账户ID和游戏ID拼接，这样同一个人多次点购买按钮也只会生成一条记录
+     */
     private String purchaseId(User user, Game game) {
         return "purchase:" + user.getUserId() + ":" + game.getGameId();
     }
 
-    /** 有效撤回优先于旧购买记录，其他账户继续兼容原游戏库与购买归属 */
+    /**
+     * 检查用户是否拥有某个游戏
+     * 优先检查有没有有效的撤回记录（管理员撤回了就不算拥有）
+     * 然后看游戏库和购买记录，兼容老数据
+     */
     public boolean owns(User user, Game game) {
         if (revocations.existsByUserIdAndGameIdAndRepurchasedAtIsNull(user.getUserId(), game.getGameId())) {
             return false;
@@ -108,7 +134,10 @@ public class BlockcoinService {
         return entries.existsById(purchaseId(user, game));
     }
 
-    /** 通过后端游戏编号或已登记入口读取商品，找不到时返回空结果 */
+    /**
+     * 根据请求参数找到对应的游戏
+     * 可以通过游戏ID或者游戏路径来查找，找不到就返回null
+     */
     private Game product(DataRequest request) {
         Integer id = request.getInteger("gameId");
         String path = request.getString("gamePath");
@@ -120,7 +149,10 @@ public class BlockcoinService {
         return null;
     }
 
-    /** 返回余额与有限条数的收支记录，避免账户使用时间增长后一次读取全部流水 */
+    /**
+     * 组装钱包信息
+     * 包含当前余额和最近20条流水，只取最近的防止老用户流水太多一次加载卡顿
+     */
     private Map<String, Object> walletInfo(BlockcoinWallet wallet) {
         Map<String, Object> info = new HashMap<String, Object>();
         info.put("balance", wallet.getBalance());
@@ -132,7 +164,11 @@ public class BlockcoinService {
         return info;
     }
 
-    /** 返回商城商品、当前归属和钱包，首次使用按同一账户锁完成初始化 */
+    /**
+     * 获取商城页面数据
+     * 返回所有游戏、哪些已经买了、当前余额和最近流水
+     * 首次使用会自动创建钱包并发放新手礼包
+     */
     @Transactional
     public DataResponse catalog() {
         User user = account();
@@ -151,7 +187,11 @@ public class BlockcoinService {
         return CommonMethod.getReturnData(result);
     }
 
-    /** 购买在同一事务内扣款、登记归属与保存流水，余额不足和重复购买都保持原余额 */
+    /**
+     * 购买游戏
+     * 在一个事务里完成扣款、加入游戏库、记录流水、标记重新购买这几步
+     * 余额不足或者已经买过的话都不会重复扣款
+     */
     @Transactional
     public DataResponse purchase(DataRequest request) {
         User user = account();
@@ -182,7 +222,10 @@ public class BlockcoinService {
         return CommonMethod.getReturnData(walletInfo(wallet), "游戏已加入游戏库");
     }
 
-    /** 游戏启动时核对持有关系，管理员可单独打开编辑器，普通游戏仍按购买归属处理 */
+    /**
+     * 验证游戏启动权限
+     * 普通游戏需要先购买才能玩，关卡编辑器只有管理员能打开
+     */
     @Transactional
     public DataResponse authorize(DataRequest request) {
         User user = account();
@@ -204,7 +247,11 @@ public class BlockcoinService {
         return CommonMethod.getReturnData(result);
     }
 
-    /** 原免费加入接口只恢复已持有游戏，新增归属通过明确的购买入口完成 */
+    /**
+     * 恢复游戏库
+     * 用户已经拥有游戏但游戏库里找不到时，可以调这个接口重新加入游戏库
+     * 不会重复扣款，只是同步一下归属关系
+     */
     @Transactional
     public DataResponse restoreLibrary(DataRequest request) {
         User user = account();
@@ -219,20 +266,30 @@ public class BlockcoinService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 通用游戏会话在账户锁内调用奖励记账，唯一流水防止重复发放 */
+    /**
+     * 发放通关奖励
+     * 游戏会话结算时调用，会话ID保证同一局游戏不会重复发钱
+     */
     @Transactional
     public long award(User user, Game game, String playId, String levelName, long amount) {
         String entryId = "reward:" + playId;
         return creditReward(user, game, entryId, levelName + "通关", amount);
     }
 
-    /** 台球成就使用独立业务编号，金额来自服务端判定，不接受客户端指定金额 */
+    /**
+     * 发放台球成就奖励
+     * 台球游戏用单独的业务编号，金额由后端根据成就类型计算，前端不能指定
+     */
     @Transactional
     public long awardBilliards(User user, Game game, String eventId, String title, long amount) {
         return creditReward(user, game, "billiards:" + eventId, title, amount);
     }
 
-    /** 在调用方持有账户锁的事务内入账，同一个业务编号最多保存一笔奖励 */
+    /**
+     * 奖励入账的通用逻辑
+     * 检查余额上限、记录流水、发送通知，同一个业务编号只会入账一次
+     * 调用方必须已经持有账户锁，这样才能保证并发安全
+     */
     private long creditReward(User user, Game game, String entryId, String title, long amount) {
         if (amount <= 0 || entries.existsById(entryId)) {
             return 0;
@@ -247,7 +304,10 @@ public class BlockcoinService {
         return amount;
     }
 
-    /** 返回调整后的余额和流水编号，重复请求直接复用原流水 */
+    /**
+     * 组装管理员调整结果
+     * 返回操作后的余额和流水ID，重复操作会复用之前的流水
+     */
     private DataResponse adjustmentResult(BlockcoinEntry entry) {
         Map<String, Object> result = new HashMap<String, Object>();
         result.put("userId", entry.getUserId());
@@ -256,7 +316,11 @@ public class BlockcoinService {
         return CommonMethod.getReturnData(result, "字块币已调整");
     }
 
-    /** 管理员发放或收回指定数量，账户锁、唯一流水与事务共同保护余额 */
+    /**
+     * 管理员手动调整账户余额
+     * 可以发放或收回字块币，需要填写原因
+     * 用操作编号防止重复提交，用账户锁和事务保证数据一致性
+     */
     @Transactional
     public DataResponse adjust(DataRequest request) {
         if (!"ROLE_ADMIN".equals(CommonMethod.getRoleName())) {

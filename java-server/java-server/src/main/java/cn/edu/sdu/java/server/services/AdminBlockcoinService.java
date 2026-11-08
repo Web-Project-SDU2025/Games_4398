@@ -24,14 +24,22 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 管理员查询账户流水和资金汇总，查询过程保留钱包与原始流水 */
+/**
+ * 字块币管理服务
+ *
+ * 管理员查询账户流水和资金汇总
+ * 查询过程保留钱包与原始流水
+ */
 @Service
 public class AdminBlockcoinService {
     private final BlockcoinEntryRepository entries;
     private final BlockcoinWalletRepository wallets;
     private final UserRepository users;
 
-    /** 使用现有账本和账户仓库，查询结果补充账号与昵称 */
+    /**
+     * 构造函数
+     * 使用现有账本和账户仓库，查询结果补充账号与昵称
+     */
     public AdminBlockcoinService(BlockcoinEntryRepository entries,
             BlockcoinWalletRepository wallets, UserRepository users) {
         this.entries = entries;
@@ -39,7 +47,10 @@ public class AdminBlockcoinService {
         this.users = users;
     }
 
-    /** 读取整数参数，缺省使用传入默认值，小数和非法文字返回字段错误 */
+    /**
+     * 解析整数参数
+     * 读取整数参数，缺省使用传入默认值，小数和非法文字返回字段错误
+     */
     private Integer integer(DataRequest request, String name, Integer defaultValue) {
         String value = request.getString(name);
         if (value == null || value.isBlank()) {
@@ -52,7 +63,10 @@ public class AdminBlockcoinService {
         }
     }
 
-    /** 查询文字统一去掉首尾空格，缺失字段按空值处理 */
+    /**
+     * 解析文本参数
+     * 查询文字统一去掉首尾空格，缺失字段按空值处理
+     */
     private String text(DataRequest request, String name) {
         String value = request.getString(name);
         if (value == null) {
@@ -61,7 +75,10 @@ public class AdminBlockcoinService {
         return value.trim();
     }
 
-    /** 起始日包含当天，结束日转换为次日零点，默认结束日使用今天 */
+    /**
+     * 解析日期边界
+     * 起始日包含当天，结束日转换为次日零点，默认结束日使用今天
+     */
     private Instant dateBoundary(String value, boolean end) {
         if (value.isEmpty() && !end) {
             return Instant.EPOCH;
@@ -76,7 +93,10 @@ public class AdminBlockcoinService {
         return date.atStartOfDay(AdminQueryRules.DATE_ZONE).toInstant();
     }
 
-    /** 按页内账户批量读取身份，账户删除后流水仍保留原账户编号 */
+    /**
+     * 构建流水行数据
+     * 按页内账户批量读取身份，账户删除后流水仍保留原账户编号
+     */
     private List<Map<String, Object>> rows(List<BlockcoinEntry> records) {
         Set<Integer> ids = new HashSet<Integer>();
         for (BlockcoinEntry entry : records) {
@@ -108,7 +128,10 @@ public class AdminBlockcoinService {
         return result;
     }
 
-    /** 返回实际钱包余额，尚未创建钱包的账户使用空值 */
+    /**
+     * 查询账户余额
+     * 返回实际钱包余额，尚未创建钱包的账户使用空值
+     */
     private Long balance(Integer userId) {
         if (userId == null) {
             return wallets.totalBalance();
@@ -120,7 +143,10 @@ public class AdminBlockcoinService {
         return wallet.get().getBalance();
     }
 
-    /** 校验筛选并返回一页流水，累计收支按选中账户的完整账本计算 */
+    /**
+     * 查询流水列表
+     * 校验筛选并返回一页流水，累计收支按选中账户的完整账本计算
+     */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
         try {

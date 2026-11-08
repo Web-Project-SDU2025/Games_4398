@@ -2,48 +2,70 @@ package cn.edu.sdu.java.server.util;
 
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.UserDetailsImpl;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Map;
 
-/** 整理接口响应、当前登录身份和菜单参数 */
+/**
+ * 通用工具方法
+ *
+ * 提供接口响应包装、当前登录用户信息获取等常用功能
+ * 避免每个地方都重复写相同的代码
+ */
 public class CommonMethod {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    /** 返回业务数据及说明，成功码统一为零 */
+    /**
+     * 包装业务数据和提示消息
+     * 成功的接口统一返回code=0
+     */
     public static DataResponse getReturnData(Object data, String message) {
         return new DataResponse(0, data, message);
     }
 
-    /** 返回指定状态码和提示文字 */
+    /**
+     * 返回指定状态码和提示
+     * 用于需要自定义错误码的场景
+     */
     public static DataResponse getReturnMessage(Integer code, String message) {
         return new DataResponse(code, null, message);
     }
 
-    /** 返回不带提示文字的业务数据 */
+    /**
+     * 只返回数据，不带提示消息
+     * 常用于列表查询等场景
+     */
     public static DataResponse getReturnData(Object data) {
         return getReturnData(data, null);
     }
 
-    /** 返回带说明的成功结果 */
+    /**
+     * 返回成功提示
+     * 用于操作成功但没有返回数据的场景
+     */
     public static DataResponse getReturnMessageOK(String message) {
         return getReturnMessage(0, message);
     }
 
-    /** 返回不带说明的成功结果 */
+    /**
+     * 返回成功状态，不带提示
+     * 最简单的成功响应
+     */
     public static DataResponse getReturnMessageOK() {
         return getReturnMessageOK(null);
     }
 
-    /** 返回业务失败说明，失败码统一为一 */
+    /**
+     * 返回错误提示
+     * 失败接口统一返回code=1
+     */
     public static DataResponse getReturnMessageError(String message) {
         return getReturnMessage(1, message);
     }
 
-    /** 从认证上下文读取本站账户，未登录时返回空值 */
+    /**
+     * 从Spring Security上下文获取当前用户
+     * 未登录时返回null
+     */
     private static UserDetailsImpl currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
@@ -56,7 +78,10 @@ public class CommonMethod {
         return (UserDetailsImpl) principal;
     }
 
-    /** 返回当前用户编号，未登录时返回空值 */
+    /**
+     * 获取当前登录用户的ID
+     * 常用于需要知道是谁在操作的场景
+     */
     public static Integer getUserId() {
         UserDetailsImpl user = currentUser();
         if (user == null) {
@@ -65,7 +90,10 @@ public class CommonMethod {
         return user.getId();
     }
 
-    /** 返回当前账户的角色名称，未登录或没有角色时返回空值 */
+    /**
+     * 获取当前用户的角色
+     * 用于判断是管理员还是普通用户
+     */
     public static String getRoleName() {
         UserDetailsImpl user = currentUser();
         if (user == null) {
@@ -103,12 +131,4 @@ public class CommonMethod {
         }
     }
 
-    /** 将对象转换为日志中的 JSON，无法转换时返回空字符串 */
-    public static String ObjectToJSon(Object value) {
-        try {
-            return MAPPER.writeValueAsString(value);
-        } catch (JsonProcessingException error) {
-            return "";
-        }
-    }
 }

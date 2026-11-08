@@ -21,7 +21,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 管理员查看与撤回账户持有的游戏，操作只改变归属并保留资金账本 */
+/**
+ * 管理员游戏库服务
+ *
+ * 管理员查看与撤回账户持有的游戏
+ * 操作只改变归属并保留资金账本
+ */
 @Service
 public class AdminGameLibraryService {
     private final UserRepository users;
@@ -32,7 +37,10 @@ public class AdminGameLibraryService {
     private final GameService gameService;
     private final MessageService messages;
 
-    /** 游戏资料与持有判断复用平台服务，撤回记录使用独立仓库 */
+    /**
+     * 依赖注入
+     * 游戏资料与持有判断复用平台服务，撤回记录使用独立仓库
+     */
     public AdminGameLibraryService(UserRepository users, GameRepository games,
             GameRevocationRepository revocations, GamePlayRepository plays,
             BlockcoinService coins, GameService gameService, MessageService messages) {
@@ -45,7 +53,10 @@ public class AdminGameLibraryService {
         this.messages = messages;
     }
 
-    /** 严格读取正整数编号，小数和非法文字返回输入错误 */
+    /**
+     * 读取标识符
+     * 严格读取正整数编号，小数和非法文字返回输入错误
+     */
     private int identifier(DataRequest request, String name) {
         int value = Integer.parseInt(request.getString(name));
         if (value < 1) {
@@ -54,7 +65,10 @@ public class AdminGameLibraryService {
         return value;
     }
 
-    /** 按当前持有关系列出游戏，兼容旧购买归属并排除仍然有效的撤回 */
+    /**
+     * 列出用户游戏库
+     * 按当前持有关系列出游戏，兼容旧购买归属并排除仍然有效的撤回
+     */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
         try {
@@ -76,7 +90,10 @@ public class AdminGameLibraryService {
         }
     }
 
-    /** 删除目标游戏的关联时按游戏编号匹配，其余游戏和收藏保持原值 */
+    /**
+     * 删除游戏关联
+     * 删除目标游戏的关联时按游戏编号匹配，其余游戏和收藏保持原值
+     */
     private void removeGame(List<Game> library, int gameId) {
         for (int index = library.size() - 1; index >= 0; index = index - 1) {
             if (library.get(index).getGameId().equals(gameId)) {
@@ -85,7 +102,10 @@ public class AdminGameLibraryService {
         }
     }
 
-    /** 正在运行的会话标记为撤回，已完成的奖励与记录继续保留 */
+    /**
+     * 停止游戏会话
+     * 正在运行的会话标记为撤回，已完成的奖励与记录继续保留
+     */
     private void stopSessions(int userId, int gameId, Instant now) {
         for (GamePlay play : plays.findByUserIdAndGameIdAndEndedAtIsNull(userId, gameId)) {
             play.setOutcome("revoked");
@@ -95,7 +115,10 @@ public class AdminGameLibraryService {
         }
     }
 
-    /** 撤回使用目标账户锁，与购买和奖励串行处理；同一操作编号只执行一次 */
+    /**
+     * 撤回游戏
+     * 撤回使用目标账户锁，与购买和奖励串行处理，同一操作编号只执行一次
+     */
     @Transactional
     public DataResponse revoke(DataRequest request) {
         if (!"ROLE_ADMIN".equals(CommonMethod.getRoleName())) {

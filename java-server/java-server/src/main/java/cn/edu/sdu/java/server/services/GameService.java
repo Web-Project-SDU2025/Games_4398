@@ -12,7 +12,12 @@ import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.*;
 
-/** 管理游戏和个人关联，写入操作使用事务保持数据一致 */
+/**
+ * 游戏资料和个人关联管理
+ *
+ * 处理游戏的增删改查、用户游戏库、收藏和游戏记录
+ * 所有写操作都用事务保证数据一致性
+ */
 @Service
 public class GameService {
     private final GameRepository gameRepository;
@@ -22,7 +27,10 @@ public class GameService {
     private final RecordVisibilityService visibility;
     private final OfficialLevelCatalog levels;
 
-    /** 保存游戏、账户和记录仓库，相关操作共用实体转换方法 */
+    /**
+     * 依赖注入
+     * 保存游戏、用户和记录相关的仓库，共用实体转换方法
+     */
     public GameService(GameRepository gameRepository, UserRepository userRepository,
                        GameRecordRepository recordRepository, GamePlayRepository playRepository,
                        RecordVisibilityService visibility, OfficialLevelCatalog levels) {
@@ -35,17 +43,16 @@ public class GameService {
     }
 
     /**
-     * 查询当前登录账户
-     * @return 当前登录账户
+     * 获取当前登录用户
+     * 从认证上下文获取用户ID，然后查数据库
      */
     public User currentUser() {
         return userRepository.findById(CommonMethod.getUserId()).orElseThrow();
     }
 
     /**
-     * 将游戏对象整理成前端需要的资料对象
-     * @param game 要转换的游戏
-     * @return 包含游戏基本资料的 Map
+     * 组装游戏信息
+     * 把游戏实体转成前端需要的Map格式，包含ID、名称、分类、介绍和奖励
      */
     public Map<String, Object> gameInfo(Game game) {
         Map<String, Object> info = new HashMap<>();
@@ -59,11 +66,10 @@ public class GameService {
         return info;
     }
 
-    // 查询游戏列表、当前账户的游戏库或收藏
     /**
-     * 根据模式查询全部游戏、当前用户的游戏库或收藏
-     * @param request data 中可包含 mode 和 search
-     * @return 游戏列表
+     * 查询游戏列表
+     * 支持三种模式：全部游戏、游戏库、收藏
+     * 可以按游戏名称或编号搜索
      */
     @Transactional(readOnly = true)
     public DataResponse list(DataRequest request) {
@@ -91,11 +97,10 @@ public class GameService {
         return CommonMethod.getReturnData(results);
     }
 
-    // 保存前校验编号是否重复，重复时保留原有资料
     /**
-     * 新增或修改游戏资料
-     * @param request data 中包含 gameId、游戏编号、名称、分类、介绍和入口路径
-     * @return 保存成功或失败的响应
+     * 新增或修改游戏
+     * 会检查游戏编号是否重复，重复的话保留原有资料
+     * 通关奖励必须在0到最大值之间
      */
     @Transactional
     public DataResponse save(DataRequest request) {
@@ -137,9 +142,9 @@ public class GameService {
     }
 
     /**
-     * 删除游戏，清理关联资料时要求管理员确认后的 removeRelated 标记
-     * @param request data 中包含 gameId 与可选 removeRelated
-     * @return 删除成功或失败的响应
+     * 删除游戏
+     * 删除前要求管理员确认是否同时清理游戏记录、游戏库和收藏
+     * 确认后会在同一事务里删除所有关联数据
      */
     @Transactional
     public DataResponse delete(DataRequest request) {
@@ -164,7 +169,7 @@ public class GameService {
                 }
             }
         } else {
-            // 先移除关联行再删游戏，所有变更由同一事务统一提交或回滚
+            // 先删关联再删游戏，所有操作在同一事务里要么全成功要么全回滚
             recordRepository.deleteByGameGameId(gameId);
             for (User user : users) {
                 boolean changed = user.getGames().remove(game);
@@ -181,9 +186,8 @@ public class GameService {
     }
 
     /**
-     * 修改当前用户的收藏，游戏库由购买流程维护
-     * @param request data 中包含 gameId、mode 和 added
-     * @return 操作成功或失败的响应
+     * 修改收藏
+     * 游戏库由购买流程维护，这里只能改收藏
      */
     @Transactional
     public DataResponse changeCollection(DataRequest request) {
@@ -209,9 +213,9 @@ public class GameService {
     }
 
     /**
-     * 将游戏记录对象整理成前端需要的资料对象
-     * @param record 要转换的游戏记录
-     * @return 包含账号、游戏、分数和时长的 Map
+     * 组装游戏记录信息
+     * 把记录实体转成前端需要的格式，包含用户、游戏、分数、时长和结果
+     * 会话记录会额外显示通关状态和奖励金额
      */
     public Map<String, Object> recordInfo(GameRecord record) {
         Map<String, Object> info = gameInfo(record.getGame());
@@ -243,10 +247,9 @@ public class GameService {
         return info;
     }
 
-    // 管理员可以查看全部记录，游戏用户只查看自己的记录
     /**
-     * 查询当前用户可以查看的游戏记录
-     * @return 游戏记录列表
+     * 查询游戏记录
+     * 管理员能看所有人的记录，普通用户只能看自己的
      */
     @Transactional(readOnly = true)
     public DataResponse records() {
@@ -265,9 +268,8 @@ public class GameService {
     }
 
     /**
-     * 保存当前用户的一次游玩记录
-     * @param request data 中包含 gameId、score 和 durationSeconds
-     * @return 保存成功或失败的响应
+     * 保存游戏记录
+     * 用户手动保存的记录，需要先加入游戏库才能保存
      */
     @Transactional
     public DataResponse saveRecord(DataRequest request) {
@@ -291,17 +293,26 @@ public class GameService {
         return CommonMethod.getReturnMessageOK();
     }
 
-    /** 个人与管理列表共用当前查看账户的隐藏标记，完整数据供首页统计使用 */
+    /**
+     * 标记记录的显示隐藏状态
+     * 个人和管理列表共用，用当前查看账户的隐藏标记
+     */
     public void markRecordVisibility(List<Map<String, Object>> rows) {
         visibility.mark(rows);
     }
 
-    /** 隐藏记录复用独立可见性服务，资金、时长与原记录继续保留 */
+    /**
+     * 隐藏游戏记录
+     * 记录本身还在，只是列表里不显示，资金和时长都保留
+     */
     public DataResponse hideRecord(DataRequest request) {
         return visibility.hide(request);
     }
 
-    /** 恢复当前账户的记录显示，复用隐藏操作相同的访问规则 */
+    /**
+     * 恢复显示游戏记录
+     * 把之前隐藏的记录重新显示出来
+     */
     public DataResponse restoreRecord(DataRequest request) {
         return visibility.restore(request);
     }

@@ -1,7 +1,7 @@
 {
   "name": "element-plus-vite-starter",
   "private": true,
-  "version": "1.12.10",
+  "version": "1.12.13",
   "scripts": {
     "dev": "vite",
     "build": "vite build --manifest",
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "node scripts/check-style.cjs",
     "lint:comments": "node scripts/comment-audit.cjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs games/billiards/tests/*.test.mjs"
   },
   "dependencies": {
     "axios": "^1.4.0",

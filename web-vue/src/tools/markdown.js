@@ -36,7 +36,7 @@ const HTML_OPTIONS = {
 };
 
 // 先解析回复再按标签白名单清理，保留常用 Markdown 排版
-export function renderMarkdown(container, text) {
+function renderMarkdown(container, text) {
   const html = marked.parse(text, MARKDOWN_OPTIONS);
   container.innerHTML = DOMPurify.sanitize(html, HTML_OPTIONS);
   prepareLinks(container);

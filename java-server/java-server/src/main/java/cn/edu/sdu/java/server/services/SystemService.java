@@ -1,33 +1,33 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.DictionaryInfo;
-import cn.edu.sdu.java.server.models.ModifyLog;
 import cn.edu.sdu.java.server.models.SystemInfo;
 import cn.edu.sdu.java.server.payload.response.OptionItem;
 import cn.edu.sdu.java.server.repositorys.DictionaryInfoRepository;
-import cn.edu.sdu.java.server.repositorys.ModifyLogRepository;
 import cn.edu.sdu.java.server.repositorys.SystemInfoRepository;
 import cn.edu.sdu.java.server.util.ComDataUtil;
-import cn.edu.sdu.java.server.util.CommonMethod;
-import cn.edu.sdu.java.server.util.DateTimeTool;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 /**
- * SystemService 系统服务行数
+ * 系统配置服务
+ *
+ * 负责在应用启动时把数据字典和系统配置加载到内存缓存
+ * 这样业务代码就能快速读取配置，避免频繁查数据库
  */
 @Service
 public class SystemService {
     private final DictionaryInfoRepository dictionaryInfoRepository; //数据数据操作自动注入
     private final SystemInfoRepository systemInfoRepository; //数据数据操作自动注入
 
-    private final ModifyLogRepository modifyLogRepository; //数据数据操作自动注入
-    /** 保存字典、系统配置和日志仓库，启动初始化共用同一组依赖 */
-    public SystemService(DictionaryInfoRepository dictionaryInfoRepository, SystemInfoRepository systemInfoRepository, ModifyLogRepository modifyLogRepository) {
+    /**
+     * 依赖注入
+     * 保存字典和系统配置仓库，启动初始化时会用到
+     */
+    public SystemService(DictionaryInfoRepository dictionaryInfoRepository, SystemInfoRepository systemInfoRepository) {
         this.dictionaryInfoRepository = dictionaryInfoRepository;
         this.systemInfoRepository = systemInfoRepository;
-        this.modifyLogRepository = modifyLogRepository;
     }
     /**
      *  initDictionary 初始数据字典 在系统初始时将数据字典加载内存，业务处理是直接从内从中获取数数据字典列表和数据字典名称
@@ -58,7 +58,10 @@ public class SystemService {
         pi.setDictListMap(dictListMap);
         pi.setDictMapMap(dictMapMap);
     }
-    /** 将系统配置加载到进程缓存，空表生成空映射 */
+    /**
+     * 初始化系统配置
+     * 把系统配置表的数据加载到内存Map里，空表就生成空Map
+     */
     public void initSystem() {
         List<SystemInfo> sList = systemInfoRepository.findAll();
         Map<String,String> map = new HashMap<>();
@@ -67,27 +70,6 @@ public class SystemService {
         }
         ComDataUtil pi = ComDataUtil.getInstance();
         pi.setSystemMap(map);
-    }
-    /** 整理修改日志并保存，JSON 解析结果沿用公共转换方法 */
-    public void modifyLog(Object o, boolean isCreate) {
-        String info = CommonMethod.ObjectToJSon(o);
-        if(info == null)
-            return;
-        String tableName = o.getClass().getName();
-        int index = tableName.lastIndexOf('.');
-        if(index > 0) {
-            tableName = tableName.substring(index+1);
-        }
-        ModifyLog l = new ModifyLog();
-        l.setTableName(tableName);
-        if(isCreate)
-            l.setType("0");
-        else
-            l.setType("1");
-        l.setInfo(info);
-        l.setOperateTime(DateTimeTool.parseDateTime(new Date()));
-        l.setOperatorId(CommonMethod.getUserId());
-        modifyLogRepository.save(l);
     }
 }
 

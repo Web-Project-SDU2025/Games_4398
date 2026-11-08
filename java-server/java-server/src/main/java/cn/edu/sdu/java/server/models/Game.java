@@ -4,9 +4,12 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-/*
- * Game 保存游戏编号、名称、分类、介绍和入口路径
- * gameId 是 game 表的主键，游戏库和游戏记录通过它关联游戏
+/**
+ * 游戏信息模型
+ *
+ * 保存游戏的基本信息：编号、名称、分类、介绍和入口路径
+ * gameId是主键，游戏库和游戏记录都通过它来关联游戏
+ * levelReward字段是管理员设置的通关奖励，空值时用默认配置
  */
 @Getter
 @Setter
@@ -21,6 +24,6 @@ public class Game {
     private String category;
     private String description;
     private String gamePath;
-    /** 管理员设置的每次正式通关奖励，旧资料为空时沿用发布配置 */
+    /** 管理员设置的每次正式通关奖励，空值时使用默认配置 */
     private Long levelReward;
 }

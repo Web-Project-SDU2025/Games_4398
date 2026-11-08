@@ -11,7 +11,7 @@ let previousTime = 0;
 const activeToasts = new WeakMap();
 
 // 根据结果文案选择图标和颜色，调用方可以明确指定提示类型
-export function toastType(message) {
+function toastType(message) {
   if (/失败|无法|错误|不足|无效|不能为空|不一致|超出|请先|请填写|请检查|尚未|未配置|不正确|不可用|不能|最多|过期|失效/.test(message)) {
     return "error";
   }

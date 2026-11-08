@@ -7,23 +7,29 @@ import cn.edu.sdu.java.server.services.BlockcoinService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** GameController 提供游戏、游戏库、收藏和游玩记录接口 */
+/**
+ * 游戏控制器
+ *
+ * 提供游戏、游戏库、收藏和游玩记录相关接口
+ */
 @RestController
 @RequestMapping("/api/game")
 public class GameController {
     private final GameService service;
     private final BlockcoinService store;
 
-    /** 保存游戏业务服务，接口校验与事务由服务处理 */
+    /**
+     * 依赖注入
+     * 保存游戏业务服务，接口校验和事务由服务层处理
+     */
     public GameController(GameService service, BlockcoinService store) {
         this.service = service;
         this.store = store;
     }
 
     /**
-     * 查询游戏列表、当前用户的游戏库或当前用户的收藏
-     * @param request data 中可包含 mode 和 search
-     * @return 游戏列表
+     * 查询游戏列表
+     * 支持三种模式：全部游戏、游戏库、收藏
      */
     @PostMapping("/list")
     public DataResponse list(@RequestBody DataRequest request) {
@@ -31,9 +37,8 @@ public class GameController {
     }
 
     /**
-     * 保存游戏资料，只允许管理员调用
-     * @param request data 中包含游戏编号、名称和其他游戏资料
-     * @return 保存成功或失败的响应
+     * 保存游戏资料
+     * 只允许管理员调用，新增或修改游戏信息
      */
     @PostMapping("/save")
     @PreAuthorize("hasRole('ADMIN')")
@@ -42,9 +47,8 @@ public class GameController {
     }
 
     /**
-     * 删除一个没有被其他数据使用的游戏，只允许管理员调用
-     * @param request data 中包含 gameId
-     * @return 删除成功或失败的响应
+     * 删除游戏
+     * 只允许管理员调用，会检查游戏是否被其他数据使用
      */
     @PostMapping("/delete")
     @PreAuthorize("hasRole('ADMIN')")
@@ -53,9 +57,8 @@ public class GameController {
     }
 
     /**
-     * 更新当前用户的收藏，游戏库加入请求按原购买关系校验
-     * @param request data 中包含 gameId、mode 和 added
-     * @return 操作成功或失败的响应
+     * 修改收藏或游戏库
+     * 收藏可以自由添加删除，游戏库加入需要按购买关系校验
      */
     @PostMapping("/collection")
     public DataResponse collection(@RequestBody DataRequest request) {
@@ -67,7 +70,7 @@ public class GameController {
 
     /**
      * 查询游戏记录
-     * @return 管理员可以看到全部记录，游戏用户只能看到自己的记录
+     * 管理员能看全部记录，普通用户只能看自己的
      */
     @PostMapping("/records")
     public DataResponse records() {
@@ -75,22 +78,27 @@ public class GameController {
     }
 
     /**
-     * 保存当前用户的一次游玩记录
-     * @param request data 中包含 gameId、score 和 durationSeconds
-     * @return 保存成功或失败的响应
+     * 保存游戏记录
+     * 用户手动保存的游玩记录
      */
     @PostMapping("/recordSave")
     public DataResponse recordSave(@RequestBody DataRequest request) {
         return service.saveRecord(request);
     }
 
-    /** 隐藏当前账户看到的记录，旧地址也进入同一隐藏流程 */
+    /**
+     * 隐藏游戏记录
+     * 记录本身还在，只是列表里不显示
+     */
     @PostMapping({"/recordHide", "/recordDelete"})
     public DataResponse recordHide(@RequestBody DataRequest request) {
         return service.hideRecord(request);
     }
 
-    /** 恢复当前查看账户隐藏的记录，原统计资料继续保持完整 */
+    /**
+     * 恢复游戏记录
+     * 把之前隐藏的记录重新显示出来，统计数据保持完整
+     */
     @PostMapping("/recordRestore")
     public DataResponse recordRestore(@RequestBody DataRequest request) {
         return service.restoreRecord(request);

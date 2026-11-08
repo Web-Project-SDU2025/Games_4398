@@ -17,17 +17,26 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.StandardOpenOption;
 
-/** 在调用模型前统一检查身份、并发、频率和每日用量 */
+/**
+ * AI请求保护服务
+ *
+ * 在调用AI模型前统一检查身份、并发、频率和每日用量
+ * 防止滥用并保护系统资源
+ */
 @Component
 public class AiRequestGuard {
-    // 频率窗口的长度，单位为毫秒
+    /** 频率窗口的长度（毫秒） */
     private static final long MINUTE_MILLISECONDS = 60000;
-    // 分钟来源表和每日账号表各自保留的身份数量上限
+
+    /** 分钟来源表和每日账号表各自保留的身份数量上限 */
     private static final int TRACKED_IDENTITY_LIMIT = 10000;
-    // 每日计数文件的字节上限，读取前检查文件长度
+
+    /** 每日计数文件的字节上限，读取前检查文件长度 */
     private static final long QUOTA_FILE_BYTE_LIMIT = 1024 * 1024;
-    // 每日用量使用的日期时区
+
+    /** 每日用量使用的日期时区 */
     private static final ZoneId QUOTA_ZONE = ZoneId.of("Asia/Shanghai");
+
     private final ObjectMapper mapper;
     private final Clock clock;
     private final Path quotaFile;
@@ -45,7 +54,10 @@ public class AiRequestGuard {
     private int minuteCount;
     private DailyUsage dailyUsage;
 
-    /** 从配置读取保护上限，零或负数配置会阻止服务启动 */
+    /**
+     * 从配置读取保护上限
+     * 零或负数配置会阻止服务启动
+     */
     @Autowired
     public AiRequestGuard(ObjectMapper mapper,
             @Value("${app.ai.quota-file:runtime/ai-usage.json}") String quotaFile,
@@ -60,7 +72,10 @@ public class AiRequestGuard {
                 accountDailyLimit, globalDailyLimit);
     }
 
-    /** 测试使用临时文件和固定时钟，隔离各项测试的计数 */
+    /**
+     * 测试构造函数
+     * 测试时使用临时文件和固定时钟，隔离各项测试的计数
+     */
     public AiRequestGuard(ObjectMapper mapper, Path quotaFile, Clock clock,
             int concurrentLimit, int accountMinuteLimit, int addressMinuteLimit,
             int globalMinuteLimit, int accountDailyLimit, int globalDailyLimit) {
@@ -76,7 +91,10 @@ public class AiRequestGuard {
         dailyUsage = loadUsage();
     }
 
-    /** 检查一项保护配置，零或负数使配置校验失败 */
+    /**
+     * 检查配置
+     * 检查一项保护配置，零或负数使配置校验失败
+     */
     private int positiveLimit(int limit) {
         if (limit <= 0) {
             throw new IllegalArgumentException("AI 保护上限必须大于零");
@@ -84,7 +102,10 @@ public class AiRequestGuard {
         return limit;
     }
 
-    /** 读取每日用量，文件损坏时保留文件并报告读取失败 */
+    /**
+     * 读取每日用量
+     * 从文件读取，文件损坏时保留文件并报告读取失败
+     */
     private DailyUsage loadUsage() {
         if (!Files.exists(quotaFile)) {
             return new DailyUsage();
@@ -116,7 +137,10 @@ public class AiRequestGuard {
         }
     }
 
-    /** 获取计数表中的次数，未出现过的身份返回零 */
+    /**
+     * 获取计数
+     * 获取计数表中的次数，未出现过的身份返回零
+     */
     private int count(Map<String, Integer> counts, String key) {
         Integer value = counts.get(key);
         if (value == null) {
@@ -125,7 +149,10 @@ public class AiRequestGuard {
         return value;
     }
 
-    /** 根据北京时间重置每日额度，根据经过的时长重置分钟频率 */
+    /**
+     * 刷新时间窗口
+     * 根据北京时间重置每日额度，根据经过的时长重置分钟频率
+     */
     private void refreshWindows(long now) {
         LocalDate today = LocalDate.now(clock.withZone(QUOTA_ZONE));
         String day = today.toString();
@@ -141,7 +168,10 @@ public class AiRequestGuard {
         }
     }
 
-    /** 原子检查并预扣一次调用，账号换对话也共用计数，失败调用同样占用额度 */
+    /**
+     * 开始请求
+     * 原子检查并预扣一次调用，账号换对话也共用计数，失败调用同样占用额度
+     */
     public synchronized void begin(Integer userId, String address) {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("请先登录");
@@ -174,7 +204,10 @@ public class AiRequestGuard {
         activeRequests = activeRequests + 1;
     }
 
-    /** 在成功或异常后释放并发名额，每日调用次数保持已扣除状态 */
+    /**
+     * 结束请求
+     * 在成功或异常后释放并发名额，每日调用次数保持已扣除状态
+     */
     public synchronized void finish(Integer userId) {
         Integer accountRequests = activeAccounts.get(userId);
         if (accountRequests == null) {
@@ -188,7 +221,10 @@ public class AiRequestGuard {
         activeRequests = activeRequests - 1;
     }
 
-    /** 文件锁串行处理共享文件的日额度，持锁进程结束后操作系统释放锁 */
+    /**
+     * 预留每日调用额度
+     * 文件锁串行处理共享文件的日额度，持锁进程结束后操作系统释放锁
+     */
     private void reserveDailyCall(String account) {
         Path lockFile = quotaFile.resolveSibling(quotaFile.getFileName() + ".lock");
         try {
@@ -221,7 +257,10 @@ public class AiRequestGuard {
         }
     }
 
-    /** 临时文件写完后原子替换正式记录，写入失败时保留上次完整记录 */
+    /**
+     * 保存用量数据
+     * 临时文件写完后原子替换正式记录，写入失败时保留上次完整记录
+     */
     private void saveUsage() throws IOException {
         Files.createDirectories(quotaFile.getParent());
         Path temporary = quotaFile.resolveSibling(quotaFile.getFileName() + ".tmp");
@@ -233,7 +272,10 @@ public class AiRequestGuard {
         }
     }
 
-    /** 保存每日全站和账号调用次数，公开字段供 JSON 编码器读写 */
+    /**
+     * 每日用量数据类
+     * 保存每日全站和账号调用次数，公开字段供JSON编码器读写
+     */
     public static class DailyUsage {
         public String day = "";
         public int total;

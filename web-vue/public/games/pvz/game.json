@@ -41,8 +41,8 @@
   "dataDirectory": "levels",
   "resources": {
     "game.jar": {
-      "path": "resources/0-9160b27d19f923294c77.bin",
-      "bytes": 182555
+      "path": "resources/0-bf7a5c437ed31174155b.bin",
+      "bytes": 183322
     },
     "gson-2.11.0.jar": {
       "path": "resources/1-57928d6e5a6edeb2abd3.bin",

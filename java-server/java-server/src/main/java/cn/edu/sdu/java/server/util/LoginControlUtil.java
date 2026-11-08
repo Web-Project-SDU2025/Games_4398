@@ -13,28 +13,43 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-/** 生成图形验证码，限制内存数量和有效期，验证后立即删除 */
+/**
+ * 登录验证码工具类
+ *
+ * 生成和验证图形验证码
+ * 限制内存数量和有效期，验证后立即删除
+ */
 public class LoginControlUtil {
-    // 验证码图片宽度，单位为像素
+    /** 验证码图片宽度（像素） */
     private static final int IMAGE_WIDTH = 54;
-    // 验证码图片高度，单位为像素
+
+    /** 验证码图片高度（像素） */
     private static final int IMAGE_HEIGHT = 20;
-    // 每张图片包含的数字个数
+
+    /** 每张图片包含的数字个数 */
     private static final int CODE_LENGTH = 4;
-    // 同时保存在内存中的验证码数量上限
+
+    /** 同时保存在内存中的验证码数量上限 */
     private static final int CODE_LIMIT = 2000;
-    // 验证码有效期，单位为毫秒
+
+    /** 验证码有效期（毫秒） */
     private static final long CODE_LIFETIME = 5 * 60 * 1000;
     private static final LoginControlUtil INSTANCE = new LoginControlUtil();
     private final SecureRandom random = new SecureRandom();
     private final Map<Integer, Captcha> codes = new HashMap<>();
 
-    /** 返回所有验证码接口共用的管理对象 */
+    /**
+     * 获取单例实例
+     * 返回所有验证码接口共用的管理对象
+     */
     public static LoginControlUtil getInstance() {
         return INSTANCE;
     }
 
-    /** 生成随机数字和 PNG 图片，返回验证码编号与图片地址 */
+    /**
+     * 生成验证码
+     * 生成随机数字和PNG图片，返回验证码ID和图片地址
+     */
     public synchronized Map<String, Object> getValidateCodeDataMap() {
         removeExpiredCodes();
         if (codes.size() >= CODE_LIMIT) {
@@ -75,7 +90,10 @@ public class LoginControlUtil {
         }
     }
 
-    /** 读取仍有效的验证码，供原有检查接口和测试使用 */
+    /**
+     * 获取验证码文本
+     * 读取仍有效的验证码，供检查接口和测试使用
+     */
     public synchronized String getValidateCode(Integer codeId) {
         removeExpiredCodes();
         Captcha captcha = codes.get(codeId);
@@ -85,7 +103,10 @@ public class LoginControlUtil {
         return captcha.text;
     }
 
-    /** 比较并移除验证码，空输入或过期输入返回失败 */
+    /**
+     * 验证并删除验证码
+     * 比较验证码后立即删除，空输入或过期返回失败
+     */
     public synchronized boolean checkAndRemoveCode(Integer codeId, String code) {
         removeExpiredCodes();
         if (codeId == null || code == null || code.isBlank()) {
@@ -98,7 +119,10 @@ public class LoginControlUtil {
         return code.equals(captcha.text);
     }
 
-    /** 清除超过有效期的验证码，后续请求复用释放的内存名额 */
+    /**
+     * 清除过期验证码
+     * 删除超过有效期的验证码，释放内存名额
+     */
     private void removeExpiredCodes() {
         long now = System.currentTimeMillis();
         Iterator<Captcha> iterator = codes.values().iterator();
@@ -110,12 +134,18 @@ public class LoginControlUtil {
         }
     }
 
-    /** 保存验证码文字和生成时间 */
+    /**
+     * 验证码数据类
+     * 保存验证码文字和生成时间
+     */
     private static class Captcha {
         private final String text;
         private final long createdAt;
 
-        /** 保存本次验证码的内容和时间 */
+        /**
+         * 构造验证码对象
+         * 保存本次验证码的内容和时间
+         */
         private Captcha(String text, long createdAt) {
             this.text = text;
             this.createdAt = createdAt;

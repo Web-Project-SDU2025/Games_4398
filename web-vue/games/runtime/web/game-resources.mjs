@@ -1,5 +1,5 @@
 // 资源由网页后台获取并送入 Java 内存目录，下载管理器无需参与运行过程
-export const RESOURCE_LIMITS = {
+const RESOURCE_LIMITS = {
   maximumBytes: 134217728,
   timeoutMilliseconds: 60000,
   attempts: 2,

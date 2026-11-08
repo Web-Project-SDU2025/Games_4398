@@ -19,7 +19,13 @@ import cn.edu.sdu.java.server.util.FieldLimits;
  */
 import lombok.Getter;
 import lombok.Setter;
-/** 统一保存身份、个人资料和游戏关联，账户关联使用独立集合 */
+
+/**
+ * 用户实体类
+ *
+ * 统一保存账户信息、个人资料和游戏关联
+ * 包含登录账号、密码哈希、游戏库和收藏列表
+ */
 @Getter
 @Setter
 @Entity
