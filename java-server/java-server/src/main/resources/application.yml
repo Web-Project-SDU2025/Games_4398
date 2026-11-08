@@ -64,3 +64,5 @@ app:
     ip-attempt-limit: 60
   # 本地配置文件可开启检查切号，服务器默认关闭
   local-account-switch: ${LOCAL_ACCOUNT_SWITCH:false}
+  # 演示模式：免密切号接口对任意来源开放，登录页显示一键进入按钮；默认开启，正式环境用 DEMO_MODE=false 关闭
+  demo-mode: ${DEMO_MODE:true}

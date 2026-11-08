@@ -20,13 +20,17 @@ export async function userLoginReq(
   return result.data;
 }
 
-// 本机检查可用时返回账户选项，线上关闭时返回空列表
+// 本机检查或演示模式可用时返回账户选项，线上关闭时返回空列表；未登录时不携带凭证
 export async function getSwitchAccounts(token) {
+  const headers = {};
+  if (token) {
+    headers.Authorization = "Bearer " + token;
+  }
   const result = await axios.post(
     "/api/localAccount/list",
     { data: {} },
     {
-      headers: { Authorization: "Bearer " + token },
+      headers: headers,
     }
   );
   if (result.data.code !== 0) {
@@ -35,13 +39,17 @@ export async function getSwitchAccounts(token) {
   return result.data.data;
 }
 
-// 让后端签发目标账户的真实凭证，再获取对应权限菜单，全部成功才切换页面身份
+// 让后端签发目标账户的真实凭证，再获取对应权限菜单，全部成功才切换页面身份；未登录时不携带凭证
 export async function switchAccount(username, token) {
+  const headers = {};
+  if (token) {
+    headers.Authorization = "Bearer " + token;
+  }
   const response = await axios.post(
     "/api/localAccount/switch",
     { data: { username: username } },
     {
-      headers: { Authorization: "Bearer " + token },
+      headers: headers,
     }
   );
   if (response.data.code !== 0) {

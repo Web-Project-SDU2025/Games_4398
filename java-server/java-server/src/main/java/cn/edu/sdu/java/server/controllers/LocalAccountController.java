@@ -17,27 +17,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** 已登录用户在本机检查时可免密切号，关闭开关后接口不提供该能力 */
+/** 已登录用户在本机检查时可免密切号；演示模式供课程在线检查开放，未开启时接口不提供该能力 */
 @RestController
 @RequestMapping("/api/localAccount")
 public class LocalAccountController {
     private final UserRepository users;
     private final AuthService auth;
     private final boolean enabled;
+    private final boolean demoMode;
 
-    /** 从配置读取检查开关，默认关闭，线上环境不应开启 */
+    /** 从配置读取检查开关和演示开关，两个开关默认关闭 */
     public LocalAccountController(UserRepository users, AuthService auth,
-            @Value("${app.local-account-switch:false}") boolean enabled) {
+            @Value("${app.local-account-switch:false}") boolean enabled,
+            @Value("${app.demo-mode:false}") boolean demoMode) {
         this.users = users;
         this.auth = auth;
         this.enabled = enabled;
+        this.demoMode = demoMode;
     }
 
-    /** 按连接来源判断本机访问，转发头由客户端输入独立保存 */
+    /** 演示模式对任意来源开放；本机检查开关仍要求本机直连，转发头由客户端输入独立保存 */
     public boolean available(HttpServletRequest request) {
+        if (demoMode) {
+            return true;
+        }
+        if (!enabled) {
+            return false;
+        }
         String address = request.getRemoteAddr();
-        return enabled && ("127.0.0.1".equals(address) || "::1".equals(address)
-                || "0:0:0:0:0:0:0:1".equals(address));
+        return "127.0.0.1".equals(address) || "::1".equals(address)
+                || "0:0:0:0:0:0:0:1".equals(address);
     }
 
     /** 返回检查模式状态和账号名称，不返回密码、联系方式或其他资料 */
