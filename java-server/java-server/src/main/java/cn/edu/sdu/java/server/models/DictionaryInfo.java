@@ -1,4 +1,15 @@
 package cn.edu.sdu.java.server.models;
+
+import cn.edu.sdu.java.server.util.FieldLimits;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * 数据字典实体类
  *

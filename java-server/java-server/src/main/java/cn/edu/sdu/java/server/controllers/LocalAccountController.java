@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Enumeration;
 
 /**
  * 本地账户控制器
@@ -26,16 +27,18 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/localAccount")
 public class LocalAccountController {
+    /** 常见代理转发标记，代理请求不能借用后端的本机连接免密切号 */
+    private static final List<String> PROXY_HEADERS = List.of("forwarded", "x-real-ip");
     private final UserRepository users;
     private final AuthService auth;
     private final boolean enabled;
 
     /**
      * 构造函数
-     * 从配置读取检查开关，默认关闭，线上环境不应开启
+     * 从配置读取检查开关，本机默认可用，部署时可以显式关闭
      */
     public LocalAccountController(UserRepository users, AuthService auth,
-            @Value("${app.local-account-switch:false}") boolean enabled) {
+            @Value("${app.local-account-switch:true}") boolean enabled) {
         this.users = users;
         this.auth = auth;
         this.enabled = enabled;
@@ -43,12 +46,31 @@ public class LocalAccountController {
 
     /**
      * 检查本地访问
-     * 按连接来源判断本机访问，转发头由客户端输入独立保存
+     * 按实际连接来源判断本机访问，带代理标记的请求不提供免密切号
      */
     public boolean available(HttpServletRequest request) {
+        if (!enabled || hasProxyHeaders(request)) {
+            return false;
+        }
         String address = request.getRemoteAddr();
-        return enabled && ("127.0.0.1".equals(address) || "::1".equals(address)
-                || "0:0:0:0:0:0:0:1".equals(address));
+        return "127.0.0.1".equals(address) || "::1".equals(address)
+                || "0:0:0:0:0:0:0:1".equals(address);
+    }
+
+    /** 只检查代理标记是否存在，不信任客户端填写的转发地址 */
+    private boolean hasProxyHeaders(HttpServletRequest request) {
+        Enumeration<String> names = request.getHeaderNames();
+        if (names == null) {
+            return false;
+        }
+        while (names.hasMoreElements()) {
+            String name = names.nextElement();
+            String normalized = name.toLowerCase(java.util.Locale.ROOT);
+            if (PROXY_HEADERS.contains(normalized) || normalized.startsWith("x-forwarded-")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

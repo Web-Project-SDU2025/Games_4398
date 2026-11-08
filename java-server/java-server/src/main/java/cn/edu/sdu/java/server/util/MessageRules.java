@@ -41,4 +41,3 @@ public final class MessageRules {
     private MessageRules() {
     }
 }
-}

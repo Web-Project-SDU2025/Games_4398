@@ -31,4 +31,3 @@ public final class BilliardsRewards {
     private BilliardsRewards() {
     }
 }
-}

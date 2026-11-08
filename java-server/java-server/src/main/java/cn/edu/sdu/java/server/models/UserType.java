@@ -2,6 +2,8 @@ package cn.edu.sdu.java.server.models;
 
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 用户类型实体类

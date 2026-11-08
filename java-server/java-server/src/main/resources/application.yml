@@ -62,5 +62,5 @@ app:
     request-byte-limit: 16384
     # 同一连接来源每分钟最多访问 AI 入口次数，包含无效请求
     ip-attempt-limit: 60
-  # 本地配置文件可开启检查切号，服务器默认关闭
-  local-account-switch: ${LOCAL_ACCOUNT_SWITCH:false}
+  # 默认允许本机检查切号，远程和代理请求仍由接口拒绝，部署时可以显式关闭
+  local-account-switch: ${LOCAL_ACCOUNT_SWITCH:true}

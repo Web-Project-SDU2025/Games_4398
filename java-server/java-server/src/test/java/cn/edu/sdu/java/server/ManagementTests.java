@@ -98,6 +98,49 @@ class ManagementTests {
         verifyNoInteractions(users, auth);
     }
 
+    /** 本机地址也可能来自反向代理，存在转发标记时不能列出账户或签发凭证 */
+    @Test
+    void accountSwitchRejectsProxyHeadersOnLoopback() {
+        UserRepository users = mock(UserRepository.class);
+        AuthService auth = mock(AuthService.class);
+        LocalAccountController controller = new LocalAccountController(users, auth, true);
+        for (String address : List.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")) {
+            MockHttpServletRequest direct = new MockHttpServletRequest();
+            direct.setRemoteAddr(address);
+            assertTrue(controller.available(direct));
+            for (String header : List.of("Forwarded", "X-Forwarded-For", "X-Forwarded-Host",
+                    "X-Forwarded-Proto", "X-Real-IP")) {
+                MockHttpServletRequest proxy = new MockHttpServletRequest();
+                proxy.setRemoteAddr(address);
+                proxy.addHeader(header, "127.0.0.1");
+                assertFalse(controller.available(proxy));
+                DataResponse response = controller.list(proxy);
+                Map<?, ?> result = (Map<?, ?>) response.getData();
+                assertEquals(false, result.get("enabled"));
+                assertEquals(List.of(), result.get("accounts"));
+                assertThrows(ResponseStatusException.class, new SwitchThroughProxy(controller, proxy));
+            }
+        }
+        verifyNoInteractions(users, auth);
+    }
+
+    /** 保存代理请求，由断言执行真实切号入口，不使用匿名回调 */
+    private static class SwitchThroughProxy implements org.junit.jupiter.api.function.Executable {
+        private final LocalAccountController controller;
+        private final MockHttpServletRequest request;
+
+        /** 保存本次要核验的接口和请求 */
+        SwitchThroughProxy(LocalAccountController controller, MockHttpServletRequest request) {
+            this.controller = controller;
+            this.request = request;
+        }
+
+        /** 代理访问必须由接口返回禁止状态 */
+        public void execute() {
+            controller.switchAccount(new DataRequest(), request);
+        }
+    }
+
     /** 右上角切换到目标账户时也更新登录时间和次数 */
     @Test
     void accountSwitchRecordsSuccessfulLogin() {
