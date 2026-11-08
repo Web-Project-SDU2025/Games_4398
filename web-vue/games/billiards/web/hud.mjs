@@ -88,7 +88,10 @@ export function createHud(match, ui, images) {
     if (match.phase === "over") {
       title.textContent = participantName(match, match.winner) + " 获胜";
       start.textContent = "再来一局";
-      const earned = match.achievements[match.winner];
+      const earned = [];
+      for (const achievement of match.achievements[match.winner]) {
+        earned.push(achievement);
+      }
       summary.textContent = earned.join(" / ");
       summary.hidden = earned.length === 0;
     } else if (match.phase === "opening") {

@@ -51,6 +51,9 @@ public final class BilliardsJudge {
         /** 本盘是否已结束 */
         public boolean ended;
 
+        /** 获胜玩家编号，玩家一为 0，玩家二为 1，未结束时为 -1 */
+        public int winner = -1;
+
         /** 是否为人机对战 */
         public boolean aiMatch;
 
@@ -157,6 +160,7 @@ public final class BilliardsJudge {
                 foul = true;
             }
             state.ended = true;
+            state.winner = winner;
         }
         List<String> result = new ArrayList<>();
         if (!foul && ownPots > 0) {

@@ -11,6 +11,7 @@ function testHost() {
   const callbacks = new Map();
   const messages = [];
   let time = 0;
+  let runNumber = 0;
   return {
     messages: messages,
     document: { visibilityState: "visible" },
@@ -21,9 +22,10 @@ function testHost() {
       },
     },
     crypto: {
-      // 预览使用固定合法编号，正式代码继续由浏览器创建随机编号
+      // 每盘返回不同的合法编号，验证再来一局不会复用旧会话
       randomUUID: function randomUUID() {
-        return "a88f3c18-67c7-46fa-bd50-66e8566b29a4";
+        runNumber = runNumber + 1;
+        return "a88f3c18-67c7-46fa-bd50-" + String(runNumber).padStart(12, "0");
       },
     },
     location: { origin: "https://platform.test" },
@@ -220,9 +222,11 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
   const host = testHost();
   const received = [];
   const reports = [];
+  const requests = [];
   // 后端确定先手并返回实际奖励，客户端不传入金额
   async function fetchResource(address, options) {
     const values = JSON.parse(options.body).data;
+    requests.push({ address: address, values: values });
     if (address.endsWith("/billiards")) {
       reports.push(values);
       assert.equal(values.challenge, "ticket");
@@ -231,10 +235,22 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
         return Response.json({ code: 0, data: { starter: 1, reward: 0, matchMode: "single" } });
       }
       if (values.sequence === 1) {
-        return Response.json({ code: 0, data: { reward: 0, titles: "", repeated: false } });
+        return Response.json({
+          code: 0,
+          data: { reward: 0, titles: "", repeated: false, ended: false },
+        });
       }
       const repeated = reports.length > 3;
-      return Response.json({ code: 0, data: { reward: 21, titles: "开门红 +1、获胜 +20", repeated: repeated } });
+      return Response.json({
+        code: 0,
+        data: {
+          reward: 21,
+          titles: "开门红 +1、获胜 +20",
+          repeated: repeated,
+          ended: true,
+          winner: 0,
+        },
+      });
     }
     return Response.json({ code: 0, data: { challenge: "ticket", reward: 0 } });
   }
@@ -264,6 +280,14 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
   }
   assert.equal(received[2].result.data.reward, 21);
   assert.equal(notifications, 1);
+  const finishValues = [];
+  for (const request of requests) {
+    if (request.address.endsWith("/finish")) {
+      finishValues.push(request.values);
+    }
+  }
+  assert.equal(finishValues.length, 1);
+  assert.equal(finishValues[0].outcome, "passed");
   await tracker.stop();
 });
 
@@ -301,6 +325,93 @@ test("台球单杆被拒后停止该盘上报且允许重新开盘", async funct
   assert.equal(received[1].result.code, 1);
   assert.equal(received[2].result.code, 0);
   await tracker.stop();
+});
+
+// 第一盘结束后继续下一盘，两盘使用独立会话，退出不能补写成未通过
+test("八球胜负分别结束记录且再来一局使用新会话", async function testBilliardsRematch() {
+  for (const winner of [0, 1]) {
+    const host = testHost();
+    const requests = [];
+    // 模拟服务器已经核定的胜负，双人获胜即使没有货币奖励也要保存通过
+    async function fetchResource(address, options) {
+      const values = JSON.parse(options.body).data;
+      requests.push({ address: address, values: values });
+      if (address.endsWith("/billiards")) {
+        return Response.json({
+          code: 0,
+          data: { ended: values.sequence > 0, winner: winner, reward: 0, titles: "" },
+        });
+      }
+      return Response.json({ code: 0, data: { challenge: "ticket", reward: 0 } });
+    }
+    const tracker = createGameplayTracker(null, { id: "billiards" },
+      { token: "token" }, fetchResource, host);
+    await tracker.flush();
+    assert.equal(requests.length, 0);
+    for (const round of ["first", "second"]) {
+      tracker.reportBilliards({ roundId: round, sequence: 0, matchMode: "local" });
+      await tracker.flush();
+      host.advance(5000);
+      tracker.reportBilliards({ roundId: round, sequence: 1, shot: {} });
+      tracker.reportBilliards({ roundId: round, sequence: 1, shot: {} });
+      await tracker.flush();
+    }
+    await tracker.stop();
+    const starts = [];
+    const finishes = [];
+    for (const request of requests) {
+      if (request.address.endsWith("/begin")) {
+        starts.push(request.values);
+      } else if (request.address.endsWith("/finish")) {
+        finishes.push(request.values);
+      }
+    }
+    assert.equal(starts.length, 2);
+    assert.notEqual(starts[0].runId, starts[1].runId);
+    assert.equal(finishes.length, 2);
+    let expected = "failed";
+    if (winner === 0) {
+      expected = "passed";
+    }
+    assert.equal(finishes[0].outcome, expected);
+    assert.equal(finishes[1].outcome, expected);
+    assert.equal(finishes[0].activeMilliseconds, 5000);
+    assert.equal(finishes[1].activeMilliseconds, 5000);
+  }
+});
+
+// 中途重开只将上一盘记为退出，新盘仍可提交自己的最终结果
+test("八球中途重开不覆盖新盘胜利", async function testBilliardsRestart() {
+  const host = testHost();
+  const requests = [];
+  // 只在第二盘最后一杆返回获胜，第一盘没有完成判决
+  async function fetchResource(address, options) {
+    const values = JSON.parse(options.body).data;
+    requests.push({ address: address, values: values });
+    if (address.endsWith("/billiards")) {
+      const ended = values.roundId === "second" && values.sequence === 1;
+      return Response.json({ code: 0, data: { ended: ended, winner: 0, reward: 0 } });
+    }
+    return Response.json({ code: 0, data: { challenge: "ticket", reward: 0 } });
+  }
+  const tracker = createGameplayTracker(null, { id: "billiards" },
+    { token: "token" }, fetchResource, host);
+  tracker.reportBilliards({ roundId: "first", sequence: 0, matchMode: "single" });
+  await tracker.flush();
+  tracker.reportBilliards({ roundId: "second", sequence: 0, matchMode: "single" });
+  await tracker.flush();
+  tracker.reportBilliards({ roundId: "second", sequence: 1, shot: {} });
+  await tracker.stop();
+  const finishes = [];
+  for (const request of requests) {
+    if (request.address.endsWith("/finish")) {
+      finishes.push(request.values);
+    }
+  }
+  assert.equal(finishes.length, 2);
+  assert.equal(finishes[0].outcome, "closed");
+  assert.equal(finishes[1].outcome, "passed");
+  assert.notEqual(finishes[0].runId, finishes[1].runId);
 });
 
 // 记录描述包含账户、北京时间和结果，试玩使用独立标记

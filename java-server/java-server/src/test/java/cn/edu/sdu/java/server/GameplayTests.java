@@ -15,6 +15,7 @@ import cn.edu.sdu.java.server.services.GameplayService;
 import cn.edu.sdu.java.server.services.OfficialLevelCatalog;
 import cn.edu.sdu.java.server.services.UserDetailsImpl;
 import cn.edu.sdu.java.server.util.GameplayRules;
+import cn.edu.sdu.java.server.util.BilliardsRewards;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -180,6 +181,33 @@ class GameplayTests {
             assertEquals(10000L, play.getActiveMilliseconds());
             verify(fixture.coins, never()).award(any(), any(), anyString(), anyString(), anyLong());
         }
+    }
+
+    /** 八球已确认的胜负不受退出消息影响，客户端也不能跳过判决自行上报通过 */
+    @Test
+    void billiardsCloseKeepsConfirmedResultAndRejectsInventedVictory() {
+        for (String confirmed : List.of("passed", "failed")) {
+            Fixture fixture = new Fixture();
+            GamePlay play = fixture.start();
+            fixture.game.setGamePath(BilliardsRewards.GAME_PATH);
+            play.setRewardAmount(0L);
+            play.setAwardedAmount(20L);
+            play.setOutcome(confirmed);
+            DataRequest close = fixture.updateRequest(play, "closed");
+            Map<?, ?> result = (Map<?, ?>) fixture.service.finish(close).getData();
+            assertEquals(confirmed, result.get("outcome"));
+            assertEquals(confirmed, play.getOutcome());
+            assertNotNull(play.getEndedAt());
+            assertEquals(20L, play.getAwardedAmount());
+            verify(fixture.coins, never()).award(any(), any(), anyString(), anyString(), anyLong());
+        }
+        Fixture fixture = new Fixture();
+        GamePlay play = fixture.start();
+        fixture.game.setGamePath(BilliardsRewards.GAME_PATH);
+        play.setRewardAmount(0L);
+        assertEquals(1, fixture.service.finish(fixture.updateRequest(play, "passed")).getCode());
+        assertEquals("playing", play.getOutcome());
+        assertNull(play.getEndedAt());
     }
 
     /** 心跳重复值只保持存活，虚报时长按服务器经过时间限额并拒绝回退 */

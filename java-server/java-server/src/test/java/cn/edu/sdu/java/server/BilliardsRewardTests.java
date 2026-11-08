@@ -153,6 +153,10 @@ class BilliardsRewardTests {
         assertEquals(1L, settled.get("reward"));
         assertEquals(1L, repeated.get("reward"));
         assertEquals(true, repeated.get("repeated"));
+        assertEquals(true, settled.get("ended"));
+        assertEquals(1, settled.get("winner"));
+        assertEquals(1, repeated.get("winner"));
+        assertEquals("failed", fixture.play.getOutcome());
         verify(fixture.coins, times(1)).awardBilliards(fixture.user, fixture.game,
                 round.getRoundId() + ":settlement", "本局结算：开门红 +1", 1L);
         assertEquals(1L, fixture.play.getAwardedAmount());
@@ -178,6 +182,12 @@ class BilliardsRewardTests {
         Map<?, ?> result = (Map<?, ?>) fixture.service.report(ending).getData();
         assertEquals(25L, result.get("reward"));
         assertEquals(titles, result.get("titles"));
+        assertEquals(true, result.get("ended"));
+        assertEquals(0, result.get("winner"));
+        assertEquals("passed", fixture.play.getOutcome());
+        Map<?, ?> repeated = (Map<?, ?>) fixture.service.report(ending).getData();
+        assertEquals(0, repeated.get("winner"));
+        assertEquals(true, repeated.get("repeated"));
         assertEquals(25L, fixture.play.getAwardedAmount());
         verify(fixture.coins, times(1)).awardBilliards(any(), any(), anyString(), anyString(), anyLong());
     }
@@ -210,6 +220,8 @@ class BilliardsRewardTests {
             List<String> earned = BilliardsJudge.apply(state,
                     mapper.valueToTree(shot(0, 8, List.of(8), List.of(), List.of())));
             assertEquals(aiMatch, earned.contains("win"));
+            assertTrue(state.ended);
+            assertEquals(0, state.winner);
         }
         BilliardsJudge.State computerWins = wonPosition(true);
         computerWins.current = 1;
@@ -217,6 +229,7 @@ class BilliardsRewardTests {
         List<String> earned = BilliardsJudge.apply(computerWins,
                 mapper.valueToTree(shot(1, 8, List.of(8), List.of(), List.of())));
         assertFalse(earned.contains("win"));
+        assertEquals(1, computerWins.winner);
         assertEquals(20L, BilliardsRewards.AMOUNTS.get(BilliardsRewards.IDS.indexOf("win")));
     }
 

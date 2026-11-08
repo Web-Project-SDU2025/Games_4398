@@ -68,6 +68,7 @@ export function createGameplayTracker(
   let lastSample = host.performance.now();
   let lastHeartbeat = 0;
   let paused = false;
+  let billiardsRound = "";
 
   // 同源平台只收到状态变化消息，具体记录由其重新向后端读取
   function notify(type, message) {
@@ -94,6 +95,7 @@ export function createGameplayTracker(
           challenge: "",
           activeMilliseconds: 0,
           finished: false,
+          finishQueued: false,
         });
       }
     }
@@ -103,6 +105,12 @@ export function createGameplayTracker(
     }
     if (Number.isFinite(event.activeMilliseconds)) {
       session.activeMilliseconds = event.activeMilliseconds;
+    }
+    if (event.type === "finish") {
+      if (session.finishQueued || session.finished) {
+        return;
+      }
+      session.finishQueued = true;
     }
     queue.push({ event: event, attempts: 0 });
   }
@@ -115,6 +123,10 @@ export function createGameplayTracker(
     const now = host.performance.now();
     const elapsed = Math.max(0, now - lastSample);
     lastSample = now;
+    const session = sessions.get(genericRun);
+    if (!session || session.finished || session.finishQueued) {
+      return;
+    }
     if (!paused && host.document.visibilityState === "visible") {
       genericMilliseconds = genericMilliseconds + elapsed;
     }
@@ -182,6 +194,18 @@ export function createGameplayTracker(
       }
       notify(GAMEPLAY_MESSAGES.notice, result.msg);
       return;
+    }
+    if (event.type === "billiards" && result.data.ended === true) {
+      let outcome = "failed";
+      if (result.data.winner === 0) {
+        outcome = "passed";
+      }
+      enqueue({
+        type: "finish",
+        runId: event.runId,
+        outcome: outcome,
+        activeMilliseconds: session.activeMilliseconds,
+      });
     }
     if (event.type === "begin") {
       session.challenge = result.data.challenge;
@@ -335,13 +359,39 @@ export function createGameplayTracker(
       return;
     }
     sampleGeneric();
+    if (report.sequence === 0 && report.roundId !== billiardsRound) {
+      const previous = sessions.get(genericRun);
+      if (previous && !previous.finished && !previous.finishQueued) {
+        enqueue({
+          type: "finish",
+          runId: genericRun,
+          outcome: "closed",
+          activeMilliseconds: previous.activeMilliseconds,
+        });
+      }
+      // 每盘单独开会话，重开只关闭上一盘，不能把新盘胜负写回旧记录
+      billiardsRound = report.roundId;
+      genericRun = host.crypto.randomUUID();
+      genericMilliseconds = 0;
+      lastSample = host.performance.now();
+      lastHeartbeat = lastSample;
+      enqueue({
+        type: "begin",
+        runId: genericRun,
+        mode: "official",
+        activeMilliseconds: 0,
+      });
+    }
+    if (report.roundId !== billiardsRound) {
+      return;
+    }
     enqueue({ type: "billiards", runId: genericRun, roundId: report.roundId,
       sequence: report.sequence, shot: report.shot, matchMode: report.matchMode,
       activeMilliseconds: Math.floor(genericMilliseconds) });
     poll();
   }
 
-  if (!adapter) {
+  if (!adapter && configuration.id !== "billiards") {
     genericRun = host.crypto.randomUUID();
     enqueue({
       type: "begin",
