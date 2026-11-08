@@ -103,7 +103,7 @@ class ManagementTests {
     void accountSwitchRejectsProxyHeadersOnLoopback() {
         UserRepository users = mock(UserRepository.class);
         AuthService auth = mock(AuthService.class);
-        LocalAccountController controller = new LocalAccountController(users, auth, true);
+        LocalAccountController controller = new LocalAccountController(users, auth, true, false);
         for (String address : List.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")) {
             MockHttpServletRequest direct = new MockHttpServletRequest();
             direct.setRemoteAddr(address);
