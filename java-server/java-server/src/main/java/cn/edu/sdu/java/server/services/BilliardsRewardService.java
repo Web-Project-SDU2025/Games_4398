@@ -120,8 +120,9 @@ public class BilliardsRewardService {
                 if (state.aiMatch != "single".equals(mode)) {
                     throw new IllegalArgumentException("已开始的对局不能修改模式");
                 }
-                return CommonMethod.getReturnData(Map.of("reward", 0L, "titles", "",
-                        "starter", state.starter, "matchMode", mode));
+                return CommonMethod.getReturnData(Map.of("reward", 0L, "titles",
+                        "", "starter", state.starter, "matchMode", mode,
+                        "ended", false));
             }
             if (found.isEmpty()) {
                 throw new IllegalArgumentException("请先开始本盘台球");
@@ -130,11 +131,13 @@ public class BilliardsRewardService {
             JsonNode shot = mapper.valueToTree(request.get("shot"));
             byte[] bytes = mapper.writeValueAsBytes(shot);
             String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            BilliardsJudge.State state = mapper.readValue(current.getStateJson(), BilliardsJudge.State.class);
             if (sequence.equals(current.getSequence())) {
                 if (!hash.equals(current.getRequestHash())) {
                     throw new IllegalArgumentException("同一击球序号不能提交不同结果");
                 }
-                return result(current.getLastReward(), current.getLastTitles(), true);
+                return result(current.getLastReward(), current.getLastTitles(), true,
+                        state.ended, state.winner);
             }
             if (sequence != current.getSequence() + 1) {
                 throw new IllegalArgumentException("击球顺序不正确，请重新开始本盘");
@@ -143,7 +146,6 @@ public class BilliardsRewardService {
                     (long) sequence * BilliardsRewards.MIN_SHOT_SECONDS))) {
                 return CommonMethod.getReturnData(Map.of("retry", true, "reward", 0L));
             }
-            BilliardsJudge.State state = mapper.readValue(current.getStateJson(), BilliardsJudge.State.class);
             List<String> earned = BilliardsJudge.apply(state, shot);
             // 每杆只记录新解锁的成就，金额由服务端规则计算
             // 本局未结束时不写钱包和消息，等整盘打完一次性结算
@@ -153,6 +155,12 @@ public class BilliardsRewardService {
             long total = 0;
             String titles = "";
             if (state.ended) {
+                // 胜负与奖励一同保存，即使网页立即关闭也不会丢失已确认的结果
+                String outcome = "failed";
+                if (state.winner == 0) {
+                    outcome = "passed";
+                }
+                play.setOutcome(outcome);
                 List<String> details = new ArrayList<>();
                 for (String achievement : state.pendingRewards) {
                     int index = BilliardsRewards.IDS.indexOf(achievement);
@@ -178,7 +186,7 @@ public class BilliardsRewardService {
             play.setAwardedAmount(play.getAwardedAmount() + total);
             play.setUpdatedAt(now);
             plays.save(play);
-            return result(total, current.getLastTitles(), false);
+            return result(total, current.getLastTitles(), false, state.ended, state.winner);
         } catch (IllegalArgumentException error) {
             return CommonMethod.getReturnMessageError(error.getMessage());
         }
@@ -188,8 +196,10 @@ public class BilliardsRewardService {
      * 返回奖励结算结果
      * repeated标志位告诉客户端这是重复请求，不是新的入账
      */
-    private DataResponse result(long amount, String titles, boolean repeated) {
-        return CommonMethod.getReturnData(Map.of("reward", amount, "titles", titles, "repeated", repeated));
+    private DataResponse result(long amount, String titles, boolean repeated,
+            boolean ended, int winner) {
+        return CommonMethod.getReturnData(Map.of("reward", amount, "titles", titles,
+                "repeated", repeated, "ended", ended, "winner", winner));
     }
 
     /**

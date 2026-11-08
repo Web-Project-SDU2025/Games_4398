@@ -5,6 +5,7 @@
     "web-vue/tests",
     "web-vue/games",
     "java-server/java-server/src",
+    "packaging",
     "scripts"
   ],
   "preservedFileList": "scripts/preserved-files.txt",

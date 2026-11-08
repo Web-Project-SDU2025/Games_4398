@@ -11,6 +11,7 @@ import cn.edu.sdu.java.server.repositorys.GameRecordRepository;
 import cn.edu.sdu.java.server.repositorys.GameRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.BlockcoinRules;
+import cn.edu.sdu.java.server.util.BilliardsRewards;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import cn.edu.sdu.java.server.util.GameplayRules;
 import java.time.Duration;
@@ -279,6 +280,7 @@ public class GameplayService {
             if (play.getEndedAt() != null) {
                 return response(play);
             }
+            Game game = games.findById(play.getGameId()).orElseThrow();
             Instant now = Instant.now();
             if (now.isAfter(play.getStartedAt().plusSeconds(BlockcoinRules.SESSION_SECONDS))
                     || now.isAfter(play.getUpdatedAt().plusSeconds(GameplayRules.IDLE_SECONDS))) {
@@ -289,13 +291,20 @@ public class GameplayService {
                     || !List.of("passed", "failed", "abandoned", "closed").contains(outcome))) {
                 return CommonMethod.getReturnMessageError("游戏结果不正确");
             }
+            // 八球只信任单杆判决已保存的胜负，退出请求不能覆盖结果或自行宣称获胜
+            if (finish && BilliardsRewards.GAME_PATH.equals(game.getGamePath())) {
+                if ("passed".equals(play.getOutcome()) || "failed".equals(play.getOutcome())) {
+                    outcome = play.getOutcome();
+                } else if ("passed".equals(outcome) || "failed".equals(outcome)) {
+                    return CommonMethod.getReturnMessageError("台球胜负尚未确认，请等待本盘结算");
+                }
+            }
             long duration = acceptedDuration(play, request, now);
             if (finish && "passed".equals(outcome) && play.getRewardAmount() > 0
                     && (now.isBefore(play.getStartedAt().plusSeconds(play.getMinimumSeconds()))
                         || duration < play.getMinimumSeconds() * 1000L)) {
                 return CommonMethod.getReturnMessageError("本局结算时间不符合关卡规则");
             }
-            Game game = games.findById(play.getGameId()).orElseThrow();
             if (!"practice".equals(play.getMode()) && !coins.owns(user, game)) {
                 return CommonMethod.getReturnMessageError("游戏归属已变更");
             }

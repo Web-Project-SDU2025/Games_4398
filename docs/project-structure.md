@@ -15,10 +15,14 @@
 │   ├── images/                                                                 项目界面截图
 │   └── project-structure.md                                                    项目结构与文件职责
 ├── start.cmd                                                                   双击启动本地前后端
+├── package.cmd                                                                 构建教师用完整运行 ZIP
+├── packaging/                                                                  教师启动器、配置检查和运行说明模板
 ├── scripts/
 │   ├── style-scope.json                                                        全局检查范围与生成文件清单
 │   ├── preserved-files.txt                                                     原服务器连接文件保留清单
 │   ├── CheckJavaStyle.java                                                     后端源码与测试风格检查
+│   ├── package.ps1                                                            构建网页、游戏、后端并组合 Java 运行环境
+│   ├── Test-Delivery.ps1                                                       在独立端口验证交付包及真实 AI
 │   ├── source-files.cjs                                                        语法和注释检查共用的源码收集
 │   └── start.ps1                                                               环境检查、端口检查和进程管理
 ├── database/                                                                   数据库结构与迁移说明
