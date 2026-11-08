@@ -10,7 +10,11 @@
 
 ## 更新日志
 
-### v1.12.7（2026/11/08）
+### v1.12.10（2026/11/08）
+
+更新浏览器实拍截图，补充美式八球模式选择、单人对局、AI 客服和管理员通关奖励配置界面。
+
+### v1.12.9（2026/11/08）
 
 cga！美式八球新增单人对抗电脑模式（本地双人模式仍然保留），每盘由服务器随机确定先手。电脑会选择进球路线、调整力度并摆放自由球，瞄准和力度带有小幅误差。
 
@@ -24,7 +28,7 @@ cga！美式八球新增单人对抗电脑模式（本地双人模式仍然保�
 
 ### v1.11.3（2026/11/07）
 
-cga！成功利用 Canvas 原生网页接入第二款游戏：美式八球。
+cga！成功利用 Canvas 原生网页接入第二款原创游戏：美式八球。
 
 植物大战僵尸沿用原 Java 运行方式。
 
@@ -42,7 +46,6 @@ cga！消息中心新增问题反馈，所有账户都可以向管理员提交�
 
 ## 项目概况
 
-本项目采用前后端分离结构：Vue 和 JavaScript 负责页面与交互，Spring Boot 处理业务请求和身份验证，MySQL 保存账户、游戏、字块币流水和游玩记录，CheerpJ 在本项目中用于提供 JVM，以接入游戏植物大战僵尸（Java 版）及其关卡编辑器。
 本项目采用前后端分离结构。Vue 和 JavaScript 负责页面与交互，Spring Boot 处理业务请求和身份验证，MySQL 保存账户、游戏、字块币流水和游玩记录。植物大战僵尸及关卡编辑器通过 CheerpJ 运行，美式八球使用 Canvas 和 JavaScript 直接运行。
 
 用户和管理员从同一入口登录，平台按账户角色显示功能。首页汇总游戏库、收藏和近期活动，AI 客服 Octorange 与宠物可以回答游戏相关问题。
@@ -51,17 +54,21 @@ cga！消息中心新增问题反馈，所有账户都可以向管理员提交�
 
 ## 界面预览
 
-下列截图来自本地 Chrome 的实际运行页面。首页中的邮箱和电话已遮盖。
+下列截图来自本地浏览器的实际运行页面，点击图片可查看大图。首页中的邮箱和电话已遮盖。
 
 | 登录页面 | 注册页面 |
 | :---: | :---: |
 | [![登录页面](docs/images/login.png)](docs/images/login.png) | [![注册页面](docs/images/register.png)](docs/images/register.png) |
 | **游戏概览** | **游戏商城** |
 | [![游戏概览](docs/images/dashboard.png)](docs/images/dashboard.png) | [![游戏商城](docs/images/store.png)](docs/images/store.png) |
-| **我的游戏库** | **游戏运行** |
-| [![我的游戏库](docs/images/library.png)](docs/images/library.png) | [![游戏运行](docs/images/game.png)](docs/images/game.png) |
-| **关卡编辑器** | **消息中心** |
-| [![关卡编辑器](docs/images/editor.png)](docs/images/editor.png) | [![消息中心](docs/images/messages.png)](docs/images/messages.png) |
+| **我的游戏库** | **游戏资料与通关奖励** |
+| [![我的游戏库](docs/images/library.png)](docs/images/library.png) | [![游戏资料与通关奖励](docs/images/game-management.png)](docs/images/game-management.png) |
+| **美式八球模式选择** | **美式八球单人对局** |
+| [![美式八球模式选择](docs/images/billiards-modes.png)](docs/images/billiards-modes.png) | [![美式八球单人对局](docs/images/billiards.png)](docs/images/billiards.png) |
+| **植物大战僵尸** | **关卡编辑器** |
+| [![植物大战僵尸](docs/images/game.png)](docs/images/game.png) | [![关卡编辑器](docs/images/editor.png)](docs/images/editor.png) |
+| **AI 客服** | **消息中心** |
+| [![AI 客服](docs/images/ai-support.png)](docs/images/ai-support.png) | [![消息中心](docs/images/messages.png)](docs/images/messages.png) |
 | **问题反馈** | **界面设置** |
 | [![问题反馈](docs/images/feedback.png)](docs/images/feedback.png) | [![界面设置](docs/images/settings.png)](docs/images/settings.png) |
 | **登录背景设置** | |

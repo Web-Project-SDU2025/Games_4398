@@ -5,18 +5,6 @@ body {
   margin: 0;
   overflow-x: clip;
 }
-/* 页面文字默认不可拖选，表单内容仍允许选择、复制和编辑 */
-body,
-body * {
-  -webkit-user-select: none;
-  user-select: none;
-}
-input,
-textarea,
-[contenteditable="true"] {
-  -webkit-user-select: text;
-  user-select: text;
-}
 html,
 body,
 #app {

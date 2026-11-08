@@ -1,4 +1,17 @@
 /* 平台与游戏运行页共用指针，画布通过自身交互状态切换形状 */
+/* 展示文字不参与拖选，输入区域仍能选择文字，以保留正常编辑和粘贴操作 */
+body,
+body * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="true"] * {
+  -webkit-user-select: text;
+  user-select: text;
+}
 html,
 body {
   cursor: var(--cursor-default);

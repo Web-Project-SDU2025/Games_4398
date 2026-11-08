@@ -1,13 +1,21 @@
 /* 提示使用平台主题，固定宽度上限保证长错误信息在窄屏内换行 */
 .el-message.platform-toast {
+  /* 两侧图标使用相同占位，正文位于正中，关闭按钮不再依赖额外右边距 */
+  --toast-icon-size: 28px;
+  --toast-padding: 16px;
+  --toast-gap: 8px;
   --el-message-bg-color: var(--color-paper-2);
   --el-message-border-color: var(--color-rule);
   --el-message-text-color: var(--color-ink);
   --el-message-close-icon-color: var(--color-muted);
   --el-message-close-hover-color: var(--color-ink);
   max-width: min(520px, calc(100vw - 32px));
-  min-width: 240px;
-  padding: 14px 44px 14px 16px;
+  min-width: min(240px, calc(100vw - 32px));
+  width: max-content;
+  display: grid;
+  grid-template-columns: var(--toast-icon-size) minmax(0, 1fr) var(--toast-icon-size);
+  gap: var(--toast-gap);
+  padding: 14px var(--toast-padding);
   border-radius: 8px;
   box-shadow: 0 8px 28px #00000040;
 }
@@ -16,9 +24,13 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  text-align: center;
 }
 .platform-toast .el-message__icon {
-  flex-shrink: 0;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
+  margin: 0;
+  font-size: 16px;
 }
 .platform-toast.el-message--success .el-message__icon {
   color: var(--color-success);
@@ -30,8 +42,11 @@
   color: var(--color-accent);
 }
 .platform-toast .el-message__closeBtn {
-  width: 28px;
-  height: 28px;
+  position: static;
+  transform: none;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
+  margin: 0;
   display: grid;
   place-items: center;
 }

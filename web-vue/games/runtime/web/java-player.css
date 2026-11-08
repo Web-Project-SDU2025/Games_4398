@@ -14,18 +14,6 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
 }
-/* 运行页文字不可拖选，页面内的表单仍可正常编辑 */
-body,
-body * {
-  -webkit-user-select: none;
-  user-select: none;
-}
-input,
-textarea,
-[contenteditable="true"] {
-  -webkit-user-select: text;
-  user-select: text;
-}
 [hidden] {
   display: none !important;
 }

@@ -92,6 +92,11 @@ test(
     assert.ok(informedQuestion.includes("游戏商城"));
     assert.ok(informedQuestion.endsWith("用户本次问题：" + question));
     assert.ok(informedQuestion.length <= support.QUESTION_LIMIT);
+    assert.ok(informedQuestion.includes("美式八球"));
+    assert.ok(informedQuestion.includes("开球进球不定组"));
+    assert.ok(informedQuestion.includes("合并一笔入账"));
+    assert.ok(informedQuestion.includes("0–1000"));
+    assert.equal(informedQuestion.includes("每次完成一个官方关卡奖励 15 BC"), false);
     const longQuestion = "游".repeat(support.QUESTION_LIMIT);
     assert.equal(
       createQuestionWithSiteGuide(longQuestion),

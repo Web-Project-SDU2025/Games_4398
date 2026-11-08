@@ -62,9 +62,9 @@
       <button
         type="button"
         :disabled="pending"
-        @click="ask('五子棋的获胜规则是什么？')"
+        @click="ask('4398 美式八球怎样定组、判犯规和获胜？')"
       >
-        五子棋规则
+        美式八球规则
       </button>
       <button
         type="button"
