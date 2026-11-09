@@ -14,11 +14,14 @@ export function createHud(match, ui, images) {
   const achievement = document.getElementById("achievement");
   const modal = document.getElementById("modal");
   const start = document.getElementById("start");
+  const chooseMode = document.getElementById("choose-mode");
   const instructions = document.getElementById("instructions");
   const reason = document.getElementById("reason");
-  const prompt = document.querySelector(".prompt");
   const title = document.getElementById("prompt-title");
+  const result = document.getElementById("round-result");
+  const achievements = document.getElementById("round-achievements");
   const summary = document.getElementById("summary");
+  const settlement = document.getElementById("settlement");
   const power = document.getElementById("power");
   const powerLabel = document.getElementById("power-label");
   let previousHud = "";
@@ -75,25 +78,34 @@ export function createHud(match, ui, images) {
     }
   }
 
-  // 开场、开局等待和终局共用浮层，终局成就从实际获胜方读取
+  // 开场、开局等待和终局共用浮层，奖励与成就始终对应当前账户
   function updatePrompt() {
+    const isOver = match.phase === "over";
     modal.hidden = !["start", "over", "opening"].includes(match.phase);
     instructions.hidden = match.phase !== "start";
-    reason.hidden = match.phase !== "over";
+    result.hidden = !isOver;
+    reason.hidden = !isOver;
     reason.textContent = match.reason;
-    prompt.dataset.outcome = String(match.phase === "over");
+    chooseMode.hidden = !isOver;
     title.textContent = "美式八球";
-    start.textContent = "点击开始";
+    start.textContent = "开始对局";
+    achievements.hidden = true;
     summary.hidden = true;
-    if (match.phase === "over") {
+    settlement.hidden = !isOver;
+    if (isOver) {
       title.textContent = participantName(match, match.winner) + " 获胜";
-      start.textContent = "再来一局";
-      const earned = [];
-      for (const achievement of match.achievements[match.winner]) {
-        earned.push(achievement);
+      if (match.mode === "single") {
+        title.textContent = "电脑获胜";
+        if (match.winner === 0) {
+          title.textContent = "你赢了";
+        }
       }
+      start.textContent = "再来一局";
+      const earned = Array.from(match.achievements[0]);
       summary.textContent = earned.join(" / ");
       summary.hidden = earned.length === 0;
+      achievements.hidden = summary.hidden;
+      settlement.textContent = ui.settlement || "正在结算字块币…";
     } else if (match.phase === "opening") {
       title.textContent = "正在确定开球方";
       start.textContent = "正在开局";
@@ -109,7 +121,7 @@ export function createHud(match, ui, images) {
     const percent = Math.round(displayedPower * 100);
     const signature = JSON.stringify([
       match.mode, match.phase, match.current, match.message, match.notice,
-      match.tone, percent, match.winner, match.reason, match.groups,
+      match.tone, percent, match.winner, match.reason, match.groups, ui.settlement,
     ]);
     if (signature === previousHud) {
       return;

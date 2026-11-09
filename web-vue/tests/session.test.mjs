@@ -80,9 +80,42 @@ function loadSession(profileRequest, switchRequest) {
   return {
     store: store,
     checkAccess: routeContext.checkAccess,
+    routes: vm.runInContext("routes", routeContext),
     notices: notices,
   };
 }
+
+// 独立管理页绑定真实路由守卫，商城仍向所有登录角色开放
+test("游戏资料管理和商城按管理员权限分流", async function testGameManagementAccess() {
+  let role = "ROLE_GAME_USER";
+  // 返回当前服务器角色，使测试可以验证普通玩家和管理员的访问结果
+  async function getProfile() {
+    return {
+      code: 0,
+      data: { userId: 1, username: "player", name: "玩家", role: role },
+    };
+  }
+  const session = loadSession(getProfile);
+  // 按路径查找应用实际注册的管理路由
+  function isManagementPage(route) {
+    return route.path === "/GameManage";
+  }
+  // 按路径查找应用实际注册的商城路由
+  function isStorePage(route) {
+    return route.path === "/GameCatalog";
+  }
+  const manage = session.routes.find(isManagementPage);
+  const store = session.routes.find(isStorePage);
+  assert.ok(manage, "应注册独立的游戏资料管理路由");
+  assert.equal(manage.props.mode, "catalog");
+  assert.equal(await session.checkAccess(manage), "/MainPage");
+  assert.equal(
+    await session.checkAccess({ path: store.path, meta: store.meta || {} }),
+    true,
+  );
+  role = "ROLE_ADMIN";
+  assert.equal(await session.checkAccess(manage), true);
+});
 
 // 浏览器旧身份按后端当前管理员身份更新
 test("旧登录身份会同步为真实管理员，系统菜单正常进入", async function testPromotion() {

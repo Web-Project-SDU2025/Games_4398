@@ -16,12 +16,13 @@ function alignConfirmButtons() {
   }
 }
 
-// 显示删除确认，用户确认时返回 true，取消时返回 false
-export async function messageConform(content) {
+// 显示操作确认，可挂载到全屏容器内，确认时返回 true
+export async function messageConform(content, appendTo) {
   const observer = new MutationObserver(alignConfirmButtons);
   observer.observe(document.body, { childList: true, subtree: true });
   try {
     await ElMessageBox.confirm(content, "提示", {
+      appendTo: appendTo,
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       confirmButtonClass: CONFIRM_BUTTON_CLASS,

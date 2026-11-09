@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useAppStore } from "../stores/app";
 import { showToast } from "../tools/toast.js";
 
-// 游戏库和收藏共用列表页面，商城按商品布局单独维护
+// 游戏库、收藏和游戏资料管理共用列表页面，商城单独展示商品
 function loadGameList() {
   return import("../views/game/GameList.vue");
 }
@@ -52,6 +52,12 @@ const routes = [
     component: function loadGameStore() {
       return import("../views/game/GameStore.vue");
     },
+  },
+  {
+    path: "/GameManage",
+    meta: { adminOnly: true },
+    component: loadGameList,
+    props: { mode: "catalog", title: "游戏资料管理" },
   },
   {
     path: "/GameLibrary",

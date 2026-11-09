@@ -169,8 +169,26 @@ test("商城和游戏库使用管理员保存的资料", function testLibraryEnt
   assert.equal(cleared[0].description, "");
 });
 
-// 消息源与账户必须同时匹配，隐藏在其他页面时仍可刷新记录和奖励
-test("公共运行窗口只接收当前实例的同源消息", function testPlayerMessage() {
+// 台球按服务端固定规则结算，常规游戏的通关奖励由游戏资料决定
+test("游戏卡片按玩法显示奖励条件", function testGameRewardLabel() {
+  const games = launcherGames(
+    [
+      { gamePath: "/games/billiards/game.json", reward: 85 },
+      { gamePath: "/games/pvz/game.json", reward: 15 },
+      { gamePath: "/games/other/game.json", reward: 0 },
+    ],
+    [],
+  );
+  assert.equal(
+    games[0].rewardLabel,
+    "单人击败电脑 +20 字块币，成就奖励在分出胜负后结算",
+  );
+  assert.equal(games[1].rewardLabel, "通关 +15 字块币");
+  assert.equal(games[2].rewardLabel, "");
+});
+
+// 载入真实运行组件的脚本，浏览器和平台接口由各用例单独提供
+function loadPlayerComponent(context) {
   let source = fs.readFileSync(
     new URL("../src/components/GamePlayer.vue", import.meta.url),
     "utf8",
@@ -182,6 +200,41 @@ test("公共运行窗口只接收当前实例的同源消息", function testPlay
   source = source.replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
   source = source.replace("export default", "const component =");
   source = source + "\nthis.component = component;";
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  return context.component;
+}
+
+// 运行窗口隐藏时只退出平台自己的全屏，其他页面元素不受影响
+test("离开专注播放器时退出平台全屏", async function testExitPlayerFullscreen() {
+  const shell = {};
+  const player = { closest: closest };
+  const document = { fullscreenElement: shell, exitFullscreen: exitFullscreen };
+  let exitCount = 0;
+  // 玩家区域只归属于当前平台容器
+  function closest(selector) {
+    assert.equal(selector, ".platform-shell");
+    return shell;
+  }
+  // 浏览器可能拒绝退出，全屏状态由它的变更事件同步
+  async function exitFullscreen() {
+    exitCount = exitCount + 1;
+    throw new Error("Fullscreen exit failed");
+  }
+  const component = loadPlayerComponent({ document: document });
+  const state = {
+    $refs: { player: player },
+    exitPlayerFullscreen: component.methods.exitPlayerFullscreen,
+  };
+  await component.watch.visible.call(state, false);
+  assert.equal(exitCount, 1);
+  document.fullscreenElement = {};
+  await component.watch.visible.call(state, false);
+  assert.equal(exitCount, 1);
+});
+
+// 消息源与账户必须同时匹配，隐藏在其他页面时仍可刷新记录和奖励
+test("公共运行窗口只接收当前实例的同源消息", function testPlayerMessage() {
   let changes = 0;
   let closed = 0;
   let walletReads = 0;
@@ -214,8 +267,7 @@ test("公共运行窗口只接收当前实例的同源消息", function testPlay
     PLAYER_MESSAGES: { gameStopped: "stopped" },
     GAMEPLAY_MESSAGES: { recordsChanged: "records", accessRevoked: "revoked" },
   };
-  vm.createContext(context);
-  vm.runInContext(source, context);
+  loadPlayerComponent(context);
   const frameWindow = {};
   const state = {
     ownerToken: account.token,

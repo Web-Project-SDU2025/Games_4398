@@ -6,29 +6,106 @@
   >
     <header class="workspace-home-heading">
       <div>
-        <h1 id="home-title">游戏概览</h1>
+        <h1 id="home-title">4398 游戏厅</h1>
+        <p>今天想玩点什么？</p>
       </div>
       <div class="dashboard-heading-actions">
-        <span v-if="updatedAt" class="dashboard-updated"
-          >更新于 {{ updatedAt }}</span
-        >
         <button
           class="dashboard-icon-button"
           type="button"
-          title="刷新概览"
-          aria-label="刷新概览"
+          title="刷新游戏厅"
+          aria-label="刷新游戏厅"
           :disabled="loading"
           @click="loadDashboard"
         >
           <span class="i-ep-refresh" aria-hidden="true"></span>
         </button>
-        <RouterLink class="dashboard-primary-link" to="/GameCatalog"
-          ><span class="i-ep-grid" aria-hidden="true"></span
-          >浏览游戏商城</RouterLink
+        <RouterLink class="lobby-library-link" to="/GameLibrary"
+          ><span class="i-ep-folder" aria-hidden="true"></span
+          >我的游戏库</RouterLink
         >
       </div>
     </header>
     <span v-toast:error="error"></span>
+    <span v-toast="playNotice"></span>
+    <button
+      v-if="activeGame && !activeGameListed"
+      type="button"
+      class="lobby-action lobby-action-primary lobby-resume"
+      :disabled="player.closing"
+      @click="resumeGame"
+    >
+      <span class="i-ep-video-play" aria-hidden="true"></span>
+      {{ activeAction }} · {{ activeGame.name }}
+    </button>
+    <section
+      v-if="showcase.length"
+      class="lobby-showcase"
+      :class="{ 'lobby-single': showcase.length === 1 }"
+      aria-label="游戏推荐"
+    >
+      <article
+        v-for="(game, index) in showcase"
+        :key="game.gameId"
+        class="lobby-feature"
+        :class="{ 'lobby-feature-main': index === 0, 'lobby-feature-pool': game.id === 'billiards' }"
+      >
+        <img v-if="game.installed" :src="game.cover" alt="" class="lobby-art" />
+        <div class="lobby-feature-body">
+          <div class="lobby-feature-labels">
+            <span v-if="game.category">{{ game.category }}</span>
+            <span v-if="isActive(game)" class="lobby-live">正在游玩</span>
+            <span v-else-if="game.owned">已入库</span>
+          </div>
+          <h2>{{ game.name }}</h2>
+          <p :title="game.description">{{ game.description }}</p>
+          <button
+            v-if="isActive(game)"
+            class="lobby-action lobby-action-primary"
+            type="button"
+            :disabled="player.closing"
+            @click="resumeGame"
+          >
+            <span class="i-ep-video-play" aria-hidden="true"></span>
+            {{ activeAction }}
+          </button>
+          <button
+            v-else-if="game.owned && game.installed"
+            class="lobby-action lobby-action-primary"
+            type="button"
+            :disabled="Boolean(activeGame)"
+            @click="launchGame(game)"
+          >
+            <span class="i-ep-video-play" aria-hidden="true"></span>
+            <template v-if="activeGame">请先结束当前游戏</template>
+            <template v-else>{{ playedGame(game) ? "再玩一局" : "开始游戏" }}</template>
+          </button>
+          <RouterLink
+            v-else
+            class="lobby-action lobby-action-primary"
+            :to="game.owned ? '/GameLibrary' : { path: '/GameCatalog', query: { search: game.name } }"
+          >
+            {{ game.owned ? "查看游戏库" : "查看游戏" }}
+            <span class="i-ep-arrow-right" aria-hidden="true"></span>
+          </RouterLink>
+        </div>
+      </article>
+    </section>
+    <div v-else class="lobby-showcase lobby-single">
+      <div class="lobby-placeholder" role="status">
+        <span class="i-ep-monitor" aria-hidden="true"></span>
+        <p>{{ lobbyPlaceholder }}</p>
+        <button v-if="error" type="button" class="lobby-action" @click="loadDashboard">
+          重试
+        </button>
+      </div>
+    </div>
+    <header class="lobby-section-heading">
+      <h2>我的游玩</h2>
+      <RouterLink to="/GameCatalog"
+        >浏览游戏商城<span class="i-ep-arrow-right" aria-hidden="true"></span
+      ></RouterLink>
+    </header>
     <div class="dashboard-stat-grid" :aria-busy="loading">
       <RouterLink
         v-for="stat in statistics"
@@ -51,7 +128,6 @@
       </RouterLink>
     </div>
     <div class="dashboard-main-grid">
-      <DashboardAccount />
       <section
         class="dashboard-section dashboard-records"
         aria-labelledby="records-title"
@@ -122,52 +198,19 @@
         />
         <div v-else class="dashboard-chart-placeholder">{{ pendingText }}</div>
       </section>
-      <section
-        class="dashboard-section dashboard-library"
-        aria-labelledby="library-title"
-      >
-        <header class="dashboard-section-heading">
-          <h2 id="library-title">
-            <span class="i-ep-folder" aria-hidden="true"></span>我的游戏库
-          </h2>
-          <RouterLink to="/GameLibrary"
-            >查看游戏库<span class="i-ep-arrow-right" aria-hidden="true"></span
-          ></RouterLink>
-        </header>
-        <ul v-if="libraryGames.length" class="dashboard-library-list">
-          <li v-for="game in libraryGames" :key="game.gameId">
-            <RouterLink to="/GameLibrary">
-              <img
-                v-if="game.cover"
-                :src="game.cover"
-                :alt="game.name"
-                width="192"
-                height="144"
-              />
-              <span v-else class="dashboard-cover-empty" aria-hidden="true">
-                <span class="i-ep-monitor"></span>
-              </span>
-              <strong :title="game.name">{{ game.name }}</strong>
-            </RouterLink>
-          </li>
-        </ul>
-        <div v-else class="dashboard-inline-empty">
-          <p>{{ emptyLibraryText }}</p>
-        </div>
-      </section>
     </div>
   </section>
 </template>
 
 <script>
 import { useAppStore } from "../stores/app";
+import { useGamePlayerStore } from "../stores/gamePlayer.js";
 import * as account from "../logic/account.js";
 import * as dashboard from "../logic/dashboard.js";
 import { getGames, getRecords } from "../services/gameServ.js";
 import DashboardActivity from "../components/DashboardActivity.vue";
-import DashboardAccount from "../components/DashboardAccount.vue";
 import { getInstalledGames } from "../services/gameRuntime.js";
-import { findInstalledGame } from "../logic/gameRuntime.js";
+import { launcherGames } from "../logic/gameRuntime.js";
 import {
   outcomeName,
   recordDescription,
@@ -178,10 +221,11 @@ import {
 function homeState() {
   return {
     summary: null,
+    catalog: null,
     installedGames: [],
     loading: false,
     error: "",
-    updatedAt: "",
+    playNotice: "",
     requestId: 0,
     loadedGameRevision: -1,
     loadedRecordRevision: -1,
@@ -239,21 +283,60 @@ function readStatistics() {
   ];
 }
 
-// 通过游戏入口匹配安装封面，外部游戏保留名称和图标入口
-function readLibraryGames() {
-  const result = [];
-  if (!this.summary) {
-    return result;
+// 播放器可能仍保留其他页面打开的对局，只显示当前账户的实例
+function readActiveGame() {
+  if (this.player.ownerToken === this.userInfo.token) {
+    return this.player.game;
   }
-  for (const game of this.summary.libraryPreview) {
-    const installed = findInstalledGame(this.installedGames, game.gamePath);
-    let cover = "";
-    if (installed) {
-      cover = installed.cover;
+  return null;
+}
+
+// 封面、持有状态和启动能力沿用商城与游戏库的合并结果
+function readShowcase() {
+  return dashboard.lobbyGames(
+    launcherGames(this.catalog || [], this.installedGames),
+    this.personalRecords,
+    this.activeGame && this.activeGame.gamePath,
+  );
+}
+
+// 区分正在游玩的游戏与只是存在游玩记录的游戏
+function isActive(game) {
+  return Boolean(this.activeGame && this.activeGame.gamePath === game.gamePath);
+}
+
+// 已隐藏的记录不参与首页推荐
+function playedGame(game) {
+  for (const record of this.personalRecords) {
+    if (record.hidden !== true && String(record.gameId) === String(game.gameId)) {
+      return true;
     }
-    result.push({ gameId: game.gameId, name: game.name, cover: cover });
   }
-  return result;
+  return false;
+}
+
+// 从大厅直接启动已拥有的游戏，地址仍由共享播放器生成
+function launchGame(game) {
+  this.playNotice = this.player.open(game, this.userInfo, this.$route.path, false);
+}
+
+// 恢复时回到原启动页，保留运行中的 iframe
+function resumeGame() {
+  const path = this.player.resume();
+  if (path && path !== this.$route.path) {
+    this.$router.push(path);
+  }
+}
+
+// 初次加载、失败和空商城分别提供明确状态
+function readLobbyPlaceholder() {
+  if (this.error) {
+    return "游戏暂时没有加载出来。";
+  }
+  if (this.catalog) {
+    return "游戏厅暂时没有上架的游戏。";
+  }
+  return "正在加载游戏…";
 }
 
 // 安装配置读取失败时保留游戏名称，其他概览数据继续显示
@@ -271,14 +354,6 @@ function readPendingText() {
     return "概览读取失败，请刷新重试";
   }
   return "";
-}
-
-// 返回游戏库空状态的文字，成功读取后才判断为空
-function readEmptyLibraryText() {
-  if (!this.summary) {
-    return this.pendingText;
-  }
-  return "尚未加入游戏";
 }
 
 // 成功读取后判断记录是否为空，请求失败时显示重试提示
@@ -304,7 +379,7 @@ function recordMinutes(record) {
   return (seconds / 60).toFixed(dashboard.DURATION_DECIMALS);
 }
 
-// 同时读取游戏和记录，成功后一次更新概览，旧账户的响应直接丢弃
+// 并行读取游戏和记录，游戏入口先显示，旧账户的响应直接丢弃
 async function loadDashboard() {
   if (this.loading) {
     return;
@@ -318,38 +393,48 @@ async function loadDashboard() {
   this.loading = true;
   this.error = "";
   try {
-    const results = await Promise.all([
+    const recordRequest = Promise.allSettled([getRecords()]);
+    const results = await Promise.allSettled([
       getGames("catalog", ""),
-      getRecords(),
       readGameCovers(),
     ]);
     if (requestId !== this.requestId || token !== store.userInfo.token) {
       return;
     }
-    for (const result of results.slice(0, 2)) {
-      if (result.code !== 0 || !Array.isArray(result.data)) {
-        throw new Error(result.msg || "游戏概览读取失败");
-      }
+    const games = results[0];
+    const covers = results[1];
+    if (games.status === "rejected") {
+      throw games.reason;
     }
-    const now = new Date();
-    this.installedGames = results[2];
+    if (games.value.code !== 0 || !Array.isArray(games.value.data)) {
+      throw new Error(games.value.msg || "游戏列表读取失败");
+    }
+    this.catalog = games.value.data;
+    this.installedGames = covers.value || [];
+    const recordResults = await recordRequest;
+    if (requestId !== this.requestId || token !== store.userInfo.token) {
+      return;
+    }
+    const records = recordResults[0];
+    if (records.status === "rejected") {
+      throw records.reason;
+    }
+    if (records.value.code !== 0 || !Array.isArray(records.value.data)) {
+      throw new Error(records.value.msg || "游玩记录读取失败");
+    }
     this.summary = dashboard.summarizeDashboard(
-      results[0].data,
-      results[1].data,
+      this.catalog,
+      records.value.data,
       this.userInfo.id,
-      now,
+      new Date(),
     );
     this.loadedGameRevision = gameRevision;
     this.loadedRecordRevision = recordRevision;
-    this.updatedAt = now.toLocaleTimeString("zh-CN", {
-      timeZone: "Asia/Shanghai",
-      hour12: false,
-    });
   } catch (error) {
     if (requestId === this.requestId && token === store.userInfo.token) {
       this.error = account.getErrorMessage(
         error,
-        "游戏概览读取失败，请刷新重试",
+        "游戏厅读取失败，请刷新重试",
       );
     }
   } finally {
@@ -380,16 +465,43 @@ export default {
   name: "MainPage",
   components: {
     DashboardActivity: DashboardActivity,
-    DashboardAccount: DashboardAccount,
   },
   data: homeState,
   computed: {
     userInfo: readUserInfo,
     statistics: readStatistics,
     recentRecords: readRecentRecords,
-    libraryGames: readLibraryGames,
+    // 大厅和其他页面共享当前运行实例
+    player: function readPlayer() {
+      return useGamePlayerStore();
+    },
+    activeGame: readActiveGame,
+    // 目录中没有当前游戏时，也保留返回入口
+    activeGameListed: function readActiveGameListed() {
+      for (const game of this.showcase) {
+        if (this.isActive(game)) {
+          return true;
+        }
+      }
+      return false;
+    },
+    // 编辑器和游戏使用不同的返回文字
+    activeAction: function readActiveAction() {
+      if (this.player.editorOpen) {
+        return "返回关卡编辑器";
+      }
+      return "返回当前对局";
+    },
+    // 概览未读取完成时没有可用于推荐的个人记录
+    personalRecords: function readPersonalRecords() {
+      if (this.summary) {
+        return this.summary.records;
+      }
+      return [];
+    },
+    showcase: readShowcase,
+    lobbyPlaceholder: readLobbyPlaceholder,
     pendingText: readPendingText,
-    emptyLibraryText: readEmptyLibraryText,
     emptyRecordText: readEmptyRecordText,
   },
   activated: activateDashboard,
@@ -401,6 +513,10 @@ export default {
     recordMinutes: recordMinutes,
     recordTime: dashboard.formatRecordTime,
     loadDashboard: loadDashboard,
+    isActive: isActive,
+    playedGame: playedGame,
+    launchGame: launchGame,
+    resumeGame: resumeGame,
   },
 };
 </script>

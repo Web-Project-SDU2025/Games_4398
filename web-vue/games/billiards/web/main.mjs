@@ -13,7 +13,8 @@ const context = canvas.getContext("2d");
 const match = createMatch();
 const audio = createAudio();
 const ui = { cursor: null, direction: { x: 1, y: 0 }, anchor: null, power: 0,
-  lastPower: 0, placeValid: false, dirty: true, stopped: false, stroke: createStroke() };
+  lastPower: 0, placeValid: false, dirty: true, stopped: false, stroke: createStroke(),
+  settlement: "" };
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const computer = createComputer(match, ui, reducedMotion, cancelPull);
 let images = null;
@@ -24,6 +25,7 @@ let frameId = 0;
 let lastDrawTime = -Infinity;
 let lastRevision = -1;
 const start = document.getElementById("start");
+const chooseModeButton = document.getElementById("choose-mode");
 const reportedRounds = new Map();
 let awaitingRound = "";
 let rewardHideAt = 0;
@@ -134,6 +136,7 @@ function restart() {
   start.disabled = true;
   computer.reset();
   cancelStroke(ui.stroke);
+  ui.settlement = "";
   rewardStatus.hidden = true;
   cancelPull();
   ui.direction = { x: 1, y: 0 };
@@ -150,6 +153,8 @@ function chooseMode() {
   cancelStroke(ui.stroke);
   match.mode = "local";
   computer.reset();
+  ui.settlement = "";
+  rewardStatus.hidden = true;
   match.phase = "start";
   match.message = "选择模式后开始对局";
   modeControls.hidden = false;
@@ -267,6 +272,7 @@ function stop() {
   document.getElementById("restart").removeEventListener("click", restart);
   document.getElementById("sound").removeEventListener("click", toggleSound);
   document.getElementById("change-mode").removeEventListener("click", chooseMode);
+  chooseModeButton.removeEventListener("click", chooseMode);
   start.removeEventListener("click", restart);
   document.removeEventListener("visibilitychange", visibilityChanged);
 }
@@ -281,7 +287,8 @@ function receiveCommand(event) {
   } else if (event.data.type === "4398-billiards-result") {
     const message = event.data;
     const result = message.result;
-    if (!result || message.roundId !== reportedRounds.get(match.roundNumber)) {
+    if (!result || match.phase === "start" ||
+        message.roundId !== reportedRounds.get(match.roundNumber)) {
       return;
     }
     if (message.sequence === 0 && message.roundId === awaitingRound) {
@@ -297,8 +304,19 @@ function receiveCommand(event) {
         match.revision = match.revision + 1;
       }
     }
-    // 到账由平台统一提示，子游戏只显示同步错误，避免同一结算弹出两条消息
+    // 结果卡片只显示服务器确认的金额，非终局同步结果不写入结算区
+    if (result.code === 0 && result.data.ended === true) {
+      ui.settlement = "本局没有字块币奖励";
+      if (result.data.reward > 0) {
+        ui.settlement = "到账 +" + result.data.reward + " 字块币";
+      }
+      ui.dirty = true;
+    }
     if (result.code !== 0) {
+      if (message.sequence > 0) {
+        ui.settlement = "字块币结算未确认，可在字块币流水中查看";
+        ui.dirty = true;
+      }
       rewardStatus.textContent = result.msg;
       rewardStatus.hidden = false;
       rewardHideAt = performance.now() + PLAY.achievementSeconds * 1000;
@@ -321,6 +339,7 @@ async function initialize() {
     document.getElementById("restart").addEventListener("click", restart);
     document.getElementById("sound").addEventListener("click", toggleSound);
     document.getElementById("change-mode").addEventListener("click", chooseMode);
+    chooseModeButton.addEventListener("click", chooseMode);
     start.addEventListener("click", restart);
     window.addEventListener("keydown", keyPressed);
     window.addEventListener("blur", visibilityChanged);

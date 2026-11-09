@@ -10,23 +10,37 @@
       :key="game.gameId"
       class="installed-game"
     >
-      <img :src="game.cover" :alt="game.name" width="160" height="120" />
+      <div
+        class="installed-game-cover"
+        :class="{ 'is-placeholder': !game.installed }"
+      >
+        <img :src="game.cover" alt="" width="480" height="270" />
+      </div>
       <div class="installed-game-description">
-        <div class="store-product-category">
-          <span>{{ game.category }}</span>
-          <span v-if="commerce && game.owned">已入库</span>
+        <div
+          v-if="game.category || (commerce && game.owned)"
+          class="installed-game-details"
+        >
+          <span v-if="game.category">{{ game.category }}</span>
+          <span v-if="commerce && game.owned" class="installed-game-owned"
+            >已入库</span
+          >
         </div>
         <h3>{{ game.name }}</h3>
-        <p>{{ game.description }}</p>
-        <div v-if="commerce" class="store-product-price">
-          <strong>{{ game.price }}<small>字块币</small></strong>
-          <span v-if="game.reward">每关 +{{ game.reward }} BC</span>
+        <p v-if="game.description">{{ game.description }}</p>
+        <div v-if="commerce" class="installed-game-commerce">
+          <strong v-if="!game.owned" class="installed-game-price"
+            >{{ game.price }}<small>字块币</small></strong
+          >
+          <p v-if="game.rewardLabel" class="installed-game-reward">
+            {{ game.rewardLabel }}
+          </p>
         </div>
         <div class="game-actions">
           <button
             v-if="commerce && !game.owned"
             type="button"
-            class="store-buy"
+            class="installed-game-primary"
             :disabled="
               purchasing !== '' || balance === null || balance < game.price
             "
@@ -42,6 +56,7 @@
           <button
             v-else-if="game.owned"
             type="button"
+            class="installed-game-primary"
             :disabled="!game.installed"
             :title="launchTitle(game)"
             @click="play(game, false)"
@@ -49,7 +64,9 @@
             <span class="i-ep-video-play" aria-hidden="true"></span
             >{{ playLabel(game) }}
           </button>
-          <RouterLink v-else to="/GameCatalog">去商城购买</RouterLink>
+          <RouterLink v-else class="installed-game-primary" to="/GameCatalog"
+            >去商城购买</RouterLink
+          >
           <button
             v-if="!commerce"
             type="button"

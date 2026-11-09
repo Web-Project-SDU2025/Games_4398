@@ -3,6 +3,23 @@ import assert from "node:assert/strict";
 import * as dashboard from "../src/logic/dashboard.js";
 import { visibleRecords } from "../src/logic/records.js";
 
+// 不推荐未拥有、无法启动或已隐藏的最近记录
+test("大厅优先展示当前对局和最近可玩的可见记录", function testLobbyGames() {
+  const plants = { gameId: 1, id: "pvz", gamePath: "/pvz", owned: true, installed: true };
+  const pool = { gameId: 2, id: "billiards", gamePath: "/pool", owned: false, installed: true };
+  const unavailable = { gameId: 3, gamePath: "/other", owned: true, installed: false };
+  const games = [plants, pool, unavailable];
+  const records = [
+    { gameId: 2 },
+    { gameId: 3 },
+    { gameId: "1" },
+  ];
+  assert.deepEqual(dashboard.lobbyGames(games, records, ""), [plants, pool]);
+  assert.deepEqual(dashboard.lobbyGames(games, records, "/pool"), [pool, plants]);
+  assert.deepEqual(dashboard.lobbyGames(games, [{ gameId: 1, hidden: true }], ""), [pool, plants]);
+  assert.deepEqual(dashboard.lobbyGames([], records, ""), []);
+});
+
 // 管理员返回的全量记录也必须按用户筛选，最近七天按北京时间划分
 test("概览只统计当前账户并正确处理北京时间跨日", function testPersonalSummary() {
   const games = [

@@ -10,8 +10,8 @@ export const ACTIVITY_INTERVALS = [
 export const DEFAULT_ACTIVITY_HOURS = 24;
 // 首页最近记录最多显示的条数
 export const RECENT_RECORD_LIMIT = 5;
-// 首页游戏库预览最多显示的游戏数
-export const PREVIEW_GAME_LIMIT = 3;
+// 大厅首屏展示主推游戏和另一款游戏
+const LOBBY_GAME_LIMIT = 2;
 // 时长的小数位数，首页文字和图表使用同一精度
 export const DURATION_DECIMALS = 1;
 // 记录与统计共用北京时间
@@ -130,11 +130,11 @@ export function summarizeDashboard(
   userId,
   now,
 ) {
-  const library = [];
+  let owned = 0;
   let favorites = 0;
   for (const game of games) {
     if (game.owned) {
-      library.push(game);
+      owned = owned + 1;
     }
     if (game.favorite) {
       favorites = favorites + 1;
@@ -157,14 +157,53 @@ export function summarizeDashboard(
   const totalHours = totalSeconds / SECONDS_PER_HOUR;
   return {
     catalogCount: games.length,
-    libraryCount: library.length,
+    libraryCount: owned,
     favoriteCount: favorites,
     recordCount: ownRecords.length,
     hours: totalHours.toFixed(DURATION_DECIMALS),
-    libraryPreview: library.slice(0, PREVIEW_GAME_LIMIT),
     records: ownRecords,
     generatedAt: now.getTime(),
   };
+}
+
+// 当前对局优先，其次选择最近玩过、仍在库内且可启动的游戏
+export function lobbyGames(games, records, activePath) {
+  const playable = new Map();
+  let active;
+  let billiards;
+  let plants;
+  for (const game of games) {
+    if (activePath && game.gamePath === activePath) {
+      active = game;
+    }
+    if (game.id === "billiards") {
+      billiards = game;
+    } else if (game.id === "pvz") {
+      plants = game;
+    }
+    if (game.owned && game.installed) {
+      playable.set(String(game.gameId), game);
+    }
+  }
+  let recent;
+  for (const record of records) {
+    if (record.hidden !== true && record.gameId != null) {
+      recent = playable.get(String(record.gameId));
+      if (recent) {
+        break;
+      }
+    }
+  }
+  const result = [];
+  for (const game of new Set([active, recent, billiards, plants].concat(games))) {
+    if (game) {
+      result.push(game);
+      if (result.length === LOBBY_GAME_LIMIT) {
+        break;
+      }
+    }
+  }
+  return result;
 }
 
 // 将记录时间显示为北京时间，无法识别时显示提示

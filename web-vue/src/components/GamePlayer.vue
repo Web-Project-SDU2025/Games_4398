@@ -8,47 +8,64 @@
     tabindex="-1"
   >
     <header class="game-player-heading">
-      <h3 id="player-title">{{ session.game.name }}</h3>
-      <button
-        v-if="session.game.capabilities.editor"
-        type="button"
-        :title="editorTitle"
-        :disabled="!admin || session.closing"
-        class="game-editor-button"
-        @click="openEditor"
-      >
-        关卡编辑器
-      </button>
       <button
         type="button"
-        title="返回游戏列表"
-        aria-label="返回游戏列表"
+        class="player-back"
+        title="返回大厅，保留当前游戏"
+        :disabled="session.closing || confirmingClose"
         @click="minimise"
       >
         <span class="i-ep-arrow-left" aria-hidden="true"></span>
+        返回大厅
       </button>
-      <button type="button" title="全屏" aria-label="全屏" @click="fullscreen">
-        <span class="i-ep-full-screen" aria-hidden="true"></span>
-      </button>
-      <button
-        type="button"
-        :title="closeLabel"
-        :aria-label="closeLabel"
-        :disabled="session.closing"
-        @click="close"
-      >
-        <span class="i-ep-close" aria-hidden="true"></span>
-      </button>
+      <h3 id="player-title">{{ session.game.name }}</h3>
+      <div class="player-actions">
+        <button
+          v-if="session.game.capabilities.editor"
+          type="button"
+          :title="editorTitle"
+          :disabled="!admin || session.closing || confirmingClose"
+          @click="openEditor"
+        >
+          关卡编辑器
+        </button>
+        <button
+          type="button"
+          :title="fullscreenLabel"
+          :aria-label="fullscreenLabel"
+          @click="fullscreen"
+        >
+          <span class="i-ep-full-screen" aria-hidden="true"></span>
+        </button>
+        <button
+          type="button"
+          class="player-end"
+          :disabled="session.closing || confirmingClose"
+          @click="close"
+        >
+          {{ closeLabel }}
+        </button>
+      </div>
     </header>
     <span v-toast="notice"></span>
-    <iframe
-      ref="frame"
-      :src="session.address"
-      :title="session.game.name"
-      allow="fullscreen"
-      referrerpolicy="no-referrer"
-      @load="frameLoaded"
-    ></iframe>
+    <div class="player-stage">
+      <iframe
+        ref="frame"
+        :src="session.address"
+        :title="session.game.name"
+        :aria-busy="frameLoading || session.closing"
+        :inert="session.closing"
+        allow="fullscreen"
+        referrerpolicy="no-referrer"
+        @load="frameLoaded"
+      ></iframe>
+      <p v-if="session.closing" class="player-stage-status" role="status">
+        正在结束游戏并保存记录…
+      </p>
+      <p v-else-if="frameLoading" class="player-stage-status" role="status">
+        正在打开{{ session.game.name }}…
+      </p>
+    </div>
   </section>
 </template>
 
@@ -56,6 +73,7 @@
 import { useGamePlayerStore } from "../stores/gamePlayer.js";
 import { useAppStore } from "../stores/app.js";
 import { useWalletStore } from "../stores/wallet.js";
+import { messageConform } from "../tools/messageBox.js";
 import {
   PLAYER_MESSAGES,
   playerMessage,
@@ -72,7 +90,15 @@ export default {
   },
   // 运行窗口位于导航公共层，所有页面共用同一份 iframe 与消息监听
   data: function playerState() {
-    return { notice: "", closeComplete: null, closeTimer: null, editorSent: 0 };
+    return {
+      notice: "",
+      closeComplete: null,
+      closeTimer: null,
+      editorSent: 0,
+      frameLoading: false,
+      confirmingClose: false,
+      fullscreenActive: false,
+    };
   },
   computed: {
     // 游戏入口与显示状态由启动器和顶栏共用仓库维护
@@ -97,10 +123,20 @@ export default {
     },
     // 从游戏打开编辑器时先关闭编辑器，单独启动的编辑器关闭后释放运行环境
     closeLabel: function closeLabel() {
+      if (this.session.closing) {
+        return "正在结束…";
+      }
       if (this.session.editorOpen) {
         return "关闭编辑器";
       }
-      return "关闭游戏";
+      return "结束游戏";
+    },
+    // 浏览器退出全屏后同步按钮名称
+    fullscreenLabel: function fullscreenLabel() {
+      if (this.fullscreenActive) {
+        return "退出全屏";
+      }
+      return "全屏";
     },
   },
   watch: {
@@ -115,14 +151,17 @@ export default {
       this.deliverEditor();
     },
     // 关闭后重新开始时清理旧提示和消息序号
-    "session.address": function addressChanged() {
+    "session.address": function addressChanged(address) {
       this.notice = "";
       this.editorSent = 0;
+      this.frameLoading = Boolean(address);
     },
-    // 恢复画面后移回焦点，隐藏时不干扰正在使用的页面
+    // 恢复画面后移回焦点，隐藏时退出播放器开启的平台全屏
     visible: function visibilityChanged(value) {
       if (value) {
         this.$nextTick(this.focusPlayer);
+      } else {
+        return this.exitPlayerFullscreen();
       }
     },
     // 角色被撤销时关闭已打开的编辑器，正式游戏继续保留
@@ -138,10 +177,14 @@ export default {
       this.session.clear();
     }
     window.addEventListener("message", this.receiveMessage);
+    document.addEventListener("fullscreenchange", this.syncFullscreen);
+    this.syncFullscreen();
   },
   // 退出或切号会卸载当前账户的运行器，旧消息保持与新账户隔离
   beforeUnmount: function disposePlayer() {
     window.removeEventListener("message", this.receiveMessage);
+    document.removeEventListener("fullscreenchange", this.syncFullscreen);
+    this.exitPlayerFullscreen();
     this.sendCommand(PLAYER_MESSAGES.stopGame);
     if (this.closeComplete) {
       this.closeComplete();
@@ -172,6 +215,7 @@ export default {
     // 文件页面加载完成时同步未送达的编辑器请求，游戏实例本身保持不变
     frameLoaded: function frameLoaded() {
       this.editorSent = 0;
+      this.frameLoading = false;
       this.deliverEditor();
       if (this.visible) {
         this.focusPlayer();
@@ -241,9 +285,14 @@ export default {
         this.session.editorRequest = this.session.editorRequest + 1;
       }
     },
-    // 返回列表只改变显示状态，顶栏返回游戏按钮仍可恢复当前画面
-    minimise: function minimise() {
+    // 回到大厅时保留运行窗口，顶栏仍可恢复原画面
+    minimise: async function minimise() {
       this.session.minimise();
+      await this.$router.push("/MainPage");
+      this.$nextTick(this.focusWorkspace);
+    },
+    // 退出专注视图后把键盘焦点移回页面
+    focusWorkspace: function focusWorkspace() {
       const heading = document.querySelector(
         ".workspace-page h2, .workspace-page h1",
       );
@@ -258,13 +307,31 @@ export default {
         this.$refs.player.focus();
       }
     },
-    // 关闭按钮区分编辑器和整局游戏，返回列表不走此流程
-    close: function close() {
-      if (this.session.editorOpen && !this.session.editorLaunch) {
-        this.sendCommand(PLAYER_MESSAGES.closeEditor);
+    // 关闭编辑器与结束游戏分别处理，结束整局前说明进度和奖励影响
+    close: async function close() {
+      if (this.session.editorOpen) {
+        if (!this.session.editorLaunch) {
+          this.sendCommand(PLAYER_MESSAGES.closeEditor);
+          return;
+        }
+        return this.closeGame();
+      }
+      if (this.confirmingClose || this.session.closing) {
         return;
       }
-      return this.closeGame();
+      const address = this.session.address;
+      let message = "结束后需要重新启动游戏。";
+      if (this.session.game.id === "billiards") {
+        message = "结束游戏？如果本局还未分出胜负，本局成就不会结算。";
+      }
+      this.confirmingClose = true;
+      const shell = this.$refs.player.closest(".platform-shell");
+      const confirmed = await messageConform(message, shell);
+      this.confirmingClose = false;
+      if (confirmed && this.session.address === address &&
+          this.session.ownerToken === this.ownerToken) {
+        return this.closeGame();
+      }
     },
     // 保存结束事件后才删除 iframe，等待期间阻止重复关闭与启动
     closeGame: async function closeGame() {
@@ -278,7 +345,11 @@ export default {
         this.session.address === address &&
         this.session.ownerToken === this.ownerToken
       ) {
+        const wasVisible = this.visible;
         this.session.clear();
+        if (wasVisible) {
+          this.$nextTick(this.focusWorkspace);
+        }
       }
       this.notice = "";
     },
@@ -313,6 +384,110 @@ export default {
         this.notice = "全屏操作失败：" + error.message;
       }
     },
+    // 系统手势和工具栏都会触发同一个全屏状态变化
+    syncFullscreen: function syncFullscreen() {
+      this.fullscreenActive = Boolean(document.fullscreenElement);
+    },
+    // 全屏请求被浏览器拒绝时仍可正常离开游戏界面
+    exitPlayerFullscreen: async function exitPlayerFullscreen() {
+      const player = this.$refs.player;
+      if (player && document.fullscreenElement &&
+          document.fullscreenElement === player.closest(".platform-shell")) {
+        try {
+          await document.exitFullscreen();
+        } catch {
+          // 浏览器仍可通过系统全屏快捷键退出
+        }
+      }
+    },
   },
 };
 </script>
+
+<style scoped>
+.game-player-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.game-player-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) clamp(12px, 2vw, 32px);
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-header);
+}
+.game-player-heading h3 {
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.player-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+.game-player-heading button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  background: transparent;
+  font-size: 13px;
+}
+.game-player-heading button:hover:not(:disabled) {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+  background: var(--color-paper-2);
+}
+.game-player-heading button span {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+}
+.game-player-heading .player-back {
+  padding-left: 0;
+  color: var(--color-play-action, var(--color-accent));
+}
+.game-player-heading .player-end {
+  border-color: var(--color-rule);
+}
+.player-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.player-stage iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--color-paper);
+}
+.player-stage-status {
+  position: absolute;
+  top: var(--space-md);
+  left: 50%;
+  width: max-content;
+  max-width: 80%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+</style>

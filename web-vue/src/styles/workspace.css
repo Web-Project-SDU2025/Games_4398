@@ -101,6 +101,13 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
 }
+.desktop-shell.is-playing .platform-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.desktop-shell.is-playing .workspace-header-actions {
+  margin-left: auto;
+}
 .desktop-shell .platform-sidebar {
   padding: var(--space-md) 12px;
   background: var(--color-sidebar);
@@ -113,7 +120,7 @@
 .desktop-shell .platform-sidebar.is-expanded {
   display: block;
 }
-.workspace-menu-title {
+.workspace-wide-only {
   display: none;
 }
 .desktop-shell .sidebar-group {
@@ -273,11 +280,31 @@
 }
 @media (min-width: 48rem) {
   .desktop-shell .platform-header-inner {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+  .desktop-shell .workspace-tabs,
+  .desktop-shell .sidebar-shortcuts > .workspace-narrow-only,
+  .desktop-shell:not(.is-playing) .workspace-header-actions > .workspace-auxiliary {
+    display: none;
+  }
+  .desktop-shell .workspace-header-actions {
+    margin-left: auto;
+  }
+  .desktop-shell .workspace-wallet {
+    padding: 0 10px;
+    min-height: var(--account-control-height);
+    border-radius: var(--radius-control);
+    background: var(--color-paper-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .desktop-shell .workspace-game-return {
+    border-color: transparent;
+    background: var(--color-play-action);
+    color: var(--color-play-action-ink);
   }
   .desktop-shell .platform-workspace {
-    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-columns: 208px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
   }
   .desktop-shell .platform-sidebar,
@@ -287,13 +314,83 @@
     max-height: none;
     border-bottom: 0;
     border-right: 1px solid var(--color-rule);
-    padding: var(--space-sm);
+    padding: var(--space-md) 12px var(--space-sm);
   }
-  .workspace-menu-title {
-    display: block;
-    padding: 12px 8px;
-    font-size: 13px;
+  .desktop-shell .sidebar-group + .sidebar-group {
+    margin-top: 10px;
+  }
+  .desktop-shell .sidebar-group summary {
+    padding: 9px 8px 9px 10px;
     color: var(--color-muted);
+    font-size: 12px;
+  }
+  .desktop-shell .sidebar-group a,
+  .desktop-shell .sidebar-shortcuts :is(a, button) {
+    position: relative;
+    gap: 10px;
+    padding: 8px 10px;
+    min-height: 38px;
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+  .desktop-shell .sidebar-group-play a {
+    min-height: 42px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .desktop-shell .sidebar-group a.router-link-active,
+  .desktop-shell .sidebar-shortcuts a.router-link-active {
+    background: #26364a;
+    color: var(--color-play-action);
+  }
+  .desktop-shell .sidebar-group a.router-link-active::before,
+  .desktop-shell .sidebar-shortcuts a.router-link-active::before {
+    content: "";
+    position: absolute;
+    inset: 9px auto 9px 0;
+    width: 2px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+  .desktop-shell .sidebar-shortcuts > .workspace-wide-only {
+    display: flex;
+  }
+  .desktop-shell .workspace-account-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 3px 8px 3px 3px;
+    border-radius: var(--radius-control);
+    color: var(--color-ink);
+    font-size: 13px;
+  }
+  .workspace-avatar {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-paper-3);
+    color: var(--color-play-action);
+    font-weight: 700;
+  }
+  .workspace-account-name {
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .desktop-shell .workspace-user-menu > span,
+  .desktop-shell .workspace-user-menu:not(.is-switchable) {
+    display: none;
+  }
+  .desktop-shell .workspace-user-menu select {
+    max-width: 132px;
+  }
+  .desktop-shell .workspace-account-profile:hover {
+    background: var(--color-paper-2);
   }
   .workspace-menu-toggle {
     display: none;
@@ -352,6 +449,9 @@
   text-align: left;
   border: 0;
   background: var(--color-clear);
+}
+.sidebar-shortcuts > .workspace-wide-only {
+  display: none;
 }
 .workspace-header-actions {
   display: flex;

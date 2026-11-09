@@ -17,6 +17,7 @@ export const ADMIN_PAGES = [
     title: "字块币收支管理",
   },
   { id: "record-management", name: "RecordManage", title: "游戏记录管理" },
+  { id: "game-management", name: "GameManage", title: "游戏资料管理" },
 ];
 
 // 创建独立收支筛选对象，表单变化后从第一页重新查询

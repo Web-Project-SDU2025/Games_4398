@@ -34,22 +34,41 @@
       </section>
       <div id="modal" class="modal" hidden>
         <section class="prompt" aria-labelledby="prompt-title">
-          <div class="medal" aria-hidden="true">8</div>
-          <h1 id="prompt-title">美式八球</h1>
+          <header class="prompt-heading">
+            <span class="medal" aria-hidden="true">8</span>
+            <h1 id="prompt-title">美式八球</h1>
+          </header>
           <fieldset id="mode-controls" class="mode-controls">
-            <legend>对局模式</legend>
-            <label><input type="radio" name="mode" value="single" checked />单人 · 对抗电脑</label>
-            <label><input type="radio" name="mode" value="local" />双人 · 本地对局</label>
+            <legend>选择对局模式</legend>
+            <label>
+              <input type="radio" name="mode" value="single" checked />
+              <span><strong>单人对抗电脑</strong><small>击败电脑赢取 20 字块币</small></span>
+            </label>
+            <label>
+              <input type="radio" name="mode" value="local" />
+              <span><strong>本地双人</strong><small>与朋友轮流出杆</small></span>
+            </label>
           </fieldset>
           <div id="instructions">
-            <p>主球：拖到开球线后，松开落位</p>
-            <p>击球：在主球后方按住左键，向后拖动，松开出杆</p>
-            <p>开球进球不定组，之后首次合法进球确定球组</p>
-            <p>成就 +1～11 字块币 · 单人击败电脑 +20</p>
+            <p>完成对局后结算本局成就。</p>
+            <details>
+              <summary>查看操作说明</summary>
+              <p>开球时先把主球拖到开球线后。在主球后方按住鼠标左键，向后拉杆，松手出杆。</p>
+              <p>开球进球时暂不分组，下一次合法进球决定球组。</p>
+            </details>
           </div>
-          <p id="reason" hidden></p>
-          <p id="summary" class="summary" hidden></p>
-          <button id="start" type="button">点击开始</button>
+          <div id="round-result" class="round-result" hidden>
+            <p id="reason" hidden></p>
+            <div id="round-achievements" class="round-achievements" hidden>
+              <strong>我的成就</strong>
+              <p id="summary" hidden></p>
+            </div>
+            <p id="settlement" class="settlement" role="status" hidden></p>
+          </div>
+          <div class="prompt-actions">
+            <button id="start" type="button">开始对局</button>
+            <button id="choose-mode" type="button" hidden>切换模式</button>
+          </div>
         </section>
       </div>
       <p id="load-error" role="alert" hidden></p>

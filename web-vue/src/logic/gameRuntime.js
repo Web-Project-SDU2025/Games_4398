@@ -29,6 +29,17 @@ export function findInstalledGame(games, path) {
   return null;
 }
 
+// 八球由专用服务在完赛时结算，普通游戏沿用后台设置的通关奖励
+function gameRewardLabel(record) {
+  if (record.gamePath === "/games/billiards/game.json") {
+    return "单人击败电脑 +20 字块币，成就奖励在分出胜负后结算";
+  }
+  if (record.reward > 0) {
+    return "通关 +" + record.reward + " 字块币";
+  }
+  return "";
+}
+
 // 商城、游戏库和收藏共用数据库资料，安装清单只补充封面与运行能力
 export function launcherGames(catalog, installedGames) {
   const result = [];
@@ -49,6 +60,7 @@ export function launcherGames(catalog, installedGames) {
       favorite: record.favorite === true,
       price: record.price,
       reward: record.reward,
+      rewardLabel: gameRewardLabel(record),
     };
     if (installed) {
       entry.id = installed.id;

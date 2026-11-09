@@ -1,4 +1,5 @@
 import test from "node:test";
+import { setImmediate as nextTask } from "node:timers/promises";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -121,7 +122,6 @@ function loadListComponent(filename, services) {
   services.GameLauncher = {};
   services.GamePlayer = {};
   services.BlockcoinHistory = {};
-  services.DashboardAccount = {};
   services.MessageBell = {};
   services.BlockcoinAdjustment = {};
   services.AccountGameLibrary = {};
@@ -460,8 +460,56 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
   assert.equal(state.loadedGameRevision, 1);
 });
 
+// 慢速的游玩记录请求不阻止大厅展示游戏入口
+test("大厅在游玩记录返回前显示可启动的游戏", async function testEarlyCatalog() {
+  const store = { userInfo: { id: 3, token: "player" } };
+  const games = [{ gameId: 1, owned: true }];
+  let finishRecords;
+  // 返回当前测试账户
+  function useAppStore() {
+    return store;
+  }
+  // 返回已拥有的游戏目录
+  async function getGames() {
+    return { code: 0, data: games };
+  }
+  // 模拟比目录更慢的游玩记录请求
+  function getRecords() {
+    return new Promise(
+      // 浏览器收到记录请求结果时完成等待
+      function waitForRecords(resolve) {
+        finishRecords = resolve;
+      },
+    );
+  }
+  // 返回游戏运行资料
+  async function getInstalledGames() {
+    return [];
+  }
+  const component = loadListComponent("../src/views/MainPage.vue", {
+    useAppStore: useAppStore,
+    getGames: getGames,
+    getRecords: getRecords,
+    getInstalledGames: getInstalledGames,
+    dashboard: dashboard,
+    DashboardActivity: {},
+  });
+  const state = component.data();
+  state.userInfo = store.userInfo;
+  const loading = component.methods.loadDashboard.call(state);
+  // 让已完成的目录请求及 Vue 状态处理运行后，再查看中间状态
+  await nextTask();
+  const earlyCatalog = state.catalog;
+  const earlySummary = state.summary;
+  finishRecords({ code: 0, data: [] });
+  await loading;
+  assert.equal(earlyCatalog, games);
+  assert.equal(earlySummary, null);
+  assert.equal(state.summary.libraryCount, 1);
+});
+
 // 管理菜单替换旧入口并按固定顺序显示，普通用户的侧栏只保留个人功能
-test("管理区按账户、收支和记录顺序排列", function testSidebarManagement() {
+test("管理区包含独立游戏资料入口且仅对管理员显示", function testSidebarManagement() {
   const original = [
     {
       id: 1,
@@ -474,20 +522,64 @@ test("管理区按账户、收支和记录顺序排列", function testSidebarMan
       sList: [
         { id: 21, name: "MenuManage", title: "菜单管理" },
         { id: 23, name: "GameUserManage", title: "用户管理" },
+        { id: 24, name: "", sList: [{ id: 25, name: "GameManage" }] },
       ],
     },
   ];
   const admin = navigation.createSidebarGroups(original, true);
-  assert.equal(admin[1].sList.length, 3);
+  assert.equal(admin[1].sList.length, 4);
   assert.equal(admin[1].sList[0].name, "AccountManage");
   assert.equal(admin[1].sList[1].name, "BlockcoinManage");
   assert.equal(admin[1].sList[2].name, "RecordManage");
+  assert.equal(admin[1].sList[3].name, "GameManage");
+  assert.equal(navigation.findMenuTitle([], "GameManage"), "游戏资料管理");
   assert.equal(original[1].sList[1].name, "GameUserManage");
   const ordinary = navigation.createSidebarGroups(original, false);
   assert.equal(ordinary.length, 1);
   const fallback = navigation.createSidebarGroups([], true);
   assert.equal(fallback[0].sList[0].name, "AccountManage");
 });
+
+// 玩家入口按使用顺序重新分组，同时保留服务器菜单中的其他入口
+test("游戏厅和商城排在侧栏前面并保留自定义菜单", function testPlayerNavigation() {
+  const groups = [
+    {
+      id: 1,
+      title: "我的账户",
+      sList: [
+        { id: 12, name: "Password" },
+        { id: 11, name: "MainPage" },
+        { id: 13, name: "GameUserProfile" },
+      ],
+    },
+    {
+      id: 2,
+      title: "游戏中心",
+      sList: [
+        { id: 34, name: "GameRecords" },
+        { id: 32, name: "GameLibrary" },
+        { id: 31, name: "GameCatalog" },
+        { id: 33, name: "GameFavorites" },
+        { id: 35, name: "Help", title: "帮助" },
+      ],
+    },
+  ];
+  const reordered = navigation.createSidebarGroups(groups, false);
+  assert.deepEqual(reordered[0].sList.map(menuName), [
+    "MainPage",
+    "GameCatalog",
+    "GameLibrary",
+  ]);
+  assert.deepEqual(reordered[1].sList.map(menuName), ["GameFavorites", "GameRecords"]);
+  assert.deepEqual(reordered[2].sList.map(menuName), ["GameUserProfile", "Password"]);
+  assert.deepEqual(reordered[3].sList.map(menuName), ["Help"]);
+  assert.equal(groups[0].sList[0].name, "Password");
+});
+
+// 将菜单对象转成路由名用于核对导航顺序
+function menuName(item) {
+  return item.name;
+}
 
 // 路由过渡期间使用现有淡化，提示内容变化复用该过渡
 test("页面过渡期间不重复播放内容动画", function testRevealDuringPageEnter() {
@@ -531,7 +623,7 @@ test("菜单标题和折叠状态正确", function testMenus() {
     { id: 1, sList: [{ name: "MainPage", title: "网站概览" }] },
     { id: 2, sList: [] },
   ];
-  assert.equal(navigation.findMenuTitle(menus, "MainPage"), "首页");
+  assert.equal(navigation.findMenuTitle(menus, "MainPage"), "游戏厅");
   const closed = [1];
   navigation.updateGroup(closed, 1, true);
   navigation.updateGroup(closed, 1, false);

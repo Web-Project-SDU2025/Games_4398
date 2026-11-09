@@ -373,8 +373,8 @@
             │   ├── RecordManage.vue                                            管理员游戏记录与分数
             │   └── GameUserProfile.vue                                         个人资料
             ├── game/
-            │   ├── GameStore.vue                                               游戏商城、购买与游戏资料维护
-            │   ├── GameList.vue                                                游戏库、收藏与字块币足迹
+            │   ├── GameStore.vue                                               游戏商城与购买
+            │   ├── GameList.vue                                                游戏库、收藏与管理员游戏资料
             │   └── GameRecords.vue                                             游玩记录
             └── info/
                 └── Password.vue                                                修改密码

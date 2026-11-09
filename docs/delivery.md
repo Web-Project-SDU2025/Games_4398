@@ -27,7 +27,7 @@ AI 客服、宠物与图片问答沿用本机配置的百炼应用，仍依赖�
 开发者可使用下面的命令在独立端口验证已生成的运行目录：
 
 ```powershell
-.\scripts\Test-Delivery.ps1 -PackageDirectory ".\dist\4398-teacher-1.12.16-windows-x64"
+.\scripts\Test-Delivery.ps1 -PackageDirectory ".\dist\4398-teacher-1.12.19-windows-x64"
 ```
 
 检查会启动包内 Java，读取首页、游戏清单、账户、消息和商城，并真实调用一次文字问答及一次图片问答，结束后停止本次服务。它不会修改游戏资料或操作资金，但真实 AI 请求会消耗少量额度。该检查不等同于在老师电脑和网络上完成完整人工试玩。

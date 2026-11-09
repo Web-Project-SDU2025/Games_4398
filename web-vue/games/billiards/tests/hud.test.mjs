@@ -53,11 +53,6 @@ test("终局状态栏正确显示获胜方和成就集合", function testVictory
     return nodes.get(id);
   }
 
-  // 浮层容器也使用相同的节点记录方式
-  function querySelector(selector) {
-    return getElementById(selector);
-  }
-
   // 托盘空槽无需加载图片，保留节点属性即可
   function createElement() {
     return new StatusNode();
@@ -65,7 +60,6 @@ test("终局状态栏正确显示获胜方和成就集合", function testVictory
 
   globalThis.document = {
     getElementById: getElementById,
-    querySelector: querySelector,
     createElement: createElement,
   };
   try {
@@ -76,15 +70,26 @@ test("终局状态栏正确显示获胜方和成就集合", function testVictory
     match.reason = "合法打进 8 号球";
     match.achievements[0].add("一杆双收");
     match.achievements[0].add("翻袋好球");
-    const hud = createHud(match, { power: 0, lastPower: 0 }, {});
+    const ui = { power: 0, lastPower: 0, settlement: "" };
+    const hud = createHud(match, ui, {});
     hud.update();
-    assert.equal(nodes.get("prompt-title").textContent, "你 获胜");
+    assert.equal(nodes.get("prompt-title").textContent, "你赢了");
     assert.equal(nodes.get("summary").textContent, "一杆双收 / 翻袋好球");
     assert.equal(nodes.get("summary").hidden, false);
     assert.equal(nodes.get("modal").hidden, false);
+    assert.equal(nodes.get("settlement").textContent, "正在结算字块币…");
+    ui.settlement = "到账 +30 字块币";
+    hud.update();
+    assert.equal(nodes.get("settlement").textContent, "到账 +30 字块币");
+    match.winner = 1;
+    match.achievements[1].add("开门红");
+    hud.update();
+    assert.equal(nodes.get("prompt-title").textContent, "电脑获胜");
+    assert.equal(nodes.get("summary").textContent, "一杆双收 / 翻袋好球");
     match.phase = "start";
     hud.update();
     assert.equal(nodes.get("summary").hidden, true);
+    assert.equal(nodes.get("settlement").hidden, true);
   } finally {
     if (previousDocument === undefined) {
       delete globalThis.document;

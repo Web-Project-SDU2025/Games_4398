@@ -3,68 +3,90 @@ import { ADMIN_PAGES } from "./admin.js";
 // 右下角时钟的刷新间隔，单位为毫秒
 export const CLOCK_INTERVAL = 1000;
 
-/** 复制菜单并整理管理入口，使用角色控制账户管理，缺少管理分组时创建该分组 */
-export function createSidebarGroups(groups, isAdmin) {
-  const result = [];
-  let managementGroup = null;
-  for (const group of groups) {
-    const copied = { id: group.id, title: group.title, sList: [] };
-    for (const item of group.sList) {
-      if (
-        item.name === "MenuManage" ||
-        item.name === "DictionaryManage" ||
-        item.name === "AccountManage" ||
-        item.name === "GameUserManage" ||
-        item.name === "BlockcoinManage" ||
-        item.name === "RecordManage"
-      ) {
-        managementGroup = copied;
-        continue;
-      }
-      if (item.name === "GameCatalog") {
-        copied.sList.push({
-          id: item.id,
-          name: item.name,
-          title: "游戏商城",
-          sList: item.sList,
-        });
-      } else {
-        copied.sList.push(item);
+// 根据玩家使用顺序分组，实际可见入口仍来自账户的菜单
+const PLAYER_GROUPS = [
+  { id: "play", title: "玩游戏", pages: ["MainPage", "GameCatalog", "GameLibrary"] },
+  { id: "activity", title: "我的游玩", pages: ["GameFavorites", "GameRecords"] },
+  { id: "account", title: "我的账户", pages: ["GameUserProfile", "Password"] },
+];
+const LEGACY_ADMIN_PAGES = ["MenuManage", "DictionaryManage", "GameUserManage"];
+
+/** 根据路由名查找管理入口，角色判断在整理菜单时统一处理 */
+function findAdminPage(name) {
+  for (const page of ADMIN_PAGES) {
+    if (page.name === name) {
+      return page;
+    }
+  }
+  return null;
+}
+
+/** 提取玩家入口，去掉原管理入口，其他菜单保留原有分组和顺序 */
+function collectPlayerPages(items, playerPages) {
+  const remaining = [];
+  for (const item of items) {
+    if (playerPages.has(item.name)) {
+      playerPages.set(item.name, item);
+    } else if (!findAdminPage(item.name) && !LEGACY_ADMIN_PAGES.includes(item.name)) {
+      if (item.name) {
+        remaining.push(item);
+      } else if (item.sList) {
+        const children = collectPlayerPages(item.sList, playerPages);
+        if (children.length > 0) {
+          remaining.push(Object.assign({}, item, { sList: children }));
+        }
       }
     }
-    if (copied.sList.length > 0) {
-      result.push(copied);
+  }
+  return remaining;
+}
+
+/** 将玩家高频入口置顶，并为管理员添加独立管理分组 */
+export function createSidebarGroups(groups, isAdmin) {
+  const playerPages = new Map();
+  for (const group of PLAYER_GROUPS) {
+    for (const name of group.pages) {
+      playerPages.set(name, null);
+    }
+  }
+  const remaining = [];
+  for (const group of groups) {
+    const items = collectPlayerPages(group.sList || [], playerPages);
+    if (items.length > 0) {
+      remaining.push({ id: group.id, title: group.title, sList: items });
+    }
+  }
+  const result = [];
+  for (const group of PLAYER_GROUPS) {
+    const items = [];
+    for (const name of group.pages) {
+      const item = playerPages.get(name);
+      if (item) {
+        items.push(item);
+      }
+    }
+    if (items.length > 0) {
+      result.push({ id: group.id, title: group.title, sList: items });
     }
   }
   if (isAdmin) {
-    if (!managementGroup || !result.includes(managementGroup)) {
-      managementGroup = { id: "management", title: "系统管理", sList: [] };
-      result.push(managementGroup);
-    }
-    managementGroup.sList = [];
-    for (const page of ADMIN_PAGES) {
-      managementGroup.sList.push({
-        id: page.id,
-        name: page.name,
-        title: page.title,
-      });
-    }
+    result.push({ id: "management", title: "系统管理", sList: ADMIN_PAGES });
   }
-  return result;
+  return result.concat(remaining);
 }
 
 /** 创建首页标签，每个账户使用独立数组保存打开状态 */
 export function createHomeTabs() {
-  return [{ path: "/MainPage", title: "首页" }];
+  return [{ path: "/MainPage", title: "游戏厅" }];
 }
 
-/** 保留原菜单地址，仅统一首页标题 */
+/** 保留原菜单地址，统一玩家页面名称 */
 export function getMenuTitle(item) {
   if (item.name === "GameCatalog") {
     return "游戏商城";
   }
   if (item.name === "MainPage") {
-    return "首页";
+    return "游戏厅";
   }
   return item.title;
 }
@@ -80,10 +102,9 @@ export function findMenuTitle(items, name) {
   if (name === "AccountManage" || name === "GameUserManage") {
     return "账户管理";
   }
-  for (const page of ADMIN_PAGES) {
-    if (page.name === name) {
-      return page.title;
-    }
+  const adminPage = findAdminPage(name);
+  if (adminPage) {
+    return adminPage.title;
   }
   for (const item of items) {
     if (item.name === name) {

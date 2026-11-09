@@ -68,20 +68,11 @@
     >
       没有找到匹配的游戏
     </p>
-    <GameList
-      v-if="admin"
-      class="game-maintenance"
-      mode="catalog"
-      title="管理游戏资料"
-      :show-launcher="false"
-      @changed="load"
-    />
   </section>
 </template>
 
 <script>
 import GameLauncher from "../../components/GameLauncher.vue";
-import GameList from "./GameList.vue";
 import { useWalletStore } from "../../stores/wallet.js";
 import { useAppStore } from "../../stores/app.js";
 import { purchaseGame } from "../../services/storeServ.js";
@@ -95,7 +86,7 @@ import {
 
 export default {
   name: "GameStore",
-  components: { GameLauncher: GameLauncher, GameList: GameList },
+  components: { GameLauncher: GameLauncher },
   // 筛选和购买状态属于页面，余额由账户仓库维护
   data: function storeState() {
     return {
@@ -112,7 +103,7 @@ export default {
     wallet: function readWallet() {
       return useWalletStore();
     },
-    // 管理员继续维护原游戏资料
+    // 已入库的游戏仍为管理员提供关卡编辑器入口
     admin: function readAdmin() {
       return useAppStore().userInfo.role === "ROLE_ADMIN";
     },
@@ -133,6 +124,23 @@ export default {
   // 进入商城读取余额，购买与通关后沿用同一刷新入口
   mounted: function loadStore() {
     this.load();
+  },
+  watch: {
+    "$route.query.search": {
+      immediate: true,
+      // 大厅的「查看游戏」用现有搜索展示对应商品
+      handler: function showLinkedGame(search, previous) {
+        if (typeof search !== "string" && typeof previous !== "string") {
+          return;
+        }
+        this.search = "";
+        if (typeof search === "string") {
+          this.search = search;
+        }
+        this.category = "";
+        this.selection = "all";
+      },
+    },
   },
   methods: {
     // 切换筛选范围，保留控件焦点

@@ -1,12 +1,13 @@
 <template>
   <div
     class="platform-shell"
-    :class="{ 'desktop-shell': loggedIn, 'auth-shell': !loggedIn }"
+    :class="{ 'desktop-shell': loggedIn, 'auth-shell': !loggedIn, 'is-playing': gameVisible }"
   >
     <header class="platform-header">
       <div class="platform-header-inner">
         <button
           v-if="loggedIn"
+          v-show="!gameVisible"
           class="workspace-menu-toggle"
           type="button"
           aria-label="展开或收起功能菜单"
@@ -23,6 +24,7 @@
         </RouterLink>
         <TransitionGroup
           v-if="loggedIn"
+          v-show="!gameVisible"
           name="tab"
           tag="nav"
           class="workspace-tabs"
@@ -56,14 +58,17 @@
         >
           <button
             v-if="
-              playerSession.game && playerSession.ownerToken === userInfo.token
+              !gameVisible &&
+              playerSession.game &&
+              playerSession.ownerToken === userInfo.token
             "
             class="workspace-game-return"
             type="button"
             :title="playerSession.game.name"
+            :disabled="playerSession.closing"
             @click="returnToGame"
           >
-            <span class="i-ep-video-play" aria-hidden="true"></span>返回游戏
+            <span class="i-ep-video-play" aria-hidden="true"></span>{{ gameReturnLabel }}
           </button>
           <RouterLink
             v-if="loggedIn && wallet.balance !== null"
@@ -74,11 +79,11 @@
             <span class="i-ep-coin" aria-hidden="true"></span
             >{{ wallet.balance }} BC
           </RouterLink>
-          <BackgroundMusic />
           <MessageBell v-if="loggedIn" :key="userInfo.token" />
+          <BackgroundMusic />
           <button
             v-if="loggedIn"
-            class="workspace-icon-button"
+            class="workspace-icon-button workspace-auxiliary"
             type="button"
             aria-label="快速反馈"
             title="快速反馈"
@@ -89,7 +94,7 @@
           </button>
           <button
             v-if="loggedIn"
-            class="workspace-icon-button"
+            class="workspace-icon-button workspace-auxiliary"
             type="button"
             aria-label="界面设置"
             title="界面设置"
@@ -114,18 +119,19 @@
         />
       </div>
     </header>
-    <div class="platform-workspace" v-if="loggedIn">
+    <div v-if="loggedIn" class="platform-workspace">
       <aside
+        v-show="!gameVisible"
         id="workspace-navigation"
         class="platform-sidebar"
         :class="{ 'is-expanded': menuExpanded }"
         aria-label="功能菜单"
       >
-        <div class="workspace-menu-title">功能菜单</div>
         <details
           v-for="group in sidebarGroups"
           :key="group.id"
           class="sidebar-group"
+          :class="'sidebar-group-' + group.id"
           :aria-label="group.title"
           :open="groupOpen(group.id)"
           @toggle="syncGroup(group.id, $event)"
@@ -159,14 +165,22 @@
             >
           </template>
         </details>
-        <nav class="sidebar-shortcuts" aria-label="更多功能">
-          <RouterLink to="/Messages" @click="closeMenu">
+        <nav class="sidebar-shortcuts" aria-label="帮助与设置">
+          <RouterLink class="workspace-narrow-only" to="/Messages" @click="closeMenu">
             <span class="i-ep-bell" aria-hidden="true"></span>消息中心
           </RouterLink>
           <RouterLink to="/AiSupport" @click="closeMenu"
             ><span class="i-ep-chat-dot-round" aria-hidden="true"></span>AI
             客服</RouterLink
           >
+          <button
+            class="workspace-wide-only"
+            type="button"
+            aria-haspopup="dialog"
+            @click="openQuickFeedback"
+          >
+            <span class="i-ep-edit-pen" aria-hidden="true"></span>问题反馈
+          </button>
           <button type="button" @click="openSettings">
             <span class="i-ep-setting" aria-hidden="true"></span>界面设置
           </button>
@@ -220,7 +234,12 @@
         <component :is="page.Component" :key="page.route.path" />
       </Transition>
     </router-view>
-    <Octorange v-if="loggedIn" :key="userInfo.id" :user-id="userInfo.id" />
+    <Octorange
+      v-if="loggedIn"
+      v-show="!gameVisible"
+      :key="userInfo.id"
+      :user-id="userInfo.id"
+    />
     <PointerTrail />
     <InterfaceSettings v-if="loggedIn" ref="settings" />
     <MessageComposer
@@ -229,7 +248,7 @@
       dialog-id="quick-feedback-title"
       @saved="feedbackSent"
     />
-    <footer v-if="loggedIn" class="workspace-status">
+    <footer v-if="loggedIn" v-show="!gameVisible" class="workspace-status">
       <span class="workspace-team">
         <span>4398 游戏平台 · 第02组</span>
         <span v-for="member in teamMembers" :key="member">{{
@@ -279,6 +298,7 @@ const MENU_ICONS = {
   AccountManage: "i-ep-user",
   BlockcoinManage: "i-ep-coin",
   RecordManage: "i-ep-document",
+  GameManage: "i-ep-box",
 };
 
 /** 返回标签页、菜单展开状态、时钟和项目配置中的版本号 */
@@ -318,6 +338,13 @@ function readGameVisible() {
       player.expanded &&
       player.routePath === this.$route.path,
   );
+}
+/** 返回入口区分进行中的游戏与关卡编辑器 */
+function readGameReturnLabel() {
+  if (this.playerSession.editorOpen) {
+    return "返回关卡编辑器";
+  }
+  return "返回当前对局";
 }
 /** 顶栏入口返回当前游戏的启动页面，并恢复原实例画面 */
 function returnToGame() {
@@ -364,7 +391,7 @@ function readHomePath() {
   }
   return "/Login";
 }
-/** 首页保留原路由地址，菜单文字统一显示为首页 */
+/** 游戏厅等玩家页面统一使用同一套菜单名称 */
 function menuTitle(item) {
   return navigation.getMenuTitle(item);
 }
@@ -388,7 +415,7 @@ function openSettings() {
   this.closeMenu();
   this.$refs.settings.open();
 }
-/** 从顶栏直接打开共用反馈弹窗，小屏状态下先收起菜单 */
+/** 从导航打开共用反馈弹窗，小屏状态下先收起菜单 */
 function openQuickFeedback() {
   this.closeMenu();
   this.$refs.quickFeedback.open("feedback");
@@ -505,6 +532,7 @@ export default {
     wallet: readWallet,
     playerSession: readPlayerSession,
     gameVisible: readGameVisible,
+    gameReturnLabel: readGameReturnLabel,
     userInfo: readUserInfo,
     systemConfig: readSystemConfig,
     sidebarGroups: readSidebarGroups,

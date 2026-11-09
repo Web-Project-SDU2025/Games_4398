@@ -1,9 +1,17 @@
 <template>
   <div class="platform-account">
-    <label class="workspace-user-menu">
+    <RouterLink
+      class="workspace-account-profile workspace-wide-only"
+      to="/GameUserProfile"
+      :title="displayName + '的个人资料'"
+    >
+      <span class="workspace-avatar" aria-hidden="true">{{ avatarLetter }}</span>
+      <span class="workspace-account-name">{{ displayName }}</span>
+    </RouterLink>
+    <label class="workspace-user-menu" :class="{ 'is-switchable': enabled || switching }">
       <span :title="displayName">{{ displayName }}</span>
       <select
-        aria-label="切换检查账号"
+        aria-label="切换账号"
         :title="selectedLabel"
         :value="userInfo.username"
         :disabled="!enabled || switching"
@@ -53,6 +61,10 @@ export default {
     // 昵称过长时由样式省略，完整内容保留在提示中
     displayName: function displayName() {
       return getDisplayName(this.userInfo);
+    },
+    // 使用昵称首字作为个人资料入口标记
+    avatarLetter: function avatarLetter() {
+      return Array.from(this.displayName)[0] || "人";
     },
     // 同时给选择框提供完整文字，极窄屏下仍可查看当前身份
     selectedLabel: function selectedLabel() {

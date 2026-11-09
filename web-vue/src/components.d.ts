@@ -12,7 +12,6 @@ declare module 'vue' {
     BackgroundMusic: typeof import('./components/BackgroundMusic.vue')['default']
     BlockcoinAdjustment: typeof import('./components/BlockcoinAdjustment.vue')['default']
     BlockcoinHistory: typeof import('./components/BlockcoinHistory.vue')['default']
-    DashboardAccount: typeof import('./components/DashboardAccount.vue')['default']
     DashboardActivity: typeof import('./components/DashboardActivity.vue')['default']
     GameLauncher: typeof import('./components/GameLauncher.vue')['default']
     GamePlayer: typeof import('./components/GamePlayer.vue')['default']

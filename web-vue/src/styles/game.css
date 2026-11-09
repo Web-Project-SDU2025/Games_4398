@@ -47,11 +47,40 @@
 .admin-expense {
   color: var(--color-amber);
 }
-.platform-main .game-maintenance {
-  margin-top: var(--space-lg);
-  border-top: 1px solid var(--color-rule);
-  padding: var(--space-lg) 0 0;
-  background: var(--color-clear);
+.game-manage-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.game-manage-heading h1 {
+  margin: 0;
+  font-size: 26px;
+}
+.game-manage-heading p {
+  margin: var(--space-sm) 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.game-manage-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.game-page .game-manage-add {
+  border-color: var(--color-play-action);
+  background: var(--color-play-action);
+  color: var(--color-play-action-ink);
+}
+.game-page .game-manage-add:hover {
+  background: #e7f3ff;
+  color: var(--color-play-action-ink);
+}
+.game-manage-empty {
+  padding: var(--space-lg) 0;
+  color: var(--color-muted);
 }
 .game-page label {
   display: flex;
@@ -73,6 +102,24 @@
   text-align: left;
   padding: 12px;
   border-bottom: 1px solid var(--color-rule);
+}
+.game-manage-table th {
+  white-space: nowrap;
+}
+.game-manage-table th:first-child {
+  min-width: 6.5rem;
+}
+.game-manage-table th:nth-child(2) {
+  min-width: 10rem;
+}
+.game-manage-table th:nth-child(3) {
+  min-width: 4rem;
+}
+.game-manage-table td {
+  overflow-wrap: anywhere;
+}
+.game-manage-table td:nth-child(5) {
+  white-space: nowrap;
 }
 .game-form {
   display: grid;
