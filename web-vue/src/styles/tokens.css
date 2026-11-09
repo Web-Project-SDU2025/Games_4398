@@ -49,8 +49,9 @@
   }
 }
 
-/* 工作区参考 anzhiyu 的中性深色界面，登录页沿用原有配色 */
-.desktop-shell {
+/* 游戏厅与登录入口共用深色表面和主操作配色 */
+.desktop-shell,
+.auth-shell {
   --color-paper: var(--color-workspace-background);
   --color-header: #101216;
   --color-paper-2: #1c1f24;
@@ -62,6 +63,8 @@
   --color-accent: #76a7ff;
   --color-accent-dark: #244875;
   --color-accent-ink: #101923;
+  --color-play-action: #c7e2ff;
+  --color-play-action-ink: #17243a;
   --color-focus: #b6d4ff;
   --color-success: #6ed5ad;
   --color-error: #ffb4ab;

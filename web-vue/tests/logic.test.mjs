@@ -649,9 +649,20 @@ test("记录列表显示隐藏项并恢复显示", async function testRestoreRec
 // 在内存中提供接口替身，验证验证码和注册流程，不创建真实账户
 test("注册成功后清空密码，验证码失败可以重试", async function testRegistration() {
   let failCaptcha = false;
+  let holdCaptcha = false;
+  let releaseCaptcha;
   let request = null;
   // 返回固定验证码，失败时模拟网络中断
   async function getValidateCode() {
+    if (holdCaptcha) {
+      holdCaptcha = false;
+      return new Promise(
+        // 延迟旧请求，以模拟切换表单后才收到原验证码
+        function waitForCaptcha(resolve) {
+          releaseCaptcha = resolve;
+        },
+      );
+    }
     if (failCaptcha) {
       throw new Error("测试网络故障");
     }
@@ -689,7 +700,19 @@ test("注册成功后清空密码，验证码失败可以重试", async function
   await context.refreshCaptcha(form);
   assert.equal(form.captchaLoading, false);
   assert.equal(form.captchaImage, "");
+  assert.match(form.captchaError, /验证码加载失败/);
+  assert.equal(form.notice, "注册成功，请登录");
   failCaptcha = false;
   await context.refreshCaptcha(form);
+  assert.equal(form.captchaImage, "test-image");
+  assert.equal(form.captchaError, "");
+  holdCaptcha = true;
+  const older = context.refreshCaptcha(form);
+  await context.changeLoginMode(form, "register");
+  releaseCaptcha({ validateCodeId: 99, img: "old-image" });
+  await older;
+  assert.equal(form.mode, "register");
+  assert.equal(form.username, "test");
+  assert.equal(form.validateCodeId, 5);
   assert.equal(form.captchaImage, "test-image");
 });

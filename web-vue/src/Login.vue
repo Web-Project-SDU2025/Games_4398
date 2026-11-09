@@ -68,98 +68,108 @@
       </label>
     </section>
     <div class="auth-layout">
+      <aside class="auth-gallery" aria-labelledby="login-games-title">
+        <h2 id="login-games-title">今天想玩点什么？</h2>
+        <figure class="auth-game-feature">
+          <div class="auth-game-art auth-game-art-pool" aria-hidden="true"></div>
+          <figcaption>
+            <strong>美式八球</strong>
+            <span>人机对抗 · 本地双人</span>
+          </figcaption>
+        </figure>
+        <figure class="auth-game-companion">
+          <div class="auth-game-art auth-game-art-plants" aria-hidden="true"></div>
+          <figcaption>
+            <strong>植物大战僵尸</strong>
+            <span>草坪塔防</span>
+          </figcaption>
+        </figure>
+      </aside>
       <section class="auth-panel" aria-labelledby="site-title">
         <h1 id="site-title">{{ formTitle }}</h1>
-        <div class="auth-tabs" role="tablist" aria-label="账户操作">
+        <div class="auth-tabs" role="group" aria-label="账户操作">
           <button
-            id="login-tab"
             type="button"
-            role="tab"
-            :aria-selected="mode === 'login'"
-            aria-controls="account-form"
-            :disabled="submitting"
+            :aria-pressed="mode === 'login'"
+            :disabled="actionBusy"
             @click="changeMode('login')"
           >
             登录
           </button>
 
           <button
-            id="register-tab"
             type="button"
-            role="tab"
-            :aria-selected="mode === 'register'"
-            aria-controls="account-form"
-            :disabled="submitting"
+            :aria-pressed="mode === 'register'"
+            :disabled="actionBusy"
             @click="changeMode('register')"
           >
             注册
           </button>
         </div>
-        <!-- 登录与注册共用账号、密码和验证码表单 -->
-        <Transition name="page" mode="out-in">
-          <form
-            :key="mode"
-            id="account-form"
-            @submit.prevent="submit"
-            :aria-busy="submitting"
-          >
-            <fieldset :disabled="submitting">
+        <form @submit.prevent="submit" :aria-busy="submitting">
+          <fieldset :disabled="actionBusy">
+            <div class="auth-field">
               <label for="account-name">账号</label>
               <input
                 id="account-name"
                 v-model.trim="username"
+                name="username"
                 autocomplete="username"
                 :maxlength="limits.USERNAME_LIMIT"
                 required
               />
-              <template v-if="mode === 'register'">
+            </div>
+            <div v-if="mode === 'register'" class="auth-field-pair">
+              <div class="auth-field">
                 <label for="nickname">昵称</label>
                 <input
                   id="nickname"
                   v-model.trim="name"
+                  name="nickname"
                   autocomplete="nickname"
                   :maxlength="limits.NAME_LIMIT"
                   required
                 />
-                <label for="email">邮箱（可选）</label>
+              </div>
+              <div class="auth-field">
+                <label for="email">邮箱 <small>选填</small></label>
                 <input
                   id="email"
                   v-model.trim="email"
+                  name="email"
                   type="email"
                   autocomplete="email"
                   :maxlength="limits.EMAIL_LIMIT"
                 />
-              </template>
-              <label for="account-password">密码</label>
-              <input
-                v-if="mode === 'login'"
-                id="account-password"
-                v-model="password"
-                type="password"
-                autocomplete="current-password"
-                :maxlength="passwordLimit"
-                required
-              />
-              <input
-                v-else
-                id="account-password"
-                v-model="password"
-                type="password"
-                autocomplete="new-password"
-                :maxlength="passwordLimit"
-                required
-              />
-              <template v-if="mode === 'register'">
+              </div>
+            </div>
+            <div :class="{ 'auth-field-pair': mode === 'register' }">
+              <div class="auth-field">
+                <label for="account-password">密码</label>
+                <input
+                  id="account-password"
+                  v-model="password"
+                  name="password"
+                  type="password"
+                  :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+                  :maxlength="passwordLimit"
+                  required
+                />
+              </div>
+              <div v-if="mode === 'register'" class="auth-field">
                 <label for="confirm-password">确认密码</label>
                 <input
                   id="confirm-password"
                   v-model="confirmPassword"
+                  name="confirmPassword"
                   type="password"
                   autocomplete="new-password"
                   :maxlength="passwordLimit"
                   required
                 />
-              </template>
+              </div>
+            </div>
+            <div class="auth-field">
               <label for="captcha">验证码</label>
               <div class="captcha-row">
                 <input
@@ -168,14 +178,15 @@
                   inputmode="numeric"
                   autocomplete="off"
                   :maxlength="limits.CAPTCHA_LENGTH"
+                  :aria-describedby="captchaError ? 'captcha-feedback' : undefined"
                   pattern="[0-9]{4}"
                   required
                 />
                 <button
                   class="captcha-button"
-                  v-reveal="captchaImage"
                   type="button"
                   :disabled="captchaLoading"
+                  :aria-busy="captchaLoading"
                   aria-label="刷新验证码"
                   title="刷新验证码"
                   @click="refreshCaptcha"
@@ -187,47 +198,43 @@
                     width="108"
                     height="40"
                   />
+                  <span v-else-if="captchaLoading">加载中…</span>
                   <span v-else>重新加载</span>
+                  <span v-if="!captchaLoading" class="i-ep-refresh" aria-hidden="true"></span>
                 </button>
               </div>
-              <button
-                class="auth-submit"
-                type="submit"
-                :disabled="submitting || captchaLoading || !captchaImage"
-              >
-                {{ submitText }}
-              </button>
-              <!-- 演示模式专用：免密进入管理员账户，方便验收老师快速检查 -->
-              <button
-                v-if="demoEnabled"
-                class="auth-submit demo-login"
-                type="button"
-                :disabled="demoBusy"
-                @click="demoLogin"
-              >
-                {{ demoBusy ? "正在进入…" : "演示登录（管理员）" }}
-              </button>
-            </fieldset>
-            <span v-toast="notice"></span>
-          </form>
-        </Transition>
+              <div id="captcha-feedback" class="auth-feedback" role="status">
+                <p v-if="captchaError">{{ captchaError }}</p>
+              </div>
+            </div>
+            <div class="auth-feedback auth-form-feedback" role="status">
+              <p v-if="notice">{{ notice }}</p>
+            </div>
+            <button
+              class="auth-submit"
+              type="submit"
+              :disabled="actionBusy || captchaLoading || !captchaImage"
+            >
+              {{ submitText }}
+            </button>
+          </fieldset>
+        </form>
+        <div v-if="demoEnabled" class="auth-demo">
+          <div>
+            <strong>课程演示</strong>
+            <small>一键进入管理员账户</small>
+          </div>
+          <button
+            class="demo-login"
+            type="button"
+            :disabled="actionBusy"
+            @click="demoLogin"
+          >
+            {{ demoBusy ? "正在进入…" : "演示登录" }}
+            <span class="i-ep-arrow-right" aria-hidden="true"></span>
+          </button>
+        </div>
       </section>
-      <aside class="auth-introduction">
-        <img
-          src="/images/game-collection.png"
-          alt="电脑上的游戏库"
-          width="772"
-          height="528"
-        />
-        <button
-          class="platform-secondary-button"
-          type="button"
-          :disabled="submitting"
-          @click="changeMode('register')"
-        >
-          创建我的账户
-        </button>
-      </aside>
     </div>
   </main>
 </template>
@@ -290,6 +297,10 @@ export default {
     return form;
   },
   computed: {
+    // 普通提交与演示登录使用同一会话，等待时禁止另一条路径
+    actionBusy: function actionBusy() {
+      return this.submitting || this.demoBusy;
+    },
     // 登录页与设置窗口共用背景开关，刷新页面后恢复浏览器中的选择
     motionPaused: function motionPaused() {
       return !usePreferencesStore().settings.loginMotion;
@@ -369,6 +380,9 @@ export default {
     },
     // 切换表单时保留账号，清空密码并获取新的验证码
     changeMode: async function changeMode(mode) {
+      if (this.demoBusy) {
+        return;
+      }
       await auth.changeLoginMode(this, mode);
     },
     // 注册游戏用户，成功后回到登录表单
@@ -404,7 +418,7 @@ export default {
     },
     // 演示模式下免密进入管理员账户，凭证由后端按目标账户重新签发
     demoLogin: async function demoLogin() {
-      if (this.demoBusy) {
+      if (this.actionBusy || !this.demoEnabled) {
         return;
       }
       this.notice = "";
@@ -421,7 +435,7 @@ export default {
     },
     // 检查表单后执行登录或注册，并显示请求结果
     submit: async function submit() {
-      if (this.submitting || this.captchaLoading) {
+      if (this.actionBusy || this.captchaLoading || !this.captchaImage) {
         return;
       }
       this.notice = "";

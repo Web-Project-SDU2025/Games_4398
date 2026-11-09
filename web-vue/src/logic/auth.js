@@ -14,28 +14,37 @@ export function createLoginForm() {
     validateCodeId: null,
     captchaImage: "",
     captchaLoading: false,
+    captchaRequest: 0,
+    captchaError: "",
     submitting: false,
     notice: "",
   };
 }
 
-// 更新验证码图片和编号，刷新时清除旧输入，失败时提供重试提示
+// 只采纳最新验证码请求，失败提示独立于登录和注册的结果
 export async function refreshCaptcha(form) {
+  const request = form.captchaRequest + 1;
+  form.captchaRequest = request;
   form.captchaLoading = true;
+  form.captchaError = "";
   form.captchaImage = "";
   form.validateCode = "";
   form.validateCodeId = null;
   try {
     const result = await getValidateCode();
+    if (request !== form.captchaRequest) {
+      return;
+    }
     form.validateCodeId = result.validateCodeId;
     form.captchaImage = result.img;
-    if (form.notice === "验证码加载失败，请点击重新加载") {
-      form.notice = "";
-    }
   } catch (error) {
-    form.notice = "验证码加载失败，请点击重新加载";
+    if (request === form.captchaRequest) {
+      form.captchaError = "验证码加载失败，请点击重新加载。";
+    }
   } finally {
-    form.captchaLoading = false;
+    if (request === form.captchaRequest) {
+      form.captchaLoading = false;
+    }
   }
 }
 
