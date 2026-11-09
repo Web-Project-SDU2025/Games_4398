@@ -99,6 +99,9 @@ public final class ZombieEffects {
         long duration = assets.count(zombie.animation) * zombie.frameInterval;
         if (time - zombie.deathTime >= duration) {
             finishDeath(zombie, assets, state, time);
+            if (!zombie.hypno) {
+                state.recordDefeatedZombie(zombie.bounds(assets, time));
+            }
             zombie.alive = false;
         }
         return true;
