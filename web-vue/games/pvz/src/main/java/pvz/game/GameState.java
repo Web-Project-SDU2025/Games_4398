@@ -1,5 +1,6 @@
 package pvz.game;
 
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,10 @@ import pvz.zombie.ZombieSpawn;
  * 关卡读取器和编辑器直接引用固定约定，不需要依赖游戏运行状态
  */
 public class GameState {
+    int victoryX = Layout.WINDOW_WIDTH / 2;
+    int victoryY = Layout.WINDOW_HEIGHT / 2;
+    long victoryFlashStart = -1;
+    boolean nextLevelAvailable;
     /** 当前画面的编号，取值见 GameScreen */
     public int screen = GameScreen.MENU;
 
@@ -135,6 +140,9 @@ public class GameState {
     /** 速度倍率用整数保存，2、3、4 分别对应 1、1.5、2 倍速 */
     public int speedMultiplier = 2;
 
+    /** 战斗内的暂停菜单是否打开 */
+    boolean paused;
+
     /** 上一帧的真实时刻，用来算出这一帧过了多久 */
     public long lastRealTime;
 
@@ -176,11 +184,19 @@ public class GameState {
      */
     public int maxCards = Layout.DEFAULT_CARD_SLOTS;
 
+    /** 选卡提示和消失时刻，零表示没有提示 */
+    String chooserNotice = "";
+    long chooserNoticeUntil;
+
     /** 记录草坪上哪些格子已经种了东西。true 表示被占用 */
     public final boolean[][] occupied = new boolean[Layout.ROW_COUNT][Layout.COLUMN_COUNT];
 
     /** 清空上一关留下的所有物体和记录，准备重新开始 */
     public void clearField() {
+        victoryX = Layout.WINDOW_WIDTH / 2;
+        victoryY = Layout.WINDOW_HEIGHT / 2;
+        victoryFlashStart = -1;
+        nextLevelAvailable = false;
         plants.clear();
         zombies.clear();
         bullets.clear();
@@ -197,6 +213,7 @@ public class GameState {
         flyingCards.clear();
         // 换关时先恢复默认卡槽数量，再读取新关卡的设置
         maxCards = Layout.DEFAULT_CARD_SLOTS;
+        chooserNoticeUntil = 0;
         nextSpawnIndex = 0;
         heldCard = null;
         heldShovel = false;
@@ -230,6 +247,12 @@ public class GameState {
                 cars.remove(position);
             }
         }
+    }
+
+    /** 保存最后一只敌方僵尸死亡的位置，确保奖励和白光都留在屏幕内 */
+    public void recordDefeatedZombie(Rectangle bounds) {
+        victoryX = Math.max(36, Math.min(Layout.WINDOW_WIDTH - 36, (int) bounds.getCenterX()));
+        victoryY = Math.max(120, Math.min(Layout.WINDOW_HEIGHT - 60, (int) bounds.getCenterY()));
     }
 
     /**

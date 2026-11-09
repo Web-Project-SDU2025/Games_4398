@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 import pvz.tools.TextDrawing;
 import pvz.plant.PlantCatalog;
 import pvz.plant.PlantDefinition;
@@ -57,6 +58,15 @@ public class Almanac {
         plants = true;
         paused = false;
         select(0, time);
+    }
+
+    /** 参数 progress 接收首屏动画边界的准备进度，绘图时直接使用缓存 */
+    void prepareFirstPage(IntConsumer progress) {
+        int count = Math.min(PAGE_SIZE, PlantCatalog.DEFINITIONS.length);
+        for (int index = 0; index < count; index = index + 1) {
+            assets.animationBounds(PlantCatalog.nameAt(index));
+            progress.accept((index + 1) * 100 / count);
+        }
     }
 
     /** 返回当前类别的条目数量，直接读取资料表以保证全部已实现品种都能展示 */

@@ -76,6 +76,9 @@ public final class BrowserGame {
                 return;
             }
             Game game = new Game(assets, FIRST_LEVEL, true, false);
+            if (Boolean.getBoolean("pvz.webMenu")) {
+                game.enableWebMenu();
+            }
             JFrame window = new JFrame("植物大战僵尸 · Windy-Field / Octorange");
             // 游戏使用平台自己的窗口操作，画面保留原始尺寸
             window.setUndecorated(true);

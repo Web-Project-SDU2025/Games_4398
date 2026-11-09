@@ -36,6 +36,9 @@ public final class GameScreen {
     /** 图鉴独立于关卡，浏览介绍时只推进动画而不运行战斗 */
     public static final int ALMANAC = 7;
 
+    /** 战斗结束后在草坪上展示字块币，点击后播放白光 */
+    public static final int VICTORY_REWARD = 8;
+
     /** 这个类只提供常量，不允许创建对象 */
     private GameScreen() {
     }

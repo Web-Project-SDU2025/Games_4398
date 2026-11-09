@@ -11,6 +11,7 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 import pvz.world.Assets;
 import pvz.level.LevelLoader;
 import pvz.tools.TextDrawing;
@@ -26,6 +27,8 @@ public class LevelSelection {
     private static final int ROW_GAP = 192;
     private static final int TILE_WIDTH = 200;
     private static final int TILE_HEIGHT = 176;
+    private static final int COVER_WIDTH = TILE_WIDTH - 28;
+    private static final int COVER_HEIGHT = 129;
     private static final Rectangle TITLE_BOUNDS = new Rectangle(100, 20, 600, 56);
     private static final Rectangle BACK = new Rectangle(20, 534, 120, 44);
     private static final Rectangle PREVIOUS = new Rectangle(194, 534, 110, 44);
@@ -48,6 +51,11 @@ public class LevelSelection {
 
     /** 参数 preferred 是希望选中的关卡；重新扫描文件，以便编辑器保存后立即看到新关卡 */
     public void open(int preferred) {
+        open(preferred, null);
+    }
+
+    /** 参数 progress 可接收已经处理的封面百分比 */
+    void open(int preferred, IntConsumer progress) {
         levels.clear();
         covers.clear();
         selected = 0;
@@ -59,7 +67,13 @@ public class LevelSelection {
                 selected = levels.size();
             }
             levels.add(number);
-            covers.add(preview.create(number));
+            covers.add(preview.create(number, COVER_WIDTH, COVER_HEIGHT));
+            if (progress != null) {
+                progress.accept(covers.size() * 100 / numbers.size());
+            }
+        }
+        if (numbers.isEmpty() && progress != null) {
+            progress.accept(100);
         }
         page = selected / PAGE_SIZE;
     }
@@ -161,6 +175,12 @@ public class LevelSelection {
         painter.setFont(new Font("SansSerif", Font.BOLD, 28));
         painter.setColor(TITLE);
         TextDrawing.drawCentered(painter, "选择关卡", TITLE_BOUNDS);
+        if (!levels.isEmpty()) {
+            painter.setColor(INK);
+            painter.setFont(new Font("SansSerif", Font.PLAIN, 15));
+            TextDrawing.drawCentered(painter, "双击关卡封面进入",
+                new Rectangle(100, 90, 600, FIRST_TOP - 90));
+        }
         int end = Math.min(levels.size(), (page + 1) * PAGE_SIZE);
         for (int index = page * PAGE_SIZE; index < end; index = index + 1) {
             drawTile(painter, index);
@@ -182,8 +202,7 @@ public class LevelSelection {
     /** 参数 index 是关卡列表下标；先画截图再画原版边框，选中态增加描边和文字 */
     private void drawTile(Graphics2D painter, int index) {
         Rectangle tile = tileBounds(index);
-        painter.drawImage(covers.get(index), tile.x + 14, tile.y + 8,
-            tile.width - 28, 129, null);
+        painter.drawImage(covers.get(index), tile.x + 14, tile.y + 8, null);
         BufferedImage frame = assets.image("LevelPanel");
         // 只使用边框区域，略过原素材中央的占位文字
         painter.drawImage(frame, tile.x, tile.y, tile.x + tile.width, tile.y + 8,
