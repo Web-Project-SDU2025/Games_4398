@@ -32,6 +32,7 @@ const RUNTIME_WEB_FILES = [
   "java-player.html",
   "java-player.css",
   "java-player.js",
+  "pvz-menu.mjs",
   "native-player.html",
   "native-player.js",
   "native-player.css",

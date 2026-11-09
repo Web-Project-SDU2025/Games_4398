@@ -1241,7 +1241,7 @@ public class SelfCheckTest {
         check(normal.getPlantCount() == expectedPlants, "选卡或种植失败，关卡 " + level);
 
         // 铲子移除植物后，原来的格子必须重新变为空闲
-        clickShovelSlot(normal);
+        clickShovelSlot(normal, selected.size());
         normal.click(plantX, plantY - Layout.CELL_HEIGHT / 4);
         check(normal.getPlantCount() == 0, "铲子没有移除植物，关卡 " + level);
         clickCardSlot(normal, assets, selected.get(1).intValue(), 1);
@@ -1252,7 +1252,7 @@ public class SelfCheckTest {
         // 点空草坪后铲子应收回，后续点卡和种植不该再被铲子拦住
         int emptyX = Layout.columnCenter(Layout.COLUMN_COUNT / 2);
         int emptyY = Layout.rowBottom(Layout.ROW_COUNT / 2);
-        clickShovelSlot(normal);
+        clickShovelSlot(normal, selected.size());
         normal.click(emptyX, emptyY);
         int emptyCardPosition = 0;
         if (selected.size() > 2) {
@@ -1285,8 +1285,8 @@ public class SelfCheckTest {
     }
 
     /** 点击铲子卡槽的中心，避免测试依赖图片边缘 */
-    private static void clickShovelSlot(Game game) {
-        int centerX = Layout.SHOVEL_SLOT_LEFT + Layout.SHOVEL_SLOT_WIDTH / 2;
+    private static void clickShovelSlot(Game game, int cardSlots) {
+        int centerX = Layout.shovelSlotLeft(cardSlots) + Layout.SHOVEL_SLOT_WIDTH / 2;
         int centerY = Layout.SHOVEL_SLOT_TOP + Layout.SHOVEL_SLOT_HEIGHT / 2;
         game.click(centerX, centerY);
     }

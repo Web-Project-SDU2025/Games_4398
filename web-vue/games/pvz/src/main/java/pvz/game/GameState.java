@@ -135,6 +135,9 @@ public class GameState {
     /** 速度倍率用整数保存，2、3、4 分别对应 1、1.5、2 倍速 */
     public int speedMultiplier = 2;
 
+    /** 战斗内的暂停菜单是否打开 */
+    boolean paused;
+
     /** 上一帧的真实时刻，用来算出这一帧过了多久 */
     public long lastRealTime;
 
@@ -176,6 +179,10 @@ public class GameState {
      */
     public int maxCards = Layout.DEFAULT_CARD_SLOTS;
 
+    /** 选卡提示和消失时刻，零表示没有提示 */
+    String chooserNotice = "";
+    long chooserNoticeUntil;
+
     /** 记录草坪上哪些格子已经种了东西。true 表示被占用 */
     public final boolean[][] occupied = new boolean[Layout.ROW_COUNT][Layout.COLUMN_COUNT];
 
@@ -197,6 +204,7 @@ public class GameState {
         flyingCards.clear();
         // 换关时先恢复默认卡槽数量，再读取新关卡的设置
         maxCards = Layout.DEFAULT_CARD_SLOTS;
+        chooserNoticeUntil = 0;
         nextSpawnIndex = 0;
         heldCard = null;
         heldShovel = false;

@@ -11,6 +11,7 @@ import java.awt.image.BufferedImage;
 import pvz.plant.Card;
 import pvz.plant.Plant;
 import pvz.plant.PlantCatalog;
+import pvz.tools.TextDrawing;
 import pvz.world.Assets;
 import pvz.world.Bullet;
 import pvz.world.Car;
@@ -27,6 +28,15 @@ import pvz.zombie.Zombie;
  * 想调整画面效果时不用在游戏逻辑里翻找
  */
 public class GameRenderer {
+    /** 绘制与点击使用同一组范围，菜单放在倍速按钮下方以避开返回选关 */
+    static final Rectangle PAUSE_BUTTON = new Rectangle(Layout.SPEED_BUTTON_LEFT,
+        Layout.SPEED_BUTTON_TOP + Layout.SPEED_BUTTON_HEIGHT + 4,
+        Layout.SPEED_BUTTON_WIDTH, Layout.SPEED_BUTTON_HEIGHT);
+    static final Rectangle CONTINUE_BUTTON = new Rectangle(Layout.WINDOW_WIDTH / 2 - 90,
+        Layout.WINDOW_HEIGHT / 2 - 16, 180, 38);
+    static final Rectangle RESTART_BUTTON = new Rectangle(CONTINUE_BUTTON.x,
+        CONTINUE_BUTTON.y + 52, CONTINUE_BUTTON.width, CONTINUE_BUTTON.height);
+
     /** 调试框使用独立颜色，图例同时写出类型，避免只靠颜色判断 */
     private static final Color PLANT_DEBUG_COLOR = new Color(68, 235, 114);
     private static final Color ZOMBIE_DEBUG_COLOR = new Color(255, 93, 86);
@@ -81,6 +91,12 @@ public class GameRenderer {
         if (GameScreen.canReturnToSelection(screen)) {
             drawReturnToSelection(painter);
         }
+        if (screen == GameScreen.PLAY) {
+            drawPauseButton(painter, PAUSE_BUTTON, "菜单");
+            if (state.paused) {
+                drawPauseMenu(painter);
+            }
+        }
     }
 
     /** 参数 painter 是画笔；最后绘制返回按钮，避免开场或选卡动画盖住点击入口 */
@@ -129,6 +145,38 @@ public class GameRenderer {
             Layout.ALMANAC_BUTTON_LEFT + Layout.ALMANAC_BUTTON_WIDTH,
             Layout.ALMANAC_BUTTON_TOP + Layout.ALMANAC_BUTTON_HEIGHT,
             0, 0, book.getWidth(), book.getHeight() / 2, null);
+    }
+
+    /** 参数 progress 是已完成百分比，负值显示可重试的错误提示 */
+    void drawMenuLoading(Graphics2D painter, String title, int progress, long time) {
+        int center = Layout.WINDOW_WIDTH / 2;
+        int middle = Layout.WINDOW_HEIGHT / 2;
+        painter.setColor(new Color(0, 0, 0, 125));
+        painter.fillRect(0, 0, Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+        painter.setColor(new Color(43, 57, 37));
+        painter.fillRoundRect(center - 132, middle - 83, 264, 166, 20, 20);
+        painter.setColor(new Color(255, 232, 151));
+        painter.drawRoundRect(center - 132, middle - 83, 263, 165, 20, 20);
+        painter.setFont(new Font("Dialog", Font.BOLD, 21));
+        if (progress < 0) {
+            TextDrawing.drawCentered(painter, title, new Rectangle(center - 120, middle - 24, 240, 48));
+            return;
+        }
+        TextDrawing.drawCentered(painter, title, new Rectangle(center - 120, middle - 71, 240, 33));
+        painter.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        painter.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        painter.setColor(new Color(108, 121, 80));
+        painter.drawOval(center - 19, middle - 24, 38, 38);
+        painter.setColor(new Color(255, 232, 151));
+        int angle = (int) (time % 900 * 360 / 900);
+        painter.drawArc(center - 19, middle - 24, 38, 38, -angle, -115);
+        painter.setFont(new Font("Dialog", Font.BOLD, 18));
+        String detail = "正在准备资源…";
+        if (progress > 0) {
+            detail = progress + "%";
+        }
+        TextDrawing.drawCentered(painter, detail,
+            new Rectangle(center - 110, middle + 25, 220, 34));
     }
 
     /** 按素材真实宽高绘制整屏结算，先铺底以覆盖上一帧和素材中的透明区域 */
@@ -265,7 +313,7 @@ public class GameRenderer {
      */
     private void drawPlayBar(Graphics2D painter, long time, GameState state) {
         if (state.barType == Layout.BAR_NORMAL) {
-            painter.drawImage(assets.image("ChooserBackground"), Layout.CARD_BAR_LEFT, 0, null);
+            drawNormalBarBackground(painter, state.maxCards);
             drawSunNumber(painter, state.sunValue,
                 Layout.CARD_BAR_SUN_LEFT, Layout.CARD_BAR_SUN_TOP);
         } else {
@@ -275,17 +323,36 @@ public class GameRenderer {
             card.draw(painter, assets, time, state.sunValue, Layout.CARD_SCALE, true);
         }
         if (state.barType == Layout.BAR_NORMAL) {
-            drawShovelSlot(painter);
+            drawShovelSlot(painter, state.maxCards);
         }
+    }
+
+    /** 截去多余槽位并拼回原图的右侧包边，保留阳光区和每格的原尺寸 */
+    private void drawNormalBarBackground(Graphics2D painter, int cardSlots) {
+        BufferedImage image = assets.image("ChooserBackground");
+        int left = Layout.CARD_BAR_LEFT;
+        int trim = Layout.cardBarTrim(cardSlots);
+        if (trim == 0) {
+            painter.drawImage(image, left, 0, null);
+            return;
+        }
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int capStart = width - 12;
+        int bodyWidth = capStart - trim;
+        painter.drawImage(image, left, 0, left + bodyWidth, height,
+            0, 0, bodyWidth, height, null);
+        painter.drawImage(image, left + bodyWidth, 0, left + width - trim, height,
+            capStart, 0, width, height, null);
     }
 
     /**
      * 画当前卡槽右边的铲子卡槽和铲子图标
      *
-     * 参数：painter 是画笔
+     * 参数：painter 是画笔；cardSlots 决定铲子随底板移动的位置
      */
-    private void drawShovelSlot(Graphics2D painter) {
-        int left = Layout.SHOVEL_SLOT_LEFT;
+    private void drawShovelSlot(Graphics2D painter, int cardSlots) {
+        int left = Layout.shovelSlotLeft(cardSlots);
         painter.drawImage(assets.image("shovelSlot"),
             left, Layout.SHOVEL_SLOT_TOP, null);
         painter.drawImage(assets.image("shovel"),
@@ -407,7 +474,7 @@ public class GameRenderer {
      * 参数：painter 是画笔；time 是当前时刻；state 里装着选卡数据
      */
     private void drawChooserTopBar(Graphics2D painter, long time, GameState state) {
-        painter.drawImage(assets.image("ChooserBackground"), Layout.CARD_BAR_LEFT, 0, null);
+        drawNormalBarBackground(painter, state.maxCards);
         drawSunNumber(painter, state.sunValue,
             Layout.CARD_BAR_SUN_LEFT, Layout.CARD_BAR_SUN_TOP);
 
@@ -420,8 +487,9 @@ public class GameRenderer {
             int left = Layout.cardSlotLeft(position);
             Card card = new Card(plantIndex, left, Layout.CARD_BAR_TOP);
             card.draw(painter, assets, time, Integer.MAX_VALUE, Layout.CARD_SCALE, true);
+            drawRequiredCardLock(painter, card, state);
         }
-        drawShovelSlot(painter);
+        drawShovelSlot(painter, state.maxCards);
     }
 
     /**
@@ -435,7 +503,25 @@ public class GameRenderer {
         for (int position = 0; position < state.flyingCards.size(); position = position + 1) {
             Card card = state.flyingCards.get(position);
             card.draw(painter, assets, time, Integer.MAX_VALUE, Layout.CARD_SCALE, true);
+            drawRequiredCardLock(painter, card, state);
         }
+    }
+
+    /** 在指定卡片的右上角画锁，避开卡片底部的阳光价格 */
+    private void drawRequiredCardLock(Graphics2D painter, Card card, GameState state) {
+        if (!state.requiredPlants.contains(Integer.valueOf(card.index))) {
+            return;
+        }
+        Rectangle bounds = card.bounds(assets, Layout.CARD_SCALE);
+        int left = bounds.x + bounds.width - 19;
+        int top = bounds.y + 2;
+        painter.setColor(new Color(47, 24, 13));
+        painter.fillRoundRect(left, top, 17, 20, 6, 6);
+        painter.setColor(new Color(255, 223, 126));
+        painter.drawRoundRect(left + 5, top + 3, 6, 8, 5, 5);
+        painter.fillRoundRect(left + 3, top + 9, 11, 8, 3, 3);
+        painter.setColor(new Color(47, 24, 13));
+        painter.fillRect(left + 8, top + 12, 1, 3);
     }
 
     /**
@@ -466,6 +552,22 @@ public class GameRenderer {
             painter.drawImage(assets.image("StartButton"),
                 Layout.START_BUTTON_LEFT, Layout.START_BUTTON_TOP, null);
         }
+        if (time < state.chooserNoticeUntil && !state.introChooserExiting) {
+            drawChooserNotice(painter, state.chooserNotice);
+        }
+    }
+
+    /** 在开始按钮上方显示短暂的选卡反馈 */
+    private void drawChooserNotice(Graphics2D painter, String text) {
+        int center = assets.image("PanelBackground").getWidth() / 2;
+        int top = Layout.START_BUTTON_TOP - 40;
+        painter.setFont(new Font("Dialog", Font.BOLD, 16));
+        int width = painter.getFontMetrics().stringWidth(text);
+        int backgroundWidth = Math.max(130, width + 24);
+        painter.setColor(new Color(47, 24, 13));
+        painter.fillRoundRect(center - backgroundWidth / 2, top, backgroundWidth, 28, 10, 10);
+        painter.setColor(new Color(255, 223, 126));
+        painter.drawString(text, center - width / 2, top + 20);
     }
 
     /** 画游戏中的画面：卡槽、植物、僵尸、子弹、特效、小推车、僵尸头和阳光 */
@@ -722,6 +824,38 @@ public class GameRenderer {
         int textWidth = painter.getFontMetrics().stringWidth(text);
         int textX = left + (width - textWidth) / 2;
         int textY = top + height - 6;
+        painter.drawString(text, textX, textY);
+    }
+
+    /** 参数 painter 是画笔，在冻结的战斗画面上绘制暂停菜单 */
+    private void drawPauseMenu(Graphics2D painter) {
+        painter.setColor(new Color(0, 0, 0, 150));
+        painter.fillRect(0, 0, Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+
+        int left = Layout.WINDOW_WIDTH / 2 - 132;
+        int top = Layout.WINDOW_HEIGHT / 2 - 86;
+        painter.setColor(new Color(39, 54, 37));
+        painter.fillRoundRect(left, top, 264, 202, 18, 18);
+        painter.setColor(new Color(234, 233, 171));
+        painter.drawRoundRect(left, top, 263, 201, 18, 18);
+        painter.setFont(new Font("Dialog", Font.BOLD, 24));
+        String title = "游戏暂停";
+        int titleWidth = painter.getFontMetrics().stringWidth(title);
+        painter.drawString(title, (Layout.WINDOW_WIDTH - titleWidth) / 2, top + 43);
+        drawPauseButton(painter, CONTINUE_BUTTON, "继续游戏");
+        drawPauseButton(painter, RESTART_BUTTON, "重新开始本关");
+    }
+
+    /** 参数 painter 是画笔，bounds 是按钮范围，text 是居中的按钮文字 */
+    private void drawPauseButton(Graphics2D painter, Rectangle bounds, String text) {
+        painter.setColor(new Color(71, 92, 55));
+        painter.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        painter.setColor(new Color(234, 233, 171));
+        painter.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
+        painter.setFont(new Font("Dialog", Font.BOLD, 14));
+        java.awt.FontMetrics metrics = painter.getFontMetrics();
+        int textX = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
+        int textY = bounds.y + (bounds.height - metrics.getHeight()) / 2 + metrics.getAscent();
         painter.drawString(text, textX, textY);
     }
 

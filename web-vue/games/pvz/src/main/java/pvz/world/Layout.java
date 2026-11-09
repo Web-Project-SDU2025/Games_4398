@@ -344,7 +344,7 @@ public final class Layout {
     /** 阳光数字框中心的纵坐标，同上 */
     public static final int CARD_BAR_SUN_CENTER_Y = CARD_BAR_SUN_TOP + CARD_BAR_SUN_HEIGHT / 2;
 
-    /** 铲子卡槽左沿的横坐标，紧接在普通卡槽右边 */
+    /** 八卡槽时铲子的左沿，较短卡槽按移除的槽位宽度左移 */
     public static final int SHOVEL_SLOT_LEFT = 540;
 
     /** 铲子卡槽的上沿纵坐标 */
@@ -524,9 +524,6 @@ public final class Layout {
     /** 选卡界面背包面板顶部的纵坐标 */
     public static final int CHOOSER_PANEL_TOP = 87;
 
-    /** 点击冒险模式后等多久进入关卡，用于播放切换动画 */
-    public static final long MENU_START_DELAY = 1300;
-
     /** 传送带每隔多久送出一张新卡 */
     public static final long CONVEYOR_CARD_INTERVAL = 6000;
 
@@ -683,9 +680,20 @@ public final class Layout {
         return CARD_BAR_START + (position + 1) * CARD_BAR_SPACING;
     }
 
-    /** 判断鼠标坐标是否落入铲子卡槽，边界外返回 false */
-    public static boolean insideShovelSlot(int x, int y) {
-        if (x < SHOVEL_SLOT_LEFT || x >= SHOVEL_SLOT_LEFT + SHOVEL_SLOT_WIDTH) {
+    /** 按实际卡槽数量计算需要从八格底板移除的宽度 */
+    public static int cardBarTrim(int cardSlots) {
+        return (MAX_CARD_SLOTS - cardSlots) * CARD_BAR_SPACING;
+    }
+
+    /** 返回铲子在当前卡槽右侧的左沿 */
+    public static int shovelSlotLeft(int cardSlots) {
+        return SHOVEL_SLOT_LEFT - cardBarTrim(cardSlots);
+    }
+
+    /** 判断鼠标坐标是否落入当前关卡的铲子卡槽 */
+    public static boolean insideShovelSlot(int x, int y, int cardSlots) {
+        int left = shovelSlotLeft(cardSlots);
+        if (x < left || x >= left + SHOVEL_SLOT_WIDTH) {
             return false;
         }
         if (y < SHOVEL_SLOT_TOP || y >= SHOVEL_SLOT_TOP + SHOVEL_SLOT_HEIGHT) {

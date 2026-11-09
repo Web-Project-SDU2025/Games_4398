@@ -18,9 +18,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.function.IntConsumer;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import pvz.browser.BrowserAccess;
 import pvz.browser.BrowserGameplay;
@@ -49,6 +53,8 @@ import pvz.zombie.ZombieSpawn;
 public class Game extends JPanel {
     /** 浏览器内每三十三毫秒绘制一次，战斗仍按原固定步长推进 */
     private static final int BROWSER_FRAME_INTERVAL = 33;
+    /** 给浏览器两个绘制间隔，确保下一批素材处理前能呈现已经更新的进度 */
+    private static final int MENU_PROGRESS_FRAME_GAP = BROWSER_FRAME_INTERVAL * 2;
     /** 累计游玩时长每隔这些毫秒生成一次同步事件 */
     private static final int GAMEPLAY_PROGRESS_INTERVAL = 5000;
     /** 单调时钟的纳秒值转换成毫秒 */
@@ -81,10 +87,19 @@ public class Game extends JPanel {
     private final LevelLoader levelLoader;
 
     /** 选关页独立管理布局和封面，避免把界面资料放进战斗状态 */
-    private final LevelSelection levelSelection;
+    private LevelSelection levelSelection;
 
     /** 图鉴单独管理浏览与动画，不把展示状态混入植物和僵尸的战斗对象 */
     private final Almanac almanac;
+
+    /** 后台准备入口资源，完成后才在界面线程切换画面 */
+    private MenuLoad menuLoad;
+    private boolean menuLoadFailed;
+    private boolean webMenu;
+    private boolean webMenuVisible;
+    private boolean webMenuRevealPending;
+    private boolean webMenuPageDrawn;
+    private long nextWebMenuPoll;
 
     /** 保存从当前游戏打开的编辑器，重复点击时恢复原窗口，避免未保存的关卡散落在多个窗口中 */
     private LevelEditor editorWindow;
@@ -176,7 +191,7 @@ public class Game extends JPanel {
         /** 参数 event 提供按钮和坐标；先获取焦点，让键盘选关立即可用 */
         public void mousePressed(MouseEvent event) {
             requestFocusInWindow();
-            if (event.getButton() == MouseEvent.BUTTON3) {
+            if (event.getButton() == MouseEvent.BUTTON3 && !state.paused) {
                 state.heldCard = null;
                 state.heldShovel = false;
             } else if (event.getButton() == MouseEvent.BUTTON1) {
@@ -203,6 +218,9 @@ public class Game extends JPanel {
     private class SelectionKeyListener extends KeyAdapter {
         /** 参数 event 提供键码；导航后请求重绘，使键盘选中反馈立即出现 */
         public void keyPressed(KeyEvent event) {
+            if (menuLoad != null) {
+                return;
+            }
             if (state.screen == GameScreen.ALMANAC) {
                 if (almanac.keyPressed(event.getKeyCode(), state.time)) {
                     state.screen = GameScreen.MENU;
@@ -213,6 +231,7 @@ public class Game extends JPanel {
                 applySelectionAction(levelSelection.keyPressed(event.getKeyCode()));
                 repaint();
             } else if (event.getKeyCode() == KeyEvent.VK_ESCAPE
+                    && !state.paused
                     && GameScreen.canReturnToSelection(state.screen)) {
                 returnToLevelSelection();
             }
@@ -228,11 +247,28 @@ public class Game extends JPanel {
     private void tick() {
         int previousScreen = state.screen;
         long realElapsed = elapsedSinceLastFrame();
+        if (webMenuVisible && state.screen == GameScreen.MENU && menuLoad == null
+                && state.time >= nextWebMenuPoll) {
+            nextWebMenuPoll = state.time + MENU_PROGRESS_FRAME_GAP;
+            int request = webMenuRequest();
+            if (request > 0) {
+                startWebMenu(request == 2);
+            }
+        }
+        if (webMenuRevealPending && webMenuPageDrawn) {
+            webMenuRevealPending = false;
+            webMenuProgress(100);
+        }
+        if (menuLoad != null) {
+            state.time = state.time + realElapsed;
+            repaint();
+            return;
+        }
+        if (state.paused) {
+            return;
+        }
         if (state.screen == GameScreen.PLAY) {
-            long sample = System.nanoTime();
-            long milliseconds = Math.max(0, (sample - lastGameplaySample) / NANOSECONDS_PER_MILLISECOND);
-            activePlayMilliseconds = activePlayMilliseconds + milliseconds;
-            lastGameplaySample = sample;
+            sampleGameplayTime();
             advancePlayBy(realElapsed * state.speedMultiplier);
             if (state.screen == GameScreen.LOSS) {
                 finishGameplay("failed");
@@ -245,12 +281,6 @@ public class Game extends JPanel {
             state.time = state.time + realElapsed;
         }
 
-        if (state.screen == GameScreen.MENU && state.startingMenu) {
-            if (state.time - state.screenStart > Layout.MENU_START_DELAY) {
-                state.startingMenu = false;
-                openLevelSelection();
-            }
-        }
         if (state.screen == GameScreen.CHOOSE) {
             updateFlyingCards();
             updateChooserExit();
@@ -271,6 +301,14 @@ public class Game extends JPanel {
         if (state.screen != previousScreen || needsAnimation()) {
             repaint();
         }
+    }
+
+    /** 累计战斗中的真实时长，供网页记录使用 */
+    private void sampleGameplayTime() {
+        long sample = System.nanoTime();
+        long milliseconds = Math.max(0, (sample - lastGameplaySample) / NANOSECONDS_PER_MILLISECOND);
+        activePlayMilliseconds = activePlayMilliseconds + milliseconds;
+        lastGameplaySample = sample;
     }
 
     /** 静态菜单、选关和结算由输入或状态切换触发重绘，战斗与图鉴保持连续动画 */
@@ -356,6 +394,7 @@ public class Game extends JPanel {
     public void loadLevel() {
         Level level = levelLoader.load(state.levelNumber);
 
+        state.paused = false;
         state.backgroundIndex = level.backgroundIndex;
         state.background = assets.frame("Background", level.backgroundIndex);
         state.barType = level.barType;
@@ -634,6 +673,13 @@ public class Game extends JPanel {
 
     /** 参数 x、y 是点击位置，clickCount 是连击次数；鼠标和自检共用分派逻辑，保留双击选关 */
     private void handleClick(int x, int y, int clickCount) {
+        if (menuLoad != null) {
+            return;
+        }
+        if (state.paused) {
+            clickPauseMenu(x, y);
+            return;
+        }
         if (state.screen == GameScreen.ALMANAC) {
             if (almanac.click(x, y, state.time)) {
                 state.screen = GameScreen.MENU;
@@ -670,13 +716,19 @@ public class Game extends JPanel {
 
     /** 参数 x、y 是菜单点击位置；分派图鉴和冒险模式入口 */
     private void clickMenu(int x, int y) {
+        if (webMenu) {
+            return;
+        }
         Rectangle book = new Rectangle(Layout.ALMANAC_BUTTON_LEFT, Layout.ALMANAC_BUTTON_TOP,
             Layout.ALMANAC_BUTTON_WIDTH, Layout.ALMANAC_BUTTON_HEIGHT);
         if (book.contains(x, y)) {
-            state.startingMenu = false;
-            almanac.open(state.time);
-            state.screen = GameScreen.ALMANAC;
-            repaint();
+            if (testMode) {
+                almanac.open(state.time);
+                state.screen = GameScreen.ALMANAC;
+                repaint();
+            } else {
+                beginMenuLoad(GameScreen.ALMANAC);
+            }
             return;
         }
         Rectangle option = new Rectangle(Layout.MENU_BUTTON_LEFT, Layout.MENU_BUTTON_TOP,
@@ -684,15 +736,17 @@ public class Game extends JPanel {
         if (option.contains(x, y)) {
             if (testMode) {
                 openLevelSelection();
-                return;
+            } else {
+                beginMenuLoad(GameScreen.LEVEL_SELECT);
             }
-            state.startingMenu = true;
-            state.screenStart = state.time;
         }
     }
 
     /** 平台按钮复用游戏内的编辑器，选关时使用当前选择，其他画面使用本关编号 */
     public void showEditor() {
+        if (menuLoad != null || webMenuRevealPending) {
+            return;
+        }
         int level = state.levelNumber;
         if (state.screen == GameScreen.LEVEL_SELECT && levelSelection.selectedLevel() >= 0) {
             level = levelSelection.selectedLevel();
@@ -736,6 +790,133 @@ public class Game extends JPanel {
         levelSelection.open(state.levelNumber);
         state.startingMenu = false;
         state.screen = GameScreen.LEVEL_SELECT;
+    }
+
+    /** 参数 target 是目标界面，立即显示加载面板并在后台准备所需资源 */
+    private void beginMenuLoad(int target) {
+        menuLoadFailed = false;
+        state.startingMenu = target == GameScreen.LEVEL_SELECT;
+        state.screenStart = state.time;
+        menuLoad = new MenuLoad(target, state.levelNumber);
+        repaint();
+        if (webMenu) {
+            menuLoad.execute();
+        }
+    }
+
+    /** 主游戏窗口由网页接管主菜单的两个入口和加载提示 */
+    public void enableWebMenu() {
+        webMenu = true;
+    }
+
+    /** 网页绘制加载层后提交入口，游戏在自己的界面线程中开始读取 */
+    private void startWebMenu(boolean book) {
+        int target = GameScreen.LEVEL_SELECT;
+        if (book) {
+            target = GameScreen.ALMANAC;
+        }
+        requestFocusInWindow();
+        beginMenuLoad(target);
+    }
+
+    /** 取走网页提交的入口，零表示没有待处理的点击 */
+    private static native int webMenuRequest();
+
+    /** 网页按当前画面显示或隐藏覆盖在原菜单按钮上的交互入口 */
+    private static native void webMenuAvailability(boolean visible);
+
+    /** 网页接收实际进度，100 表示目标画面已绘制，负值表示失败 */
+    private static native void webMenuProgress(int progress);
+
+    /** 后台处理封面和图鉴动画边界，百分比由已经完成的项目数决定 */
+    private final class MenuLoad extends SwingWorker<LevelSelection, Void>
+            implements IntConsumer, ActionListener {
+        private final int target;
+        private final int preferredLevel;
+        private final boolean browser = Boolean.getBoolean("pvz.browser");
+        private final Timer startTimer = new Timer(MENU_PROGRESS_FRAME_GAP, this);
+        private boolean firstFrameDrawn;
+
+        /** 参数 target 是目标画面，preferredLevel 是打开选关时的默认关卡 */
+        MenuLoad(int target, int preferredLevel) {
+            this.target = target;
+            this.preferredLevel = preferredLevel;
+            startTimer.setRepeats(false);
+        }
+
+        /** 让界面先绘制加载层，再开始后台读取和计算 */
+        public void actionPerformed(ActionEvent event) {
+            if (menuLoad == this) {
+                execute();
+            }
+        }
+
+        /** 在后台构造独立的选关数据，图鉴只需要准备首屏的动画缓存 */
+        protected LevelSelection doInBackground() {
+            if (target == GameScreen.ALMANAC) {
+                almanac.prepareFirstPage(this);
+                return null;
+            }
+            LevelSelection selection = new LevelSelection(assets);
+            selection.open(preferredLevel, this);
+            return selection;
+        }
+
+        /** 参数 progress 是实际完成比例，取消后停止处理后续项目 */
+        public void accept(int progress) {
+            if (isCancelled()) {
+                throw new CancellationException();
+            }
+            // 合并过于密集的小步骤，显示的仍是已经完成的实际百分比
+            if (progress == 100 || progress - getProgress() >= 15) {
+                setProgress(progress);
+                if (webMenu) {
+                    webMenuProgress(Math.min(progress, 99));
+                } else if (browser) {
+                    try {
+                        Thread.sleep(MENU_PROGRESS_FRAME_GAP);
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new CancellationException();
+                    }
+                }
+            }
+        }
+
+        /** 回到界面线程后再发布选关数据或打开图鉴 */
+        protected void done() {
+            if (menuLoad != this) {
+                return;
+            }
+            try {
+                LevelSelection selection = get();
+                if (target == GameScreen.ALMANAC) {
+                    almanac.open(state.time);
+                } else {
+                    levelSelection = selection;
+                }
+                state.screen = target;
+                if (webMenu) {
+                    webMenuRevealPending = true;
+                    webMenuPageDrawn = false;
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                state.screen = GameScreen.MENU;
+                menuLoadFailed = true;
+            } catch (ExecutionException exception) {
+                System.err.println("界面资源加载失败：" + exception.getCause());
+                state.screen = GameScreen.MENU;
+                menuLoadFailed = true;
+            } finally {
+                menuLoad = null;
+                state.startingMenu = false;
+                repaint();
+                if (webMenu && menuLoadFailed) {
+                    webMenuProgress(-1);
+                }
+            }
+        }
     }
 
     /** 放弃当前战斗后回到选关，清空对象和动画状态，重选当前关卡时从头开始 */
@@ -812,7 +993,7 @@ public class Game extends JPanel {
      * 说明：只给自检用，游戏本身靠计时器推进，不会调用它
      */
     public void step(long elapsed) {
-        if (state.screen == GameScreen.PLAY) {
+        if (state.screen == GameScreen.PLAY && !state.paused) {
             long targetTime = state.playStart + elapsed;
             long remaining = targetTime - state.time - pendingPlayTime;
             advancePlayBy(remaining);
@@ -873,14 +1054,16 @@ public class Game extends JPanel {
             if (card.bounds(assets, Layout.CARD_SCALE).contains(x, y)) {
                 // 必选植物是关卡强加的，玩家点不掉
                 if (state.requiredPlants.contains(Integer.valueOf(plantIndex))) {
-                    return;
-                }
-                if (testMode) {
-                    state.selected.remove(position);
+                    showChooserNotice("本关指定卡片，不能更换");
                     return;
                 }
                 // 这张卡已经在飞了，就别重复触发
                 if (state.isFlying(plantIndex)) {
+                    return;
+                }
+                state.chooserNoticeUntil = 0;
+                if (testMode) {
+                    state.selected.remove(position);
                     return;
                 }
                 // 不立即从 selected 移除，等动画完成后由 updateFlyingCards 处理
@@ -894,9 +1077,6 @@ public class Game extends JPanel {
             }
         }
 
-        if (state.selected.size() >= state.maxCards) {
-            return;
-        }
         // 再看是不是点在候选卡上；已经选过的卡不能再选一次
         for (int index = 0; index < PlantCatalog.CHOOSER_COUNT; index = index + 1) {
             // 被本关禁掉的植物画成灰色锁定，点了也不该有反应
@@ -904,19 +1084,27 @@ public class Game extends JPanel {
                 continue;
             }
             Card card = chooserCard(index);
+            if (!card.bounds(assets, Layout.CHOOSER_CARD_SCALE).contains(x, y)) {
+                continue;
+            }
+            if (state.requiredPlants.contains(Integer.valueOf(index))) {
+                showChooserNotice("本关指定卡片，不能更换");
+                return;
+            }
             boolean alreadyChosen = state.selected.contains(Integer.valueOf(index));
-            if (card.bounds(assets, Layout.CHOOSER_CARD_SCALE).contains(x, y) && !alreadyChosen) {
+            if (!alreadyChosen && !state.isFlying(index)) {
+                // 已经飞向顶部的卡也占用槽位，连续快速选卡时不能超额
+                int slot = state.nextBarSlot();
+                if (slot >= state.maxCards) {
+                    showChooserNotice("卡槽已满");
+                    return;
+                }
                 if (testMode) {
                     // 测试模式：立即加到 selected，跳过动画
                     state.selected.add(Integer.valueOf(index));
                     return;
                 }
-                // 这张卡已经在飞了，就别重复触发
-                if (state.isFlying(index)) {
-                    return;
-                }
-                // 目标位置要空出正在飞过来的卡所占的槽位，否则两张卡会飞到同一格
-                int targetLeft = Layout.cardSlotLeft(state.nextBarSlot());
+                int targetLeft = Layout.cardSlotLeft(slot);
                 card.startFly(targetLeft, Layout.CARD_BAR_TOP, state.time, true);
                 state.flyingCards.add(card);
                 return;
@@ -924,8 +1112,36 @@ public class Game extends JPanel {
         }
     }
 
-    /** 处理游戏中的点击：先看加速按钮和铲子，再收阳光、选卡或种植 */
+    /** 参数 text 是玩家当前操作的反馈，沿用选卡面板的短暂提示 */
+    private void showChooserNotice(String text) {
+        state.chooserNotice = text;
+        state.chooserNoticeUntil = state.time + 1800;
+        repaint();
+    }
+
+    /** 参数 x、y 是暂停菜单点击位置；继续保留本局，重开结束旧记录并重新载入本关 */
+    private void clickPauseMenu(int x, int y) {
+        if (GameRenderer.CONTINUE_BUTTON.contains(x, y)) {
+            state.paused = false;
+        } else if (GameRenderer.RESTART_BUTTON.contains(x, y)) {
+            finishGameplay("abandoned");
+            loadLevel();
+        } else {
+            return;
+        }
+        state.lastRealTime = System.currentTimeMillis();
+        lastGameplaySample = System.nanoTime();
+        repaint();
+    }
+
+    /** 处理战斗点击：先检查菜单、倍速和铲子，再收阳光、选卡或种植 */
     private void clickPlay(int x, int y) {
+        if (GameRenderer.PAUSE_BUTTON.contains(x, y)) {
+            sampleGameplayTime();
+            state.paused = true;
+            repaint();
+            return;
+        }
         if (clickSpeedButton(x, y)) {
             return;
         }
@@ -959,7 +1175,7 @@ public class Game extends JPanel {
         if (state.barType != Layout.BAR_NORMAL) {
             return false;
         }
-        if (!Layout.insideShovelSlot(x, y)) {
+        if (!Layout.insideShovelSlot(x, y, state.maxCards)) {
             return false;
         }
         state.heldCard = null;
@@ -1145,7 +1361,23 @@ public class Game extends JPanel {
     protected void paintComponent(Graphics graphics) {
         // 每种画面都先绘制完整底图，背景与角色在同一次绘制中完成
         Graphics2D painter = (Graphics2D) graphics.create();
-        if (state.screen == GameScreen.ALMANAC) {
+        if (!webMenu && (menuLoad != null || menuLoadFailed)) {
+            renderer.draw(painter, GameScreen.MENU, state.time, state, false);
+            String title = "加载失败，请重试";
+            int progress = -1;
+            if (menuLoad != null) {
+                title = "正在加载关卡";
+                if (menuLoad.target == GameScreen.ALMANAC) {
+                    title = "正在加载图鉴";
+                }
+                progress = menuLoad.getProgress();
+            }
+            renderer.drawMenuLoading(painter, title, progress, state.time);
+            if (menuLoad != null && !menuLoad.firstFrameDrawn) {
+                menuLoad.firstFrameDrawn = true;
+                menuLoad.startTimer.start();
+            }
+        } else if (state.screen == GameScreen.ALMANAC) {
             painter.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
                 java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             almanac.draw(painter, state.time);
@@ -1157,6 +1389,16 @@ public class Game extends JPanel {
             renderer.draw(painter, state.screen, state.time, state, developerMode);
         }
         painter.dispose();
+        if (webMenu) {
+            boolean visible = state.screen == GameScreen.MENU && menuLoad == null;
+            if (webMenuVisible != visible) {
+                webMenuVisible = visible;
+                webMenuAvailability(visible);
+            }
+            if (webMenuRevealPending) {
+                webMenuPageDrawn = true;
+            }
+        }
     }
 
     /** 返回本关的卡槽模式，供无需窗口的测试核对 */
@@ -1183,6 +1425,14 @@ public class Game extends JPanel {
     public void stop() {
         finishGameplay("closed");
         timer.stop();
+        webMenuRevealPending = false;
+        if (menuLoad != null) {
+            MenuLoad stopped = menuLoad;
+            menuLoad = null;
+            state.startingMenu = false;
+            stopped.startTimer.stop();
+            stopped.cancel(true);
+        }
     }
 
     /** 一局仅发送一次结束事件，返回选关和窗口关闭复用同一清理入口 */

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.metadata.IIOMetadata;
@@ -40,13 +41,13 @@ public class Assets {
     private final Map<String, BufferedImage> images = new HashMap<String, BufferedImage>();
 
     /** 缓存缩放后的帧，避免每次绘制都重新缩放 */
-    private final Map<String, BufferedImage> scaledImages = new HashMap<String, BufferedImage>();
+    private final Map<String, BufferedImage> scaledImages = new ConcurrentHashMap<String, BufferedImage>();
 
     /** 按图片缓存可见范围，延长停留时间的重复帧共用同一结果，避免重复扫描相同像素 */
-    private final Map<BufferedImage, int[]> visibleBoundsCache = new HashMap<BufferedImage, int[]>();
+    private final Map<BufferedImage, int[]> visibleBoundsCache = new ConcurrentHashMap<BufferedImage, int[]>();
 
     /** 缓存每段动画所有帧可见范围的并集 */
-    private final Map<String, int[]> animationBoundsCache = new HashMap<String, int[]>();
+    private final Map<String, int[]> animationBoundsCache = new ConcurrentHashMap<String, int[]>();
 
     /** assets 目录 */
     private final Path root;
@@ -719,14 +720,27 @@ public class Assets {
 
         int width = image.getWidth();
         int height = image.getHeight();
+        if (!image.getColorModel().hasAlpha()) {
+            int[] result = new int[] {0, 0, width, height};
+            visibleBoundsCache.put(image, result);
+            return result;
+        }
         int left = width;
         int top = height;
         int right = 0;
         int bottom = 0;
 
+        int[] pixels = new int[width];
+        boolean packedAlpha = image.getType() == BufferedImage.TYPE_INT_ARGB
+            || image.getType() == BufferedImage.TYPE_INT_ARGB_PRE;
         for (int row = 0; row < height; row = row + 1) {
+            if (packedAlpha) {
+                image.getRaster().getDataElements(0, row, width, 1, pixels);
+            } else {
+                image.getRGB(0, row, width, 1, pixels, 0, width);
+            }
             for (int column = 0; column < width; column = column + 1) {
-                int alpha = (image.getRGB(column, row) >>> 24) & 0xFF;
+                int alpha = pixels[column] >>> 24;
                 if (alpha == 0) {
                     continue;
                 }

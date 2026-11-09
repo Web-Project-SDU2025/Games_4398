@@ -18,5 +18,18 @@
     <main id="player-viewport" aria-label="游戏画面">
       <div id="java-display"></div>
     </main>
+    <template id="pvz-menu-template">
+      <div id="pvz-menu-entries" hidden>
+        <button type="button" data-pvz-entry="adventure" aria-label="冒险模式"></button>
+        <button type="button" data-pvz-entry="almanac" aria-label="图鉴"></button>
+      </div>
+      <section id="pvz-menu-loading" aria-labelledby="pvz-loading-title" hidden>
+        <div class="pvz-loading-panel">
+          <h1 id="pvz-loading-title"></h1>
+          <span class="pvz-loading-spinner" aria-hidden="true"></span>
+          <p id="pvz-loading-detail" role="status"></p>
+        </div>
+      </section>
+    </template>
   </body>
 </html>

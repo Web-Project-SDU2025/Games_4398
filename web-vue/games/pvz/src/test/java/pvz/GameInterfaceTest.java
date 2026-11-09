@@ -26,6 +26,8 @@ import pvz.game.GameRenderer;
 import pvz.game.GameScreen;
 import pvz.game.GameState;
 import pvz.game.LevelSelection;
+import pvz.plant.Card;
+import pvz.plant.PlantCatalog;
 import pvz.world.Assets;
 import pvz.world.Layout;
 import pvz.level.LevelLoader;
@@ -39,12 +41,99 @@ public class GameInterfaceTest {
     public static void run(Assets assets, Path project) throws Exception {
         checkEditorButton(assets);
         checkSunNumbers(assets, project);
+        checkFourCardSlots(assets);
+        checkRequiredCardLocks(assets);
         checkLevelSelection(assets, project);
         checkScaledSelection(assets, project);
         checkDoubleClick(assets);
         checkReturnToSelection(assets, project);
         checkPaging(assets);
         System.out.println("PASS: Original sun text, level selection, keyboard and paging");
+    }
+
+    /** 核对第一关底板、满额提示以及飞向卡槽的卡占用的名额 */
+    private static void checkFourCardSlots(Assets assets) {
+        Game game = new Game(assets, 0, false, false);
+        game.setSize(Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+        game.loadLevel();
+        GameState state = (GameState) readField(game, "state");
+        check(state.maxCards == 4, "第一关不是四卡槽");
+
+        BufferedImage frame = new BufferedImage(Layout.WINDOW_WIDTH,
+            Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D painter = frame.createGraphics();
+        game.paint(painter);
+        int outsideBar = Layout.SHOVEL_SLOT_LEFT - Layout.CARD_BAR_SPACING;
+        check(frame.getRGB(outsideBar, 20)
+            == state.background.getRGB(state.cameraOffset + outsideBar, 20), "四格底板仍延伸到旧槽位");
+
+        int[] candidates = new int[5];
+        int count = 0;
+        for (int index = 0; index < PlantCatalog.CHOOSER_COUNT && count < candidates.length;
+                index = index + 1) {
+            if (!state.bannedPlants.contains(Integer.valueOf(index))) {
+                candidates[count] = index;
+                count = count + 1;
+            }
+        }
+        check(count == candidates.length && state.selected.isEmpty(), "第一关自检缺少五张候选卡");
+        for (int index = 0; index < 4; index = index + 1) {
+            clickCandidate(game, candidates[index]);
+        }
+        int noticeX = assets.image("PanelBackground").getWidth() / 2 - 50;
+        int noticeY = Layout.START_BUTTON_TOP - 35;
+        game.paint(painter);
+        int before = frame.getRGB(noticeX, noticeY);
+        clickCandidate(game, candidates[4]);
+        game.paint(painter);
+        check(state.selected.size() == 4 && frame.getRGB(noticeX, noticeY) != before,
+            "点击第五张卡没有提示，或选择超额");
+
+        game.click(Layout.cardSlotLeft(3) + 1, Layout.CARD_BAR_TOP + 1);
+        check(state.selected.size() == 3 && ((Long) readField(state, "chooserNoticeUntil")) == 0,
+            "取消一张卡后没有腾出位置并清除提示");
+        Card flying = new Card(candidates[3], Layout.CHOOSER_LEFT, Layout.CHOOSER_TOP);
+        flying.startFly(Layout.cardSlotLeft(3), Layout.CARD_BAR_TOP, state.time, true);
+        state.flyingCards.add(flying);
+        clickCandidate(game, candidates[4]);
+        check(state.selected.size() == 3 && state.nextBarSlot() == 4
+            && ((Long) readField(state, "chooserNoticeUntil")) > state.time,
+            "飞向卡槽的卡没有计入四格上限");
+        painter.dispose();
+    }
+
+    /** 第二关的四张指定卡都显示锁，点击指定卡时只提示而不移除 */
+    private static void checkRequiredCardLocks(Assets assets) {
+        Game game = new Game(assets, 1, false, false);
+        game.setSize(Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+        game.loadLevel();
+        GameState state = (GameState) readField(game, "state");
+        check(state.requiredPlants.size() == 4 && state.selected.equals(state.requiredPlants),
+            "第二关没有预选前四张指定卡");
+        BufferedImage image = new BufferedImage(Layout.WINDOW_WIDTH,
+            Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D painter = image.createGraphics();
+        game.paint(painter);
+        painter.dispose();
+        int gold = new Color(255, 223, 126).getRGB();
+        for (int slot = 0; slot < state.requiredPlants.size(); slot = slot + 1) {
+            int index = state.requiredPlants.get(slot).intValue();
+            Card card = new Card(index, Layout.cardSlotLeft(slot), Layout.CARD_BAR_TOP);
+            Rectangle bounds = card.bounds(assets, Layout.CARD_SCALE);
+            check(image.getRGB(bounds.x + bounds.width - 14, bounds.y + 14) == gold,
+                "指定卡片没有显示锁图标");
+        }
+        game.click(Layout.cardSlotLeft(0) + 1, Layout.CARD_BAR_TOP + 1);
+        check(state.selected.equals(state.requiredPlants)
+            && "本关指定卡片，不能更换".equals(readField(state, "chooserNotice")),
+            "点击指定卡片没有保留卡片并显示提示");
+    }
+
+    /** 点击第 index 张候选植物卡，使用与选卡网格一致的坐标 */
+    private static void clickCandidate(Game game, int index) {
+        int x = Layout.CHOOSER_LEFT + index % 8 * Layout.CHOOSER_COLUMN_SPACING + 5;
+        int y = Layout.CHOOSER_TOP + index / 8 * Layout.CHOOSER_ROW_SPACING + 5;
+        game.click(x, y);
     }
 
     /** 核对编辑按钮位于选关页，选择保持不变，且点击不会误开始战斗 */

@@ -13,6 +13,7 @@ import {
 import { readRegisteredGame } from "./game-registry.mjs";
 import { gameIdentity, economyRequest } from "./game-economy.mjs";
 import { createGameplayTracker } from "./game-play.mjs";
+import { createPvzMenu } from "./pvz-menu.mjs";
 
 // 网页加载原 Java 入口，游戏与原编辑器共用素材目录和运行环境
 (function startJavaPlayer() {
@@ -24,6 +25,7 @@ import { createGameplayTracker } from "./game-play.mjs";
   let editorRequested = false;
   let editorAllowed = false;
   let tracker = null;
+  let pvzMenu = null;
 
   // 仅在操作失败时显示提示，正常加载由游戏画面自行显示
   function status(message) {
@@ -136,6 +138,9 @@ import { createGameplayTracker } from "./game-play.mjs";
       closeCurrentEditor();
     } else if (message.type === PLAYER_MESSAGES.stopGame) {
       try {
+        if (pvzMenu) {
+          pvzMenu.finish();
+        }
         if (runtimeLibrary && configuration.adapter) {
           const adapter = await javaClass(
             runtimeLibrary,
@@ -227,14 +232,38 @@ import { createGameplayTracker } from "./game-play.mjs";
       }
       phase = "准备游戏运行环境";
       configurePixelRatio();
+      const natives = {};
+      const usePvzMenu =
+        configuration.id === "pvz" && configuration.adapter === "pvz.browser.BrowserGame";
+      if (usePvzMenu) {
+        natives.Java_pvz_game_Game_webMenuRequest = async function menuRequest() {
+          return pvzMenu.takeRequest();
+        };
+        natives.Java_pvz_game_Game_webMenuAvailability = async function menuAvailability(lib, visible) {
+          pvzMenu.setAvailable(visible);
+        };
+        natives.Java_pvz_game_Game_webMenuProgress = async function menuProgress(lib, progress) {
+          await pvzMenu.report(progress);
+        };
+      }
       await cheerpjInit({
         version: PLAYER_DEFAULTS.javaVersion,
+        natives: natives,
       });
       cheerpjCreateDisplay(
         configuration.display.width,
         configuration.display.height,
         document.getElementById("java-display"),
       );
+      if (usePvzMenu) {
+        const template = document.getElementById("pvz-menu-template");
+        document.getElementById("java-display").append(template.content.cloneNode(true));
+        pvzMenu = createPvzMenu(document, window.requestAnimationFrame.bind(window),
+          async function menuError(error) {
+            console.error("PVZ 菜单加载失败", error);
+            status(await errorMessage(error));
+          });
+      }
       centerGameDisplay(
         configuration.display.width,
         configuration.display.height,
@@ -266,6 +295,9 @@ import { createGameplayTracker } from "./game-play.mjs";
       const system = await library.java.lang.System;
       await system.setProperty(EDITOR_LEVEL_PROPERTY, String(level));
       await system.setProperty(EDITOR_ACCESS_PROPERTY, String(editorAllowed));
+      if (pvzMenu) {
+        await system.setProperty("pvz.webMenu", "true");
+      }
       phase = "打开窗口";
       await open(library, editorMode);
       runtimeLibrary = library;

@@ -209,6 +209,7 @@
     │   │       ├── java-player.html                                            共用游戏运行页源码
     │   │       ├── java-player.css                                             游戏画布与编辑器窗口样式
     │   │       ├── java-player.js                                              自动加载与编辑器交互
+    │   │       ├── pvz-menu.mjs                                                 PVZ 网页菜单入口和加载进度
     │   │       ├── native-player.html                                          原生游戏运行页
     │   │       ├── native-player.js                                            原生游戏授权、就绪与关闭
     │   │       └── native-player.css                                           原生游戏运行区样式

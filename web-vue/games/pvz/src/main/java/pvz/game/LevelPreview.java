@@ -32,6 +32,11 @@ public class LevelPreview {
 
     /** 参数 number 是关卡编号，返回按真实战场布局绘制的封面 */
     public BufferedImage create(int number) {
+        return create(number, Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+    }
+
+    /** 参数 width 和 height 是封面实际显示尺寸，避免先绘制大图再缩小 */
+    BufferedImage create(int number, int width, int height) {
         LevelLoader loader = new LevelLoader(assets);
         Level level = loader.load(number);
         if (!level.screenshot.isEmpty()) {
@@ -40,7 +45,7 @@ public class LevelPreview {
                 Path levelsDirectory = levelPath.getParent();
                 Path root = levelsDirectory.getParent();
                 BufferedImage screenshot = LevelScreenshot.read(root, level.screenshot);
-                return LevelScreenshot.fit(screenshot, Layout.WINDOW_WIDTH, Layout.WINDOW_HEIGHT);
+                return LevelScreenshot.fit(screenshot, width, height);
             } catch (IOException | IllegalArgumentException exception) {
                 // 截图丢失不能挡住游戏，报告原因后继续使用原来的自动封面
                 System.out.println("关卡截图读取失败，改用自动封面：" + exception.getMessage());
@@ -53,14 +58,15 @@ public class LevelPreview {
         preview.background = assets.frame("Background", level.backgroundIndex);
         preview.sunValue = level.initialSun;
         preview.barType = level.barType;
+        preview.maxCards = level.maxCards;
         addPlants(preview, level);
         addZombies(preview, level);
         for (int row = 0; row < Layout.ROW_COUNT; row = row + 1) {
             preview.cars.add(new Car(row));
         }
-        BufferedImage image = new BufferedImage(Layout.WINDOW_WIDTH,
-            Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D painter = image.createGraphics();
+        painter.scale((double) width / Layout.WINDOW_WIDTH, (double) height / Layout.WINDOW_HEIGHT);
         GameRenderer renderer = new GameRenderer(assets);
         renderer.draw(painter, GameScreen.PLAY, PREVIEW_TIME, preview, false);
         painter.dispose();
