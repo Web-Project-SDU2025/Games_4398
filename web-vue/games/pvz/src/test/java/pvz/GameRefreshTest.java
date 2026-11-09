@@ -53,6 +53,7 @@ public final class GameRefreshTest {
         checkChooserAnimation(assets);
         checkSpawnAnimation(assets);
         checkEndingCoverage(assets);
+        checkVictoryReward(assets);
         System.out.println("PASS: Static repaint scheduling and browser battle timing");
     }
 
@@ -137,6 +138,72 @@ public final class GameRefreshTest {
                 finished.countDown();
             }
         }
+    }
+
+    /** 验证死亡位置、点击前等待、全白帧和原有胜利页的衔接 */
+    private static void checkVictoryReward(Assets assets) throws Exception {
+        Game game = new Game(assets, 4, false, false);
+        game.loadLevel();
+        Field stateField = Game.class.getDeclaredField("state");
+        stateField.setAccessible(true);
+        GameState state = (GameState) stateField.get(game);
+        state.schedule.clear();
+        Zombie last = new Zombie("Zombie", 2, Layout.rowBottom(2), assets);
+        last.x = 430;
+        last.die(assets, state.time, false);
+        last.deathTime = state.time - 10000;
+        state.zombies.add(last);
+        int expectedX = (int) last.bounds(assets, state.time).getCenterX();
+        game.step(32);
+        check(game.getScreen() == GameScreen.VICTORY_REWARD && state.zombies.isEmpty(),
+            "最后一个僵尸死亡后没有进入奖励画面");
+        Field rewardX = GameState.class.getDeclaredField("victoryX");
+        rewardX.setAccessible(true);
+        check(rewardX.getInt(state) == expectedX, "奖励没有定位在最后死亡的僵尸上");
+
+        Method tick = Game.class.getDeclaredMethod("tick");
+        tick.setAccessible(true);
+        state.time = state.time + Layout.ENDING_SCREEN_DURATION + 5000;
+        tick.invoke(game);
+        check(game.getScreen() == GameScreen.VICTORY_REWARD, "等待玩家点击时提前跳关");
+        game.click(5, 5);
+        long started = state.time;
+        state.time = started + 2500;
+        game.click(5, 5);
+        GameRenderer renderer = new GameRenderer(assets);
+        BufferedImage white = new BufferedImage(Layout.WINDOW_WIDTH,
+            Layout.WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D painter = white.createGraphics();
+        renderer.draw(painter, state.screen, state.time, state, false);
+        painter.dispose();
+        check(white.getRGB(0, 0) == Color.WHITE.getRGB()
+            && white.getRGB(Layout.WINDOW_WIDTH - 1, Layout.WINDOW_HEIGHT - 1) == Color.WHITE.getRGB(),
+            "白光没有照亮全屏，或第二次点击重启了动画");
+        state.time = started + 3000;
+        tick.invoke(game);
+        check(game.getScreen() == GameScreen.VICTORY, "白光之后没有衔接原有胜利画面");
+        game.click(286, 414);
+        check(game.getLevelNumber() == 4, "白光淡出时误触发了下一关");
+        state.time = state.screenStart + Layout.ENDING_SCREEN_DURATION + 5000;
+        tick.invoke(game);
+        check(game.getScreen() == GameScreen.VICTORY && game.getLevelNumber() == 4,
+            "胜利画面没有等待玩家选择");
+        game.click(286, 414);
+        check(game.getScreen() == GameScreen.PLAY && game.getLevelNumber() == 5,
+            "进入下一关没有载入第六关");
+
+        state.schedule.clear();
+        game.step(32);
+        check(game.getScreen() == GameScreen.VICTORY_REWARD, "最后一关没有显示奖励");
+        game.click(5, 5);
+        state.time = state.time + 3000;
+        tick.invoke(game);
+        state.time = state.screenStart + 1000;
+        game.click(286, 414);
+        check(game.getScreen() == GameScreen.VICTORY && game.getLevelNumber() == 5,
+            "最后一关的下一关按钮仍然有效");
+        game.click(514, 414);
+        check(game.getScreen() == GameScreen.MENU, "返回主菜单没有退出胜利画面");
     }
 
     /** 胜负画面覆盖整张画布，不同旧背景渲染后的右侧结果应完全一致 */

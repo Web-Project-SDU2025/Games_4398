@@ -288,10 +288,10 @@ public class Game extends JPanel {
         if (state.screen == GameScreen.INTRO) {
             updateIntro();
         }
-        if (state.screen == GameScreen.VICTORY) {
-            if (state.time - state.screenStart > Layout.ENDING_SCREEN_DURATION) {
-                goToNextLevelOrMenu();
-            }
+        if (state.screen == GameScreen.VICTORY_REWARD && state.victoryFlashStart >= 0
+                && state.time - state.victoryFlashStart >= VictoryAnimation.FLASH_DURATION) {
+            state.screen = GameScreen.VICTORY;
+            state.screenStart = state.time;
         }
         if (state.screen == GameScreen.LOSS) {
             if (state.time - state.screenStart > Layout.ENDING_SCREEN_DURATION) {
@@ -316,8 +316,15 @@ public class Game extends JPanel {
         if (state.screen == GameScreen.MENU) {
             return state.startingMenu;
         }
-        if (state.screen == GameScreen.LEVEL_SELECT
-                || state.screen == GameScreen.VICTORY || state.screen == GameScreen.LOSS) {
+        if (state.screen == GameScreen.VICTORY_REWARD) {
+            return state.victoryFlashStart >= 0
+                || state.time - state.screenStart < VictoryAnimation.POP_DURATION + Layout.MAX_FRAME_ELAPSED;
+        }
+        if (state.screen == GameScreen.VICTORY) {
+            return state.victoryFlashStart >= 0
+                && state.time - state.screenStart < VictoryAnimation.FADE_DURATION + Layout.MAX_FRAME_ELAPSED;
+        }
+        if (state.screen == GameScreen.LEVEL_SELECT || state.screen == GameScreen.LOSS) {
             return false;
         }
         return true;
@@ -342,21 +349,6 @@ public class Game extends JPanel {
             realElapsed = Layout.MAX_FRAME_ELAPSED;
         }
         return realElapsed;
-    }
-
-    /**
-     * 通关时间到了：有下一关就接着打，没有了就回主菜单并退到第 1 关
-     *
-     * 注意 levelNumber 在判定胜利时就已经加过了，所以这里判断的是"下一关"
-     * 没有下一关时重置默认编号，让下次打开选关页从第一关开始选择
-     */
-    private void goToNextLevelOrMenu() {
-        if (Files.exists(assets.levelPath(state.levelNumber))) {
-            loadLevel();
-            return;
-        }
-        state.screen = GameScreen.MENU;
-        state.levelNumber = 0;
     }
 
     /**
@@ -676,6 +668,18 @@ public class Game extends JPanel {
         if (menuLoad != null) {
             return;
         }
+        if (state.screen == GameScreen.VICTORY_REWARD) {
+            if (state.victoryFlashStart < 0) {
+                state.victoryY = VictoryAnimation.coinY(state, state.time);
+                state.victoryFlashStart = state.time;
+                repaint();
+            }
+            return;
+        }
+        if (state.screen == GameScreen.VICTORY) {
+            clickVictory(x, y);
+            return;
+        }
         if (state.paused) {
             clickPauseMenu(x, y);
             return;
@@ -711,6 +715,28 @@ public class Game extends JPanel {
         }
         if (state.screen == GameScreen.PLAY) {
             clickPlay(x, y);
+        }
+    }
+
+    /** 参数 x、y 是胜利界面的点击位置，白光淡出后才允许选择 */
+    private void clickVictory(int x, int y) {
+        if (state.victoryFlashStart >= 0 && state.time - state.screenStart < VictoryAnimation.FADE_DURATION) {
+            return;
+        }
+        if (GameRenderer.VICTORY_MENU_BUTTON.contains(x, y)) {
+            state.clearField();
+            state.levelNumber = 0;
+            state.screen = GameScreen.MENU;
+            repaint();
+        } else if (state.nextLevelAvailable && GameRenderer.NEXT_LEVEL_BUTTON.contains(x, y)) {
+            int next = state.levelNumber + 1;
+            if (Files.isRegularFile(assets.levelPath(next))) {
+                state.levelNumber = next;
+                loadLevel();
+            } else {
+                state.nextLevelAvailable = false;
+            }
+            repaint();
         }
     }
 
@@ -1345,10 +1371,10 @@ public class Game extends JPanel {
         // 否则正在跑的那个 for 循环会因为下标错位而漏掉后面的物体
         state.reapDeadObjects();
 
-        if (levelSystem.isVictoryReady()) {
+        if (state.screen == GameScreen.PLAY && levelSystem.isVictoryReady()) {
             finishGameplay("passed");
-            state.levelNumber = state.levelNumber + 1;
-            state.screen = GameScreen.VICTORY;
+            state.nextLevelAvailable = Files.isRegularFile(assets.levelPath(state.levelNumber + 1));
+            state.screen = GameScreen.VICTORY_REWARD;
             state.screenStart = state.time;
         }
     }

@@ -36,6 +36,8 @@ public class GameRenderer {
         Layout.WINDOW_HEIGHT / 2 - 16, 180, 38);
     static final Rectangle RESTART_BUTTON = new Rectangle(CONTINUE_BUTTON.x,
         CONTINUE_BUTTON.y + 52, CONTINUE_BUTTON.width, CONTINUE_BUTTON.height);
+    static final Rectangle NEXT_LEVEL_BUTTON = new Rectangle(200, 389, 172, 50);
+    static final Rectangle VICTORY_MENU_BUTTON = new Rectangle(428, 389, 172, 50);
 
     /** 调试框使用独立颜色，图例同时写出类型，避免只靠颜色判断 */
     private static final Color PLANT_DEBUG_COLOR = new Color(68, 235, 114);
@@ -71,6 +73,13 @@ public class GameRenderer {
             drawMenu(painter, time, state);
         } else if (screen == GameScreen.VICTORY || screen == GameScreen.LOSS) {
             drawEnding(painter, screen);
+            if (screen == GameScreen.VICTORY) {
+                drawVictoryButton(painter, NEXT_LEVEL_BUTTON, "进入下一关", state.nextLevelAvailable);
+                drawVictoryButton(painter, VICTORY_MENU_BUTTON, "返回主菜单", true);
+                if (state.victoryFlashStart >= 0) {
+                    VictoryAnimation.drawFade(painter, time - state.screenStart);
+                }
+            }
         } else {
             drawBackground(painter, state);
             if (screen == GameScreen.CHOOSE) {
@@ -81,8 +90,11 @@ public class GameRenderer {
                 drawSelection(painter, time, state);
             } else if (screen == GameScreen.INTRO) {
                 drawIntro(painter, time, state);
+            } else if (screen == GameScreen.VICTORY_REWARD) {
+                drawPlay(painter, state.screenStart, state, false);
+                VictoryAnimation.draw(painter, time, state);
             } else {
-                drawPlay(painter, time, state);
+                drawPlay(painter, time, state, true);
                 if (developerMode) {
                     drawDeveloperOverlay(painter, time, state);
                 }
@@ -177,6 +189,20 @@ public class GameRenderer {
         }
         TextDrawing.drawCentered(painter, detail,
             new Rectangle(center - 110, middle + 25, 220, 34));
+    }
+
+    /** 胜利操作沿用选关按钮素材，最后一关把继续按钮绘成灰色 */
+    private void drawVictoryButton(Graphics2D painter, Rectangle bounds, String text, boolean enabled) {
+        painter.drawImage(assets.image("LevelButton"), bounds.x, bounds.y, bounds.width, bounds.height, null);
+        if (enabled) {
+            painter.setColor(new Color(255, 239, 163));
+        } else {
+            painter.setColor(new Color(225, 225, 225, 180));
+            painter.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 10, 10);
+            painter.setColor(new Color(79, 77, 82));
+        }
+        painter.setFont(new Font("Dialog", Font.BOLD, 19));
+        TextDrawing.drawCentered(painter, text, bounds);
     }
 
     /** 按素材真实宽高绘制整屏结算，先铺底以覆盖上一帧和素材中的透明区域 */
@@ -571,7 +597,7 @@ public class GameRenderer {
     }
 
     /** 画游戏中的画面：卡槽、植物、僵尸、子弹、特效、小推车、僵尸头和阳光 */
-    private void drawPlay(Graphics2D painter, long time, GameState state) {
+    private void drawPlay(Graphics2D painter, long time, GameState state, boolean controls) {
         // 卡槽常驻顶端，演出和开打之后都是同一个画法
         drawPlayBar(painter, time, state);
 
@@ -602,8 +628,10 @@ public class GameRenderer {
                 sun.draw(painter, assets, time);
             }
         }
-        drawHeldItemPreview(painter, time, state);
-        drawSpeedButton(painter, state);
+        if (controls) {
+            drawHeldItemPreview(painter, time, state);
+            drawSpeedButton(painter, state);
+        }
         drawWatermark(painter);
     }
 
