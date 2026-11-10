@@ -19,6 +19,7 @@ const routes = [
   },
   {
     path: "/Login",
+    name: "Login",
     // 打开对应页面时再加载组件，减少启动时的等待
     component: function loadLogin() {
       return import("../Login.vue");
@@ -126,7 +127,7 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes: routes });
 // 前端拦截直接输入地址的访问，接口仍由后端独立检查权限
 async function checkAccess(to) {
-  if (to.path === "/Login") {
+  if (to.name === "Login") {
     return true;
   }
   const store = useAppStore();

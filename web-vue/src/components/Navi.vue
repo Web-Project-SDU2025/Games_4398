@@ -1,12 +1,12 @@
 <template>
   <div
     class="platform-shell"
-    :class="{ 'desktop-shell': loggedIn, 'auth-shell': !loggedIn, 'is-playing': gameVisible }"
+    :class="{ 'desktop-shell': workspaceVisible, 'auth-shell': !workspaceVisible, 'is-playing': gameVisible }"
   >
     <header class="platform-header">
       <div class="platform-header-inner">
         <button
-          v-if="loggedIn"
+          v-if="workspaceVisible"
           v-show="!gameVisible"
           class="workspace-menu-toggle"
           type="button"
@@ -23,7 +23,7 @@
           <span><strong>4398</strong><small>游戏平台</small></span>
         </RouterLink>
         <TransitionGroup
-          v-if="loggedIn"
+          v-if="workspaceVisible"
           v-show="!gameVisible"
           name="tab"
           tag="nav"
@@ -52,8 +52,8 @@
         </TransitionGroup>
         <div
           :class="{
-            'workspace-header-actions': loggedIn,
-            'auth-header-actions': !loggedIn,
+            'workspace-header-actions': workspaceVisible,
+            'auth-header-actions': !workspaceVisible,
           }"
         >
           <button
@@ -71,7 +71,7 @@
             <span class="i-ep-video-play" aria-hidden="true"></span>{{ gameReturnLabel }}
           </button>
           <RouterLink
-            v-if="loggedIn && wallet.balance !== null"
+            v-if="workspaceVisible && wallet.balance !== null"
             class="workspace-wallet"
             to="/GameCatalog"
             title="字块币账户"
@@ -80,10 +80,10 @@
             <span class="i-ep-coin" aria-hidden="true"></span
             >{{ wallet.balance }} BC
           </RouterLink>
-          <MessageBell v-if="loggedIn" :key="userInfo.token" />
+          <MessageBell v-if="workspaceVisible" :key="userInfo.token" />
           <BackgroundMusic />
           <button
-            v-if="loggedIn"
+            v-if="workspaceVisible"
             class="workspace-icon-button workspace-auxiliary"
             type="button"
             aria-label="快速反馈"
@@ -94,7 +94,7 @@
             <span class="i-ep-chat-dot-round" aria-hidden="true"></span>
           </button>
           <button
-            v-if="loggedIn"
+            v-if="workspaceVisible"
             class="workspace-icon-button workspace-auxiliary"
             type="button"
             aria-label="界面设置"
@@ -104,14 +104,14 @@
             <span class="i-ep-setting" aria-hidden="true"></span>
           </button>
           <AccountSwitcher
-            v-if="loggedIn"
+            v-if="workspaceVisible"
             :user-info="userInfo"
             @logout="logout"
             @notice="showSwitchNotice"
           />
         </div>
         <img
-          v-if="!loggedIn"
+          v-if="!workspaceVisible"
           class="platform-university"
           src="/images/shandong-university.png"
           alt="山东大学"
@@ -120,7 +120,7 @@
         />
       </div>
     </header>
-    <div v-if="loggedIn" class="platform-workspace">
+    <div v-if="workspaceVisible" class="platform-workspace">
       <aside
         v-show="!gameVisible"
         id="workspace-navigation"
@@ -214,7 +214,7 @@
         >
           <!-- 缓存概览和列表，账户切换时按账号重建，密码表单每次单独创建 -->
           <router-view v-slot="page">
-            <Transition name="page" appear>
+            <Transition name="page">
               <KeepAlive
                 :key="userInfo.username"
                 :include="cachedPages"
@@ -236,26 +236,26 @@
         />
       </main>
     </div>
-    <router-view v-else v-slot="page">
+    <router-view v-else-if="authRoute" v-slot="page">
       <Transition name="page" mode="out-in" appear>
         <component :is="page.Component" :key="page.route.path" />
       </Transition>
     </router-view>
     <Octorange
-      v-if="loggedIn"
+      v-if="workspaceVisible"
       v-show="!gameVisible"
       :key="userInfo.id"
       :user-id="userInfo.id"
     />
     <PointerTrail />
-    <InterfaceSettings v-if="loggedIn" ref="settings" />
+    <InterfaceSettings v-if="workspaceVisible" ref="settings" />
     <MessageComposer
-      v-if="loggedIn"
+      v-if="workspaceVisible"
       ref="quickFeedback"
       dialog-id="quick-feedback-title"
       @saved="feedbackSent"
     />
-    <footer v-if="loggedIn" v-show="!gameVisible" class="workspace-status">
+    <footer v-if="workspaceVisible" v-show="!gameVisible" class="workspace-status">
       <span class="workspace-team">
         <span>4398 游戏平台 · 第02组</span>
         <span v-for="member in teamMembers" :key="member">{{
@@ -376,6 +376,14 @@ function readSidebarGroups() {
 function readLoggedIn() {
   return Boolean(this.userInfo.loggedIn && this.userInfo.token);
 }
+/** 通过路由记录识别登录页 */
+function readAuthRoute() {
+  return this.$route.name === "Login";
+}
+/** 等待首页路由完成后再与内容一起显示工作区 */
+function readWorkspaceVisible() {
+  return this.loggedIn && !this.authRoute;
+}
 /** 按当前角色决定页面是否显示，切号期间的管理员地址保持空位直到导航完成 */
 function readCanViewCurrentPage() {
   if (this.$route.meta.adminOnly) {
@@ -393,7 +401,7 @@ function readRoleName() {
 }
 /** 返回品牌链接的目标页面 */
 function readHomePath() {
-  if (this.loggedIn) {
+  if (this.workspaceVisible) {
     return "/MainPage";
   }
   return "/Login";
@@ -447,7 +455,7 @@ async function restoreNavigation() {
     await useAppStore().setNavi();
     useWalletStore().refresh();
     this.rememberPage(this.$route.path);
-    if (this.$route.path === "/Login" || this.$route.path === "/") {
+    if (this.authRoute) {
       await this.$router.replace("/MainPage");
     }
   } catch (error) {
@@ -464,7 +472,7 @@ function updateClock() {
 }
 /** 路由变化时添加标签页，同一页面只添加一次 */
 function rememberPage(path) {
-  if (!this.loggedIn || path === "/Login" || path === "/") {
+  if (!this.workspaceVisible) {
     return;
   }
   const name = path.substring(1);
@@ -544,6 +552,8 @@ export default {
     systemConfig: readSystemConfig,
     sidebarGroups: readSidebarGroups,
     loggedIn: readLoggedIn,
+    authRoute: readAuthRoute,
+    workspaceVisible: readWorkspaceVisible,
     canViewCurrentPage: readCanViewCurrentPage,
     displayName: readDisplayName,
     roleName: readRoleName,
