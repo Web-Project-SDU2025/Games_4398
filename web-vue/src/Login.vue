@@ -70,20 +70,12 @@
     <div class="auth-layout">
       <aside class="auth-gallery" aria-labelledby="login-games-title">
         <h2 id="login-games-title">今天想玩点什么？</h2>
-        <figure class="auth-game-feature">
-          <div class="auth-game-art auth-game-art-pool" aria-hidden="true"></div>
-          <figcaption>
-            <strong>美式八球</strong>
-            <span>人机对抗 · 本地双人</span>
-          </figcaption>
-        </figure>
-        <figure class="auth-game-companion">
-          <div class="auth-game-art auth-game-art-plants" aria-hidden="true"></div>
-          <figcaption>
-            <strong>植物大战僵尸</strong>
-            <span>草坪塔防</span>
-          </figcaption>
-        </figure>
+        <div class="auth-poster-art" aria-hidden="true"></div>
+        <ul class="auth-poster-games" aria-label="已接入游戏">
+          <li>小丑牌</li>
+          <li>美式八球</li>
+          <li>植物大战僵尸</li>
+        </ul>
       </aside>
       <section class="auth-panel" aria-labelledby="site-title">
         <h1 id="site-title">{{ formTitle }}</h1>

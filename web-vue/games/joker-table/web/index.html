@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1e2939">
+  <title>小丑牌</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="./platform-entry.js"></script>
+</head>
+<body>
+  <canvas id="felt" aria-hidden="true"></canvas>
+  <main class="cabinet">
+    <h1 class="sr-only">小丑牌</h1>
+    <div class="game-layout">
+      <aside class="scoreboard" aria-label="牌局计分板">
+        <div class="blind">
+          <h2 id="round-name">小盲注</h2>
+          <div class="blind-body">
+            <p class="round-rule" id="round-rule"></p>
+            <div class="blind-objective">
+              <span class="blind-symbol" aria-hidden="true"><i></i></span>
+              <div class="blind-target">
+                <span>目标分数</span>
+                <strong id="target">300</strong>
+                <span class="blind-payout">奖励 <b id="blind-reward">$3</b></span>
+              </div>
+            </div>
+            <div class="blind-context">
+              <p class="boss-preview" id="boss-preview"></p>
+              <div id="round-track" class="round-track" aria-label="本注盲注进度"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="meter">
+          <div class="meter-score"><span>本轮<br>得分</span><strong id="score">0</strong></div>
+          <progress id="progress" value="0" max="300" aria-label="本轮得分进度"></progress>
+        </div>
+
+        <div class="formula" id="formula" aria-label="牌型与计分">
+          <div class="hud-hand">选择手牌</div>
+          <div class="hud-formula"><span class="score-chip">0</span><span>×</span><span class="score-mult">0</span></div>
+        </div>
+
+        <div class="hud-lower">
+          <div class="hud-actions">
+            <button class="utility-button" id="hand-guide" type="button">牌型</button>
+            <button class="utility-button" id="options" type="button">选项</button>
+          </div>
+          <div class="hud-stats">
+            <div class="counters">
+              <div class="counter counter-hands"><span>出牌</span><strong id="hands-left">4</strong></div>
+              <div class="counter counter-discards"><span>弃牌</span><strong id="discards-left">3</strong></div>
+            </div>
+            <div class="wallet" aria-label="金币"><strong id="money">$4</strong></div>
+            <div class="counters">
+              <div class="counter counter-ante"><span>底注</span><strong id="ante-label">1 / 8</strong></div>
+              <div class="counter counter-round"><span>回合</span><strong id="round-number">1</strong></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="table" aria-label="牌桌">
+        <div class="joker-row">
+          <div id="jokers" class="jokers" aria-label="持有的小丑"></div>
+          <span class="joker-count" id="joker-count" aria-label="小丑牌数量">0/5</span>
+        </div>
+
+        <div class="stage-wrap">
+          <div class="stage" id="stage"></div>
+        </div>
+
+        <div class="player">
+          <div class="hand-dock">
+            <div id="hand" class="hand" aria-label="手牌"></div>
+            <span class="hand-count" id="hand-count" aria-label="手牌数量">8/8</span>
+            <div class="action-row">
+              <button class="primary-button" id="play" type="button" disabled>出牌</button>
+              <div class="hand-sort" role="group" aria-label="手牌排序">
+                <span aria-hidden="true">排序</span>
+                <div>
+                  <button id="sort-rank" type="button" aria-pressed="true">点数</button>
+                  <button id="sort-suit" type="button" aria-pressed="false">花色</button>
+                </div>
+              </div>
+              <button class="secondary-button" id="discard" type="button" disabled>弃牌</button>
+            </div>
+            <p class="table-status sr-only" id="status" role="status" aria-live="polite"></p>
+          </div>
+          <div class="deck-counter" aria-label="剩余牌堆">
+            <i aria-hidden="true"></i>
+            <strong><span id="deck-count">44</span><small>/52</small></strong>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <dialog id="overlay" class="game-dialog" aria-labelledby="dialog-title"></dialog>
+</body>
+</html>

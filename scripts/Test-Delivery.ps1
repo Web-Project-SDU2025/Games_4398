@@ -122,21 +122,21 @@ try {
         throw '后端没有提供已构建的网页入口'
     }
     $registry = Invoke-RestMethod -Uri ($address + '/games/registry.json') -TimeoutSec 15
-    foreach ($gamePath in @('/games/pvz/game.json', '/games/billiards/game.json')) {
+    foreach ($gamePath in @('/games/pvz/game.json', '/games/billiards/game.json', '/games/joker-table/game.json')) {
         if ($registry -notcontains $gamePath) {
             throw ('游戏清单缺少：' + $gamePath)
         }
         $game = Invoke-RestMethod -Uri ($address + $gamePath) -TimeoutSec 15
         if (-not $game.id) { throw ('游戏配置无效：' + $gamePath) }
     }
-    $report.Add('PASS: website and both game manifests')
+    $report.Add('PASS: website and three game manifests')
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $jarPath = Join-Path $packageRoot 'app\4398.jar'
     $archive = [System.IO.Compression.ZipFile]::OpenRead($jarPath)
     if ($archive.GetEntry('BOOT-INF/classes/application-local.properties')) {
         throw '交付 JAR 中仍存在开发配置'
     }
-    foreach ($name in @('java-player.js', 'native-player.js', 'pvz/game.jar', 'pvz/assets.zip')) {
+    foreach ($name in @('java-player.js', 'native-player.js', 'pvz/game.jar', 'pvz/assets.zip', 'joker-table/runtime/index.html', 'joker-table/media/cover.jpg')) {
         $entry = $archive.GetEntry('BOOT-INF/classes/public/games/' + $name)
         if (-not $entry -or $entry.Length -eq 0) { throw ('运行包缺少游戏资源：' + $name) }
     }

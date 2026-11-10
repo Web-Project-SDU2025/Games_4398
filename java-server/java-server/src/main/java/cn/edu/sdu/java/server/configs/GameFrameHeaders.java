@@ -17,7 +17,7 @@ public final class GameFrameHeaders implements HeaderWriter {
      */
     private static final java.util.List<String> PLAYER_PATHS = java.util.List.of(
             "/games/java-player.html", "/games/native-player.html",
-            "/games/billiards/runtime/index.html");
+            "/games/billiards/runtime/index.html", "/games/joker-table/runtime/index.html");
 
     /**
      * 写入安全头

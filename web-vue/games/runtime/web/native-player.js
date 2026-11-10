@@ -80,7 +80,16 @@ async function initialize() {
     }
     document.title = configuration.name;
     frame.title = configuration.name;
-    frame.src = "/games/" + configuration.id + "/" + configuration.entry;
+    const address = "/games/" + configuration.id + "/" + configuration.entry;
+    // 牌局存档使用服务端确认的账号，避免沿用切号前的本地资料
+    let source = address;
+    if (configuration.id === "joker-table" && authorization.data) {
+      const owner = authorization.data.userId;
+      if (Number.isSafeInteger(owner) && owner > 0) {
+        source = address + "?owner=" + owner;
+      }
+    }
+    frame.src = source;
     frame.hidden = false;
   } catch (error) {
     status.hidden = false;

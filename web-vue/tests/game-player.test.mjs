@@ -205,6 +205,30 @@ function loadPlayerComponent(context) {
   return context.component;
 }
 
+// 返回启动页只展示页面，明确继续对局后才显示同一个运行实例
+test("打开商城时保持对局收起，继续时恢复原实例", function testStoreNavigation() {
+  const session = createPlayer();
+  const account = user();
+  const component = loadPlayerComponent({});
+  const state = { session: session, ownerToken: account.token, $route: { path: "/GameCatalog" } };
+  session.open(game(), account, state.$route.path, false);
+  const address = session.address;
+
+  // 模拟导航时播放器收到路径变化并重新计算可见状态
+  function visit(path) {
+    const previousPath = state.$route.path;
+    state.$route.path = path;
+    component.watch["$route.path"].call(state, path, previousPath);
+    return component.computed.visible.call(state);
+  }
+
+  assert.equal(visit("/MainPage"), false);
+  assert.equal(visit("/GameCatalog"), false);
+  assert.equal(visit("/MainPage"), false);
+  assert.equal(visit(session.resume()), true);
+  assert.equal(session.address, address);
+});
+
 // 运行窗口隐藏时只退出平台自己的全屏，其他页面元素不受影响
 test("离开专注播放器时退出平台全屏", async function testExitPlayerFullscreen() {
   const shell = {};

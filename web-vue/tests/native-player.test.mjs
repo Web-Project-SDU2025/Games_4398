@@ -4,7 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 // 加载原生运行页逻辑，授权和计时使用替身，不访问真实账号
-async function fixture(allowed) {
+async function fixture(allowed, gameId = "billiards", authorization = { userId: 12 }) {
   const parent = {};
   const child = {};
   const sent = [];
@@ -28,7 +28,7 @@ async function fixture(allowed) {
   }
   // 直接读取固定清单，测试无需请求或解析其他游戏
   async function readRegisteredGame() {
-    return { id: "billiards", name: "美式八球", runtime: "html5", entry: "runtime/index.html" };
+    return { id: gameId, name: "测试游戏", runtime: "html5", entry: "runtime/index.html" };
   }
   // 账号凭证在初始化时读取一次
   function gameIdentity() {
@@ -39,7 +39,7 @@ async function fixture(allowed) {
     if (!allowed) {
       return { code: 1, msg: "请先购买此游戏" };
     }
-    return { code: 0, data: { userId: 12 } };
+    return { code: 0, data: authorization };
   }
   // 保存就绪后的计时创建次数，重复就绪不能开启两个计时器
   function createGameplayTracker() {
@@ -65,7 +65,7 @@ async function fixture(allowed) {
   function fetch() {
     return;
   }
-  const location = { origin: "https://platform.test", search: "?game=billiards" };
+  const location = { origin: "https://platform.test", search: "?game=" + gameId + "&owner=34" };
   const context = {
     document: { getElementById: getElementById, body: body },
     window: { parent: parent, fetch: fetch, addEventListener: addEventListener },
@@ -99,6 +99,53 @@ test("原生运行页在授权成功前不加载游戏", async function testAuth
   assert.equal(loaded.frame.hidden, true);
   assert.match(loaded.status.textContent, /请先购买/);
   assert.equal(loaded.counts().tracking, 0);
+});
+
+// 存档命名只使用后端授权确认的账号，忽略缓存账号和地址栏参数
+test("小丑牌以授权账户隔离存档", async function testJokerSaveOwner() {
+  const loaded = await fixture(true, "joker-table", { userId: 56 });
+  assert.equal(loaded.frame.src, "/games/joker-table/runtime/index.html?owner=56");
+  for (const authorization of [null, {}, { userId: 0 }, { userId: "56&owner=34" }]) {
+    const temporary = await fixture(true, "joker-table", authorization);
+    assert.equal(temporary.frame.src, "/games/joker-table/runtime/index.html");
+  }
+});
+
+// 初始存档保存原牌序，真正进行过牌局操作后才按续局进入
+test("小丑牌重开未操作的存档时播放开场并保留牌序", function testJokerOpening() {
+  const context = vm.createContext({});
+  for (const filename of ["engine.js", "run-store.js"]) {
+    const source = fs.readFileSync(
+      new URL("../games/joker-table/web/" + filename, import.meta.url),
+      "utf8",
+    );
+    vm.runInContext(source, context);
+  }
+  const store = context.JokerRunStore;
+  const engine = context.JokerEngine;
+  let save = null;
+  const storage = {
+    // 读取同一账户的存档
+    getItem: function getItem() {
+      return save;
+    },
+    // 保留真实存档内容，便于核对牌序和操作
+    setItem: function setItem(key, value) {
+      save = value;
+    },
+  };
+  const initial = store.open(engine, storage);
+  assert.equal(initial.resumed, false);
+  const initialSave = save;
+  const untouched = store.open(engine, storage);
+  assert.equal(untouched.resumed, false);
+  assert.equal(save, initialSave);
+  assert.equal(JSON.stringify(untouched.game.state.hand), JSON.stringify(initial.game.state.hand));
+  assert.ok(untouched.perform("discard", [untouched.game.state.hand[0].id]));
+
+  const progressed = store.open(engine, storage);
+  assert.equal(progressed.resumed, true);
+  assert.equal(JSON.stringify(progressed.game.state.hand), JSON.stringify(untouched.game.state.hand));
 });
 
 // 只在本实例就绪后计时，外部窗口消息不改变状态，关闭只保存一次

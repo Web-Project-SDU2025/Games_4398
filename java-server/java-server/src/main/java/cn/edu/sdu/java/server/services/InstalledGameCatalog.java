@@ -23,6 +23,9 @@ public class InstalledGameCatalog {
     /** 游戏入口只接受发布目录中的英文编号，避免配置越过资源目录 */
     private static final String GAME_PATH = "/games/[a-z][a-z0-9-]{0,39}/game\\.json";
 
+    private static final String JOKER_PATH = "/games/joker-table/game.json";
+    private static final String JOKER_NUMBER = "JOKER-TABLE";
+
     private final GameRepository games;
     private final ObjectMapper mapper;
 
@@ -37,7 +40,7 @@ public class InstalledGameCatalog {
 
     /**
      * 注册缺失商品
-     * 启动时登记清单中的缺失商品，重复执行时不新增相同入口
+     * 启动时登记清单中的缺失商品，顺便迁移小丑牌的旧默认名称
      */
     public void registerMissing() throws Exception {
         List<Game> existing = games.findAll();
@@ -51,8 +54,12 @@ public class InstalledGameCatalog {
                 if (!path.matches(GAME_PATH)) {
                     throw new IllegalStateException("本地游戏配置路径不正确");
                 }
-                if (!contains(existing, path)) {
+                Game game = findInstalled(existing, path);
+                if (game == null) {
                     register(path);
+                } else if (JOKER_PATH.equals(path) && JOKER_NUMBER.equals(game.getNum())
+                        && "夜场牌局".equals(game.getName())) {
+                    games.renameIfUnchanged(game.getGameId(), game.getNum(), path, game.getName(), "小丑牌");
                 }
             }
         }
@@ -60,15 +67,19 @@ public class InstalledGameCatalog {
 
     /**
      * 检查游戏是否存在
-     * 按入口查找已有商品，名称修改后仍可识别同一个游戏
+     * 按入口查找已有商品，同入口的小丑牌优先匹配其正式编号
      */
-    private boolean contains(List<Game> existing, String path) {
+    private Game findInstalled(List<Game> existing, String path) {
+        Game match = null;
         for (Game game : existing) {
             if (path.equals(game.getGamePath())) {
-                return true;
+                if (!JOKER_PATH.equals(path) || JOKER_NUMBER.equals(game.getNum())) {
+                    return game;
+                }
+                match = game;
             }
         }
-        return false;
+        return match;
     }
 
     /**

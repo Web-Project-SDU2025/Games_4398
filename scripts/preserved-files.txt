@@ -10,3 +10,9 @@ scripts/start.ps1
 start.cmd
 web-vue/vite.config.js
 java-server/java-server/src/main/java/cn/edu/sdu/java/server/controllers/BaseController.java
+web-vue/games/joker-table/web/art.js
+web-vue/games/joker-table/web/deal-sound.js
+web-vue/games/joker-table/web/engine.js
+web-vue/games/joker-table/web/felt.js
+web-vue/games/joker-table/web/game.js
+web-vue/games/joker-table/web/run-store.js

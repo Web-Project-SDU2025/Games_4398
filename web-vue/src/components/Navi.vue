@@ -75,6 +75,7 @@
             class="workspace-wallet"
             to="/GameCatalog"
             title="字块币账户"
+            @click.left.exact="playerSession.minimise()"
           >
             <span class="i-ep-coin" aria-hidden="true"></span
             >{{ wallet.balance }} BC

@@ -38,14 +38,16 @@ class GameFrameHeaderTests {
             context.refresh();
             MockMvc client = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
             for (String path : java.util.List.of("/games/java-player.html?game=pvz",
-                    "/games/native-player.html?game=billiards", "/games/billiards/runtime/index.html")) {
+                    "/games/native-player.html?game=billiards", "/games/billiards/runtime/index.html",
+                    "/games/joker-table/runtime/index.html?seed=1")) {
                 ResultActions player = client.perform(get(path));
                 player.andExpect(status().isOk());
                 player.andExpect(header().string("X-Frame-Options", "SAMEORIGIN"));
                 player.andExpect(header().string("Content-Security-Policy", "frame-ancestors 'self'"));
             }
             for (String path : java.util.List.of("/Login", "/games/other.html", "/games/java-player.html/extra",
-                    "/games/native-player.html/extra", "/games/billiards/runtime/other.html")) {
+                    "/games/native-player.html/extra", "/games/billiards/runtime/other.html",
+                    "/games/joker-table/runtime/other.html", "/games/joker-table/runtime/index.html/extra")) {
                 ResultActions response = client.perform(get(path));
                 response.andExpect(header().string("X-Frame-Options", "DENY"));
             }
@@ -104,7 +106,8 @@ class GameFrameHeaderTests {
     static class TestPages {
         /** 对指定测试页面返回可识别内容，接口由实际安全规则保护 */
         @GetMapping({"/games/java-player.html", "/games/native-player.html",
-                "/games/billiards/runtime/index.html", "/Login", "/games/other.html", "/api/check"})
+                "/games/billiards/runtime/index.html", "/games/joker-table/runtime/index.html",
+                "/games/joker-table/runtime/other.html", "/Login", "/games/other.html", "/api/check"})
         String page() {
             return "test-page";
         }

@@ -1,0 +1,19 @@
+{
+  "id": "joker-table",
+  "name": "小丑牌",
+  "number": "JOKER-TABLE",
+  "category": "策略",
+  "description": "在八注牌局中组合牌型、买入小丑牌、升级倍率，挑战各有特殊规则的首领盲注。",
+  "runtime": "html5",
+  "entry": "runtime/index.html",
+  "cover": "media/cover.jpg",
+  "display": {
+    "width": 1366,
+    "height": 768
+  },
+  "build": {
+    "web": "web",
+    "cover": "media/cover.jpg",
+    "licenses": ["AUDIO-SOURCE.txt"]
+  }
+}

@@ -1,0 +1,7 @@
+发牌音效来源
+
+web/deal-sound.js 内嵌了用户提供的《发牌音效.mp3》的短片段。
+原文件的 artist 和 album 标签指向 AudioJungle 用户 urbazon。
+http://audiojungle.net/user/urbazon
+
+文件标签提供来源线索。公开分发前需确认片段的授权范围。

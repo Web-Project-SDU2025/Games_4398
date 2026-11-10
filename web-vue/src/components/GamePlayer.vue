@@ -140,10 +140,10 @@ export default {
     },
   },
   watch: {
-    // 返回游戏所在页面时自动显示原画面，页面缓存是否仍存在均不影响运行环境
-    "$route.path": function routeChanged(path) {
-      if (path === this.session.routePath) {
-        this.session.resume();
+    // 离开游戏所在页面时收起画面，重新进入页面不会自动恢复对局
+    "$route.path": function routeChanged(path, previousPath) {
+      if (previousPath === this.session.routePath) {
+        this.session.minimise();
       }
     },
     // 同一游戏的编辑器请求使用消息打开，游戏包和素材继续复用

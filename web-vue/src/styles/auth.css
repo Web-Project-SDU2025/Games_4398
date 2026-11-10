@@ -320,6 +320,10 @@
   }
 }
 @media (min-width: 54rem) {
+  /* 两种表单共用滚动条留白，防止滚动条出现时改变两栏位置 */
+  html:has(.auth-page) {
+    scrollbar-gutter: stable both-edges;
+  }
   .auth-layout {
     max-width: 1100px;
     grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.88fr);
@@ -328,59 +332,59 @@
   }
   .auth-gallery {
     display: grid;
-    gap: 12px;
     min-width: 0;
+    margin-block-start: clamp(32px, 9vh, 80px);
   }
   .auth-gallery h2 {
-    margin: 0 0 6px;
-    font-size: clamp(33px, 3.4vw, 49px);
-    letter-spacing: -0.04em;
-    line-height: 1.12;
-  }
-  .auth-gallery figure {
+    position: relative;
+    z-index: 1;
     margin: 0;
-    border: 1px solid var(--color-rule);
-    border-radius: 12px;
-    overflow: hidden;
-    background: var(--color-paper-2);
+    color: #e2e9ef;
+    font-size: clamp(26px, 2.6vw, 38px);
+    letter-spacing: -0.035em;
+    line-height: 1.12;
+    text-align: center;
   }
-  .auth-gallery figcaption {
+  .auth-poster-art {
+    position: relative;
+    aspect-ratio: 1.8;
+    margin-top: 5px;
+  }
+  .auth-poster-art::before {
+    content: "";
+    position: absolute;
+    inset: -13% -12% -8%;
+    background: url("/images/login-arcade-poster.webp") center / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+  .auth-poster-games {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 6px 12px;
-    padding: 14px 16px;
-  }
-  .auth-gallery figcaption strong {
-    font-size: 18px;
-  }
-  .auth-gallery figcaption span {
-    color: var(--color-muted);
+    justify-content: center;
+    gap: 10px clamp(16px, 2vw, 31px);
+    margin: 3px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #b8c3d0;
     font-size: 13px;
   }
-  .auth-game-art {
-    background-size: cover;
-    background-repeat: no-repeat;
-  }
-  .auth-game-art-pool {
-    /* 只显示球台，底部对局控件留在游戏内 */
-    aspect-ratio: 20 / 11;
-    background-color: #233e35;
-    background-image: url("/images/login-billiards.webp");
-    background-position: center top;
-  }
-  .auth-game-companion {
-    display: grid;
-    grid-template-columns: 120px minmax(0, 1fr);
+  .auth-poster-games li {
+    display: inline-flex;
     align-items: center;
+    gap: 8px;
   }
-  .auth-game-art-plants {
-    align-self: stretch;
-    min-height: 76px;
-    background-color: #243d4b;
-    background-image: url("/images/login-pvz.webp");
-    background-position: center 40%;
+  .auth-poster-games li::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #bd91bf;
+  }
+  .auth-poster-games li:nth-child(2)::before {
+    background: #8ab5da;
+  }
+  .auth-poster-games li:nth-child(3)::before {
+    background: #91ba85;
   }
   .auth-field-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
