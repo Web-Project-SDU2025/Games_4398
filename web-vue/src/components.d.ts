@@ -7,11 +7,14 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountFormDialog: typeof import('./components/AccountFormDialog.vue')['default']
     AccountGameLibrary: typeof import('./components/AccountGameLibrary.vue')['default']
+    AccountGridPanel: typeof import('./components/AccountGridPanel.vue')['default']
     AccountSwitcher: typeof import('./components/AccountSwitcher.vue')['default']
     BackgroundMusic: typeof import('./components/BackgroundMusic.vue')['default']
     BlockcoinAdjustment: typeof import('./components/BlockcoinAdjustment.vue')['default']
     BlockcoinHistory: typeof import('./components/BlockcoinHistory.vue')['default']
+    DashboardAccount: typeof import('./components/DashboardAccount.vue')['default']
     DashboardActivity: typeof import('./components/DashboardActivity.vue')['default']
     GameLauncher: typeof import('./components/GameLauncher.vue')['default']
     GamePlayer: typeof import('./components/GamePlayer.vue')['default']

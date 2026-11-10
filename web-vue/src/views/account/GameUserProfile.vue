@@ -1,8 +1,7 @@
 <template>
-  <section class="game-page">
-    <h2>个人资料</h2>
+  <AccountGridPanel class="game-page" title="个人资料" icon="i-ep-postcard">
     <form
-      class="game-form motion-results"
+      class="account-grid-form motion-results"
       @submit.prevent="save"
       :aria-busy="loaded && loading"
     >
@@ -25,16 +24,20 @@
           :maxlength="limits.SIGNATURE_LIMIT"
         ></textarea>
       </label>
-      <button type="submit">保存</button>
+      <div class="account-grid-actions">
+        <button type="submit"><span>保存</span></button>
+      </div>
       <span v-toast="notice"></span>
     </form>
-  </section>
+  </AccountGridPanel>
 </template>
 <script>
 import { getProfile, saveProfile } from "../../services/gameUserServ";
 import * as limits from "../../logic/limits.js";
 import { useAppStore } from "../../stores/app.js";
+import AccountGridPanel from "../../components/AccountGridPanel.vue";
 export default {
+  components: { AccountGridPanel },
   // 创建独立资料表单，加载结果只填入当前页面
   data: function data() {
     return {

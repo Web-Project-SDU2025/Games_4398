@@ -5,10 +5,10 @@ export const CLOCK_INTERVAL = 1000;
 
 // 根据玩家使用顺序分组，实际可见入口仍来自账户的菜单
 const PLAYER_GROUPS = [
-  { id: "play", title: "玩游戏", pages: ["MainPage", "GameCatalog", "GameLibrary"] },
+  { id: "play", title: "玩游戏", pages: ["GameCatalog", "GameLibrary"] },
   { id: "activity", title: "我的游玩", pages: ["GameFavorites", "GameRecords"] },
-  { id: "account", title: "我的账户", pages: ["GameUserProfile", "Password"] },
 ];
+const UNGROUPED_PAGES = new Set(["MainPage", "GameUserProfile", "Password"]);
 const LEGACY_ADMIN_PAGES = ["MenuManage", "DictionaryManage", "GameUserManage"];
 
 /** 根据路由名查找管理入口，角色判断在整理菜单时统一处理 */
@@ -25,6 +25,7 @@ function findAdminPage(name) {
 function collectPlayerPages(items, playerPages) {
   const remaining = [];
   for (const item of items) {
+    if (UNGROUPED_PAGES.has(item.name)) continue;
     if (playerPages.has(item.name)) {
       playerPages.set(item.name, item);
     } else if (!findAdminPage(item.name) && !LEGACY_ADMIN_PAGES.includes(item.name)) {

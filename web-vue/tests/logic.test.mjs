@@ -434,6 +434,7 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
     dashboard: dashboard,
     account: account,
     DashboardActivity: {},
+    DashboardAccount: {},
     getInstalledGames: readInstalledGames,
     coinAmount: coinAmount,
   });
@@ -493,6 +494,7 @@ test("大厅在游玩记录返回前显示可启动的游戏", async function te
     getInstalledGames: getInstalledGames,
     dashboard: dashboard,
     DashboardActivity: {},
+    DashboardAccount: {},
   });
   const state = component.data();
   state.userInfo = store.userInfo;
@@ -527,21 +529,23 @@ test("管理区包含独立游戏资料入口且仅对管理员显示", function
     },
   ];
   const admin = navigation.createSidebarGroups(original, true);
-  assert.equal(admin[1].sList.length, 4);
-  assert.equal(admin[1].sList[0].name, "AccountManage");
-  assert.equal(admin[1].sList[1].name, "BlockcoinManage");
-  assert.equal(admin[1].sList[2].name, "RecordManage");
-  assert.equal(admin[1].sList[3].name, "GameManage");
+  assert.equal(admin.length, 1);
+  assert.deepEqual(admin[0].sList.map(menuName), [
+    "AccountManage",
+    "BlockcoinManage",
+    "RecordManage",
+    "GameManage",
+  ]);
   assert.equal(navigation.findMenuTitle([], "GameManage"), "游戏资料管理");
   assert.equal(original[1].sList[1].name, "GameUserManage");
   const ordinary = navigation.createSidebarGroups(original, false);
-  assert.equal(ordinary.length, 1);
+  assert.equal(ordinary.length, 0);
   const fallback = navigation.createSidebarGroups([], true);
   assert.equal(fallback[0].sList[0].name, "AccountManage");
 });
 
 // 玩家入口按使用顺序重新分组，同时保留服务器菜单中的其他入口
-test("游戏厅和商城排在侧栏前面并保留自定义菜单", function testPlayerNavigation() {
+test("侧栏分组保留商城、游玩和自定义菜单", function testPlayerNavigation() {
   const groups = [
     {
       id: 1,
@@ -566,13 +570,12 @@ test("游戏厅和商城排在侧栏前面并保留自定义菜单", function te
   ];
   const reordered = navigation.createSidebarGroups(groups, false);
   assert.deepEqual(reordered[0].sList.map(menuName), [
-    "MainPage",
     "GameCatalog",
     "GameLibrary",
   ]);
   assert.deepEqual(reordered[1].sList.map(menuName), ["GameFavorites", "GameRecords"]);
-  assert.deepEqual(reordered[2].sList.map(menuName), ["GameUserProfile", "Password"]);
-  assert.deepEqual(reordered[3].sList.map(menuName), ["Help"]);
+  assert.deepEqual(reordered[2].sList.map(menuName), ["Help"]);
+  assert.equal(reordered.length, 3);
   assert.equal(groups[0].sList[0].name, "Password");
 });
 

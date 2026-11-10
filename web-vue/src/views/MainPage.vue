@@ -127,6 +127,7 @@
         ></span>
       </RouterLink>
     </div>
+    <DashboardAccount />
     <div class="dashboard-main-grid">
       <section
         class="dashboard-section dashboard-records"
@@ -209,6 +210,7 @@ import * as account from "../logic/account.js";
 import * as dashboard from "../logic/dashboard.js";
 import { getGames, getRecords } from "../services/gameServ.js";
 import DashboardActivity from "../components/DashboardActivity.vue";
+import DashboardAccount from "../components/DashboardAccount.vue";
 import { getInstalledGames } from "../services/gameRuntime.js";
 import { launcherGames } from "../logic/gameRuntime.js";
 import {
@@ -465,6 +467,7 @@ export default {
   name: "MainPage",
   components: {
     DashboardActivity: DashboardActivity,
+    DashboardAccount: DashboardAccount,
   },
   data: homeState,
   computed: {

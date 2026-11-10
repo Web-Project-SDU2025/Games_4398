@@ -127,6 +127,12 @@
         :class="{ 'is-expanded': menuExpanded }"
         aria-label="功能菜单"
       >
+        <div class="sidebar-group">
+          <RouterLink to="/MainPage" @click="closeMenu">
+            <span class="i-ep-house sidebar-icon" aria-hidden="true"></span>
+            <span>首页</span>
+          </RouterLink>
+        </div>
         <details
           v-for="group in sidebarGroups"
           :key="group.id"
