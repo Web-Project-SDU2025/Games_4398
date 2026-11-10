@@ -41,16 +41,16 @@
   "dataDirectory": "levels",
   "resources": {
     "game.jar": {
-      "path": "resources/0-e58b8f4003f50ffa2efd.bin",
-      "bytes": 194754
+      "path": "resources/0-86dc039be81230757d26.bin",
+      "bytes": 194083
     },
     "gson-2.11.0.jar": {
       "path": "resources/1-57928d6e5a6edeb2abd3.bin",
       "bytes": 298435
     },
     "assets.zip": {
-      "path": "resources/2-7487e942f966e262ce8b.bin",
-      "bytes": 25387845
+      "path": "resources/2-4a1bd3815a256567afe9.bin",
+      "bytes": 25387849
     }
   },
   "gameplay": {
