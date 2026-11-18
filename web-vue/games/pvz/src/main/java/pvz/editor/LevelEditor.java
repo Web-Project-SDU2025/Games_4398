@@ -111,7 +111,7 @@ public class LevelEditor extends JFrame implements EditorDragController {
     private static final DateTimeFormatter CLOCK_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd EEE HH:mm:ss", Locale.CHINA);
 
-    /** 时钟多久刷新一次，单位是毫秒。一秒一次，秒数就不会跳格 */
+    /** 每秒刷新一次编辑器时钟，间隔以毫秒为单位 */
     private static final int CLOCK_REFRESH_INTERVAL = 1000;
 
     /** 参数面板右边那一列控件的宽度，要装得下"0 - 白天草坪"这种最长的选项 */
@@ -140,7 +140,7 @@ public class LevelEditor extends JFrame implements EditorDragController {
     /** 提供僵尸图标 */
     private final EditorIcons icons;
 
-    /** 正在编辑的关卡。打开别的关卡时会被整个换掉 */
+    /** 保存当前关卡的编辑数据，打开其他关卡时替换整个对象 */
     private LevelDesign design = new LevelDesign();
 
     /** 中间的出怪网格 */
@@ -1034,7 +1034,7 @@ public class LevelEditor extends JFrame implements EditorDragController {
     /** 丢掉当前内容，换成一个各项都是默认值的空关卡 */
     private void resetDesign() {
         applyDesign(new LevelDesign());
-        statusLabel.setText("已新建空关卡。");
+        statusLabel.setText("已新建空关卡");
     }
 
     /**

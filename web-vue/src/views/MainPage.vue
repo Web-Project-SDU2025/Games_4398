@@ -5,11 +5,9 @@
     :aria-busy="loading"
   >
     <header class="workspace-home-heading">
-      <div>
-        <h1 id="home-title">4398 游戏厅</h1>
-        <p>今天想玩点什么？</p>
-      </div>
+      <h1 id="home-title">游戏概览</h1>
       <div class="dashboard-heading-actions">
+        <span v-if="updatedAt" class="dashboard-updated">更新于 {{ updatedAt }}</span>
         <button
           class="dashboard-icon-button"
           type="button"
@@ -20,9 +18,9 @@
         >
           <span class="i-ep-refresh" aria-hidden="true"></span>
         </button>
-        <RouterLink class="lobby-library-link" to="/GameLibrary"
-          ><span class="i-ep-folder" aria-hidden="true"></span
-          >我的游戏库</RouterLink
+        <RouterLink class="dashboard-primary-link" to="/GameCatalog"
+          ><span class="i-ep-grid" aria-hidden="true"></span
+          >浏览游戏商城</RouterLink
         >
       </div>
     </header>
@@ -31,81 +29,13 @@
     <button
       v-if="activeGame && !activeGameListed"
       type="button"
-      class="lobby-action lobby-action-primary lobby-resume"
+      class="dashboard-game-action dashboard-resume"
       :disabled="player.closing"
       @click="resumeGame"
     >
       <span class="i-ep-video-play" aria-hidden="true"></span>
       {{ activeAction }} · {{ activeGame.name }}
     </button>
-    <section
-      v-if="showcase.length"
-      class="lobby-showcase"
-      :class="{ 'lobby-single': showcase.length === 1 }"
-      aria-label="游戏推荐"
-    >
-      <article
-        v-for="(game, index) in showcase"
-        :key="game.gameId"
-        class="lobby-feature"
-        :class="{ 'lobby-feature-main': index === 0, 'lobby-feature-pool': game.id === 'billiards' }"
-      >
-        <img v-if="game.installed" :src="game.cover" alt="" class="lobby-art" />
-        <div class="lobby-feature-body">
-          <div class="lobby-feature-labels">
-            <span v-if="game.category">{{ game.category }}</span>
-            <span v-if="isActive(game)" class="lobby-live">正在游玩</span>
-            <span v-else-if="game.owned">已入库</span>
-          </div>
-          <h2>{{ game.name }}</h2>
-          <p :title="game.description">{{ game.description }}</p>
-          <button
-            v-if="isActive(game)"
-            class="lobby-action lobby-action-primary"
-            type="button"
-            :disabled="player.closing"
-            @click="resumeGame"
-          >
-            <span class="i-ep-video-play" aria-hidden="true"></span>
-            {{ activeAction }}
-          </button>
-          <button
-            v-else-if="game.owned && game.installed"
-            class="lobby-action lobby-action-primary"
-            type="button"
-            :disabled="Boolean(activeGame)"
-            @click="launchGame(game)"
-          >
-            <span class="i-ep-video-play" aria-hidden="true"></span>
-            <template v-if="activeGame">请先结束当前游戏</template>
-            <template v-else>{{ playedGame(game) ? "再玩一局" : "开始游戏" }}</template>
-          </button>
-          <RouterLink
-            v-else
-            class="lobby-action lobby-action-primary"
-            :to="game.owned ? '/GameLibrary' : { path: '/GameCatalog', query: { search: game.name } }"
-          >
-            {{ game.owned ? "查看游戏库" : "查看游戏" }}
-            <span class="i-ep-arrow-right" aria-hidden="true"></span>
-          </RouterLink>
-        </div>
-      </article>
-    </section>
-    <div v-else class="lobby-showcase lobby-single">
-      <div class="lobby-placeholder" role="status">
-        <span class="i-ep-monitor" aria-hidden="true"></span>
-        <p>{{ lobbyPlaceholder }}</p>
-        <button v-if="error" type="button" class="lobby-action" @click="loadDashboard">
-          重试
-        </button>
-      </div>
-    </div>
-    <header class="lobby-section-heading">
-      <h2>我的游玩</h2>
-      <RouterLink to="/GameCatalog"
-        >浏览游戏商城<span class="i-ep-arrow-right" aria-hidden="true"></span
-      ></RouterLink>
-    </header>
     <div class="dashboard-stat-grid" :aria-busy="loading">
       <RouterLink
         v-for="stat in statistics"
@@ -127,8 +57,8 @@
         ></span>
       </RouterLink>
     </div>
-    <DashboardAccount />
     <div class="dashboard-main-grid">
+      <DashboardAccount />
       <section
         class="dashboard-section dashboard-records"
         aria-labelledby="records-title"
@@ -198,6 +128,57 @@
           :total-hours="summary.hours"
         />
         <div v-else class="dashboard-chart-placeholder">{{ pendingText }}</div>
+      </section>
+      <section class="dashboard-section dashboard-library" aria-labelledby="library-title">
+        <header class="dashboard-section-heading">
+          <h2 id="library-title">
+            <span class="i-ep-folder" aria-hidden="true"></span>游戏库
+          </h2>
+          <RouterLink to="/GameLibrary">
+            我的游戏库<span class="i-ep-arrow-right" aria-hidden="true"></span>
+          </RouterLink>
+        </header>
+        <ul v-if="dashboardGames.length" class="dashboard-library-list">
+          <li v-for="game in dashboardGames" :key="game.gameId">
+            <img v-if="game.installed" :src="game.cover" alt="" width="192" height="144" />
+            <span v-else class="dashboard-cover-empty" aria-hidden="true">
+              <span class="i-ep-monitor"></span>
+            </span>
+            <strong>{{ game.name }}</strong>
+            <button
+              v-if="isActive(game)"
+              class="dashboard-game-action"
+              type="button"
+              :disabled="player.closing"
+              @click="resumeGame"
+            >{{ activeAction }}</button>
+            <button
+              v-else-if="game.owned && game.installed"
+              class="dashboard-game-action"
+              type="button"
+              :disabled="Boolean(activeGame)"
+              @click="launchGame(game)"
+            >
+              <template v-if="activeGame">请先结束当前游戏</template>
+              <template v-else-if="playedGame(game)">再玩一局</template>
+              <template v-else>开始游戏</template>
+            </button>
+            <RouterLink v-else-if="game.owned" class="dashboard-game-action" to="/GameLibrary">
+              查看游戏库
+            </RouterLink>
+            <RouterLink
+              v-else
+              class="dashboard-game-action"
+              :to="{ path: '/GameCatalog', query: { search: game.name } }"
+            >查看游戏</RouterLink>
+          </li>
+        </ul>
+        <div v-else class="dashboard-inline-empty" role="status">
+          <p>{{ lobbyPlaceholder }}</p>
+          <button v-if="error" type="button" class="dashboard-game-action" @click="loadDashboard">
+            重试
+          </button>
+        </div>
       </section>
     </div>
   </section>
@@ -293,13 +274,29 @@ function readActiveGame() {
   return null;
 }
 
-// 封面、持有状态和启动能力沿用商城与游戏库的合并结果
-function readShowcase() {
-  return dashboard.lobbyGames(
-    launcherGames(this.catalog || [], this.installedGames),
-    this.personalRecords,
-    this.activeGame && this.activeGame.gamePath,
-  );
+// 概览显示全部游戏，优先展示当前对局与最近可玩的游戏
+function readDashboardGames() {
+  if (!this.catalog) {
+    return [];
+  }
+  const games = launcherGames(this.catalog, this.installedGames);
+  let activePath = "";
+  if (this.activeGame) {
+    activePath = this.activeGame.gamePath;
+  }
+  return dashboard.lobbyGames(games, this.personalRecords, activePath);
+}
+
+// 概览请求成功后显示本次数据的更新时间
+function readUpdatedAt() {
+  if (!this.summary) {
+    return "";
+  }
+  const updated = new Date(this.summary.generatedAt);
+  return updated.toLocaleTimeString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour12: false,
+  });
 }
 
 // 区分正在游玩的游戏与只是存在游玩记录的游戏
@@ -333,10 +330,10 @@ function resumeGame() {
 // 初次加载、失败和空商城分别提供明确状态
 function readLobbyPlaceholder() {
   if (this.error) {
-    return "游戏暂时没有加载出来。";
+    return "游戏加载失败";
   }
   if (this.catalog) {
-    return "游戏厅暂时没有上架的游戏。";
+    return "游戏厅暂无上架游戏";
   }
   return "正在加载游戏…";
 }
@@ -481,7 +478,7 @@ export default {
     activeGame: readActiveGame,
     // 目录中没有当前游戏时，也保留返回入口
     activeGameListed: function readActiveGameListed() {
-      for (const game of this.showcase) {
+      for (const game of this.dashboardGames) {
         if (this.isActive(game)) {
           return true;
         }
@@ -502,7 +499,8 @@ export default {
       }
       return [];
     },
-    showcase: readShowcase,
+    dashboardGames: readDashboardGames,
+    updatedAt: readUpdatedAt,
     lobbyPlaceholder: readLobbyPlaceholder,
     pendingText: readPendingText,
     emptyRecordText: readEmptyRecordText,

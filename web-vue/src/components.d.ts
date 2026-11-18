@@ -11,6 +11,7 @@ declare module 'vue' {
     AccountGameLibrary: typeof import('./components/AccountGameLibrary.vue')['default']
     AccountGridPanel: typeof import('./components/AccountGridPanel.vue')['default']
     AccountSwitcher: typeof import('./components/AccountSwitcher.vue')['default']
+    AuthGridBackground: typeof import('./components/AuthGridBackground.vue')['default']
     BackgroundMusic: typeof import('./components/BackgroundMusic.vue')['default']
     BlockcoinAdjustment: typeof import('./components/BlockcoinAdjustment.vue')['default']
     BlockcoinHistory: typeof import('./components/BlockcoinHistory.vue')['default']

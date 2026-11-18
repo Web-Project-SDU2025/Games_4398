@@ -375,7 +375,8 @@
             │   └── GameUserProfile.vue                                         个人资料
             ├── game/
             │   ├── GameStore.vue                                               游戏商城与购买
-            │   ├── GameList.vue                                                游戏库、收藏与管理员游戏资料
+            │   ├── GameList.vue                                                游戏库、收藏和启动入口
+            │   ├── GameManagement.vue                                          商城内的管理员游戏资料表和编辑框
             │   └── GameRecords.vue                                             游玩记录
             └── info/
                 └── Password.vue                                                修改密码

@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAppStore } from "../stores/app";
 import { showToast } from "../tools/toast.js";
+import { GAME_MANAGEMENT_ROUTE, isGameManagementRoute } from "../logic/navigation.js";
 
-// 游戏库、收藏和游戏资料管理共用列表页面，商城单独展示商品
+// 游戏库和收藏共用只面向玩家的游戏列表
 function loadGameList() {
   return import("../views/game/GameList.vue");
 }
@@ -56,9 +57,7 @@ const routes = [
   },
   {
     path: "/GameManage",
-    meta: { adminOnly: true },
-    component: loadGameList,
-    props: { mode: "catalog", title: "游戏资料管理" },
+    redirect: GAME_MANAGEMENT_ROUTE,
   },
   {
     path: "/GameLibrary",
@@ -71,6 +70,13 @@ const routes = [
     // 打开对应页面时再加载组件，减少启动时的等待
     component: loadGameList,
     props: { mode: "favorites", title: "我的收藏" },
+  },
+  {
+    path: "/PetRoom",
+    // 只在打开小屋时加载 Three.js，不影响其他栏目
+    component: function loadPetRoom() {
+      return import("../views/PetRoom.vue");
+    },
   },
   {
     path: "/GameRecords",
@@ -135,7 +141,8 @@ async function checkAccess(to) {
   if (!user.loggedIn || !user.token) {
     return "/Login";
   }
-  if (to.meta.adminOnly) {
+  const managingGames = isGameManagementRoute(to);
+  if (to.meta.adminOnly || managingGames) {
     // 管理员角色可能在登录后被修改，进入管理页面前必须重新向后端确认
     try {
       const refreshed = await store.refreshIdentity();
@@ -147,11 +154,13 @@ async function checkAccess(to) {
       return false;
     }
     if (user.role !== "ROLE_ADMIN") {
+      if (managingGames) {
+        return "/GameCatalog";
+      }
       return "/MainPage";
     }
   }
   return true;
 }
 router.beforeEach(checkAccess);
-// 路由导出
 export default router;

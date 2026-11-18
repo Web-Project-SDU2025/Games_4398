@@ -1,75 +1,75 @@
 .installed-games {
+  /* 游戏库沿用左封面右资料的列表，按内容区宽度决定每行数量 */
+  --game-entry-width: 440px;
+  --game-cover-width: 144px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19.5rem), 1fr));
-  max-width: 60rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--game-entry-width)), 1fr));
+  align-items: start;
   gap: var(--space-lg);
   padding: var(--space-md) 0;
 }
 .installed-game {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: min(30%, var(--game-cover-width)) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-md);
   min-width: 0;
-  border: 1px solid var(--color-rule);
-  border-radius: 12px;
-  background: var(--color-paper-2);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
 }
 .installed-game-cover {
   display: grid;
   place-items: center;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 11px 11px 0 0;
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-field);
+  border-radius: var(--radius-control);
 }
 .installed-game-cover img {
   width: 100%;
   height: 100%;
-  min-height: 0;
-  object-fit: cover;
-  object-position: center top;
+  min-width: 0;
+  object-fit: contain;
+  object-position: center;
 }
 .installed-game-cover.is-placeholder img {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
+  width: min(100%, 48px);
+  height: auto;
 }
 .installed-game-description {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: var(--space-sm);
   min-width: 0;
-  padding: 18px 20px 20px;
   overflow-wrap: anywhere;
 }
 .installed-game-details {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   color: var(--color-muted);
   font-size: 13px;
 }
 .installed-game-owned {
-  margin-left: auto;
-  padding: 2px 8px;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-control);
+  color: var(--color-muted);
 }
 .installed-game h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1.4;
 }
 .installed-game p {
   margin: 0;
   color: var(--color-muted);
   line-height: 1.6;
+  font-size: 13px;
 }
 .installed-game-commerce {
-  display: grid;
-  gap: var(--space-xs);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 .installed-game-price {
   color: var(--color-amber);
@@ -84,8 +84,7 @@
   font-size: 13px;
 }
 .installed-game .game-actions {
-  margin-top: auto;
-  padding-top: var(--space-sm);
+  gap: var(--space-sm);
 }
 .installed-game .game-actions > :is(button, a) {
   display: inline-flex;
@@ -104,10 +103,15 @@
   line-height: 1.3;
 }
 .installed-game .game-actions > .installed-game-primary {
-  border-color: var(--color-play-action);
-  background: var(--color-play-action);
-  color: var(--color-play-action-ink);
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
   font-weight: 600;
+}
+.installed-game .game-actions > button:disabled {
+  color: var(--color-muted);
+  background: var(--color-paper-2);
+  border-color: var(--color-rule);
 }
 .installed-game .game-actions [aria-hidden="true"] {
   flex-shrink: 0;
@@ -121,28 +125,11 @@
 }
 @media (max-width: 47.99rem) {
   .installed-games {
+    --game-cover-width: 96px;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-md);
   }
-  .installed-game {
-    display: grid;
-    grid-template-columns: min(26%, 96px) minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-md);
-    padding: var(--space-sm);
-  }
-  .installed-game-cover {
-    aspect-ratio: 4 / 3;
-    border: 0;
-    border-radius: var(--radius-control);
-  }
-  .installed-game-cover img {
-    object-fit: contain;
-  }
-  .installed-game-description {
-    padding: 0;
-  }
-  .installed-game h3 {
-    font-size: 18px;
+  .installed-game .game-actions > :is(button, a) {
+    min-height: 44px;
   }
 }

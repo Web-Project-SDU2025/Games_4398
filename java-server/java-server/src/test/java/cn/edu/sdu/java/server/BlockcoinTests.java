@@ -3,9 +3,13 @@ package cn.edu.sdu.java.server;
 import cn.edu.sdu.java.server.models.BlockcoinEntry;
 import cn.edu.sdu.java.server.models.BlockcoinWallet;
 import cn.edu.sdu.java.server.models.Game;
+import cn.edu.sdu.java.server.models.PetCare;
+import cn.edu.sdu.java.server.models.PetPurchaseBatch;
+import cn.edu.sdu.java.server.models.PetRoom;
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.models.UserType;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
+import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.BlockcoinEntryRepository;
 import cn.edu.sdu.java.server.repositorys.BlockcoinWalletRepository;
 import cn.edu.sdu.java.server.repositorys.GameRecordRepository;
@@ -13,10 +17,14 @@ import cn.edu.sdu.java.server.repositorys.GameRepository;
 import cn.edu.sdu.java.server.repositorys.GamePlayRepository;
 import cn.edu.sdu.java.server.repositorys.GameRevocationRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
+import cn.edu.sdu.java.server.repositorys.PetRoomRepository;
+import cn.edu.sdu.java.server.repositorys.PetCareRepository;
+import cn.edu.sdu.java.server.repositorys.PetPurchaseBatchRepository;
 import cn.edu.sdu.java.server.services.BlockcoinService;
 import cn.edu.sdu.java.server.services.GameService;
 import cn.edu.sdu.java.server.services.RecordVisibilityService;
 import cn.edu.sdu.java.server.services.MessageService;
+import cn.edu.sdu.java.server.services.PetRoomService;
 import cn.edu.sdu.java.server.services.OfficialLevelCatalog;
 import cn.edu.sdu.java.server.services.UserDetailsImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +46,232 @@ class BlockcoinTests {
     private static final String RUN = "a88f3c18-67c7-46fa-bd50-66e8566b29a4";
     /** 管理员操作使用固定合法编号，重试应复用此编号 */
     private static final String OPERATION = "ce2e3140-c77f-4088-885a-e4c7988f0914";
+
+    /** 用真实的记账逻辑验证猫粮会入库，复用同一订单不会再次扣款 */
+    @Test
+    void petFoodPurchaseIsIdempotent() {
+        Fixture fixture = fixture(20);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        room.setFood(2);
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        String entryId = "pet-food:12:" + OPERATION;
+        when(fixture.entries.existsById(entryId)).thenReturn(false, true);
+        PetCareRepository care = mock(PetCareRepository.class);
+        when(rooms.spending(12)).thenReturn(8L);
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        DataResponse purchase = pets.buyFood(OPERATION);
+        assertEquals(0, purchase.getCode());
+        Map<?, ?> first = (Map<?, ?>) purchase.getData();
+        assertEquals(9L, first.get("growth"));
+        assertEquals(3, room.getFood());
+        assertEquals(12L, fixture.wallet.getBalance());
+        DataResponse repeated = pets.buyFood(OPERATION);
+        assertEquals(0, repeated.getCode());
+        assertEquals(9L, ((Map<?, ?>) repeated.getData()).get("growth"));
+        assertEquals(3, room.getFood());
+        assertEquals(12L, fixture.wallet.getBalance());
+        ArgumentCaptor<BlockcoinEntry> entry = ArgumentCaptor.forClass(BlockcoinEntry.class);
+        verify(fixture.entries).save(entry.capture());
+        assertEquals(entryId, entry.getValue().getEntryId());
+        assertEquals(-8L, entry.getValue().getAmount());
+        verify(rooms).save(room);
+        verify(fixture.petBatches).save(any(PetPurchaseBatch.class));
+        verifyNoInteractions(fixture.messages);
+    }
+
+    /** 两次购买合成一条站内消息，结算重试不重新发消息或扣款 */
+    @Test
+    void petPurchasesSendOneMessageOnLeaving() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository care = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        PetPurchaseBatch batch = new PetPurchaseBatch(12, OPERATION);
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        when(fixture.petBatches.findById(12)).thenReturn(Optional.of(batch), Optional.of(batch),
+            Optional.of(batch), Optional.empty());
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        assertEquals(0, pets.buyFood(OPERATION).getCode());
+        assertEquals(0, pets.buyFood(RUN).getCode());
+        verifyNoInteractions(fixture.messages);
+        assertEquals(14L, fixture.wallet.getBalance());
+        assertEquals(true, pets.settlePurchases().getData());
+        assertEquals(false, pets.settlePurchases().getData());
+        assertEquals(14L, fixture.wallet.getBalance());
+        verify(fixture.petBatches).delete(batch);
+        verify(fixture.messages).notifyAccount("pet-settle:" + OPERATION, 12, "桌宠小屋消费结算",
+            "猫粮：2 份\n支出：-16 BC\n当前余额：14 BC");
+    }
+
+    /** 余额不足时不写账也不补充库存，喂食只消耗已有的猫粮 */
+    @Test
+    void petCareUsesStockAndLevelsUpWithoutChargingAgain() {
+        Fixture fixture = fixture(7);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        room.setFood(2);
+        room.setFullness(50);
+        room.setExperience(32);
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        PetCareRepository care = mock(PetCareRepository.class);
+        PetCare points = new PetCare();
+        when(care.findById(12)).thenReturn(Optional.of(points));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        assertEquals(1, pets.buyFood(OPERATION).getCode());
+        assertEquals(2, room.getFood());
+        assertEquals(7L, fixture.wallet.getBalance());
+        verify(rooms, never()).save(room);
+        DataResponse fed = pets.interact("feed");
+        Map<?, ?> view = (Map<?, ?>) fed.getData();
+        assertEquals(2, view.get("level"));
+        assertEquals(8, view.get("progress"));
+        assertEquals(54L, view.get("growth"));
+        assertEquals(1, room.getFood());
+        assertEquals(74, room.getFullness());
+        assertEquals(7L, fixture.wallet.getBalance());
+        verify(fixture.entries, never()).save(any(BlockcoinEntry.class));
+    }
+
+    /** 从饥饿到快吃饱都能喂食，达到上限后不再消耗库存或记分 */
+    @Test
+    void petFeedingWorksUntilFullnessReachesLimit() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository records = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        room.setFood(3);
+        room.setFullness(23);
+        PetCare care = new PetCare();
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        when(records.findById(12)).thenReturn(Optional.of(care));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, records, fixture.petBatches);
+
+        assertEquals(0, pets.interact("feed").getCode());
+        assertEquals(47, room.getFullness());
+        room.setFullness(99);
+        assertEquals(0, pets.interact("feed").getCode());
+        assertEquals(100, room.getFullness());
+        assertEquals(1, room.getFood());
+        assertEquals(1, pets.interact("feed").getCode());
+        assertEquals(1, room.getFood());
+        assertEquals(32, room.getExperience());
+        assertEquals(10, care.getCarePoints());
+        verify(rooms, times(2)).save(room);
+    }
+
+    /** 新宠物从一点成长值起步，短时间重复抚摸不会再次记分 */
+    @Test
+    void petGrowthStartsAboveZeroAndRewardsCare() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository care = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        PetCare points = new PetCare();
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        when(care.findById(12)).thenReturn(Optional.of(points));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        assertEquals(1L, ((Map<?, ?>) pets.readRoom().getData()).get("growth"));
+        assertEquals(3L, ((Map<?, ?>) pets.interact("pet").getData()).get("growth"));
+        assertEquals(3L, ((Map<?, ?>) pets.interact("pet").getData()).get("growth"));
+        verify(care).save(points);
+    }
+
+    /** 气泡只读已有状态，未打开过小屋时也不创建宠物或钱包 */
+    @Test
+    void petMoodDoesNotCreateRoomOrWallet() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository care = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setFullness(24);
+        room.setEnergy(43);
+        room.setFood(0);
+        when(rooms.findById(12)).thenReturn(Optional.empty(), Optional.of(room));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        assertNull(pets.readMood().getData());
+        Map<?, ?> mood = (Map<?, ?>) pets.readMood().getData();
+        assertEquals(24, mood.get("fullness"));
+        assertEquals(43, mood.get("energy"));
+        assertEquals(0, mood.get("food"));
+        assertFalse(mood.containsKey("balance"));
+        verify(rooms, never()).save(any(PetRoom.class));
+        verifyNoInteractions(care);
+    }
+
+    /** 昵称默认是小橙，自定义名称在服务器保存，不改变钱包和成长 */
+    @Test
+    void petNicknameDefaultsAndCanBeChanged() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository care = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        when(rooms.readNickname(12)).thenReturn(Optional.empty(), Optional.of("奶糖 🐾"));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        Map<?, ?> initial = (Map<?, ?>) pets.readRoom().getData();
+        assertEquals("小橙", initial.get("nickname"));
+        assertEquals(1, pets.rename("  ").getCode());
+        assertEquals(1, pets.rename("小橙\n奶糖").getCode());
+        assertEquals(1, pets.rename("橙".repeat(25)).getCode());
+        assertEquals("奶糖 🐾", pets.rename("  奶糖 🐾  ").getData());
+        verify(rooms).saveNickname(12, "奶糖 🐾");
+        Map<?, ?> renamed = (Map<?, ?>) pets.readRoom().getData();
+        assertEquals("奶糖 🐾", renamed.get("nickname"));
+        assertEquals(initial.get("growth"), renamed.get("growth"));
+        verifyNoInteractions(fixture.entries);
+    }
+
+    /** 榜外账户仍能看到自己的名次和宠物昵称，公开结果不含账户资料 */
+    @Test
+    void leaderboardReturnsPublicScoresAndKeepsOwnPlace() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository care = mock(PetCareRepository.class);
+        java.util.ArrayList<PetRoomRepository.RankRow> rows = new java.util.ArrayList<>();
+        for (int position = 0; position < 20; position = position + 1) {
+            rows.add(rankRow(30 + position, 1L, 50L));
+        }
+        PetRoomRepository.RankRow ownRow = rankRow(12, 21L, 4L);
+        when(ownRow.getNickname()).thenReturn("奶糖");
+        rows.add(ownRow);
+        when(rooms.leaderboard(12, 20)).thenReturn(rows);
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, care, fixture.petBatches);
+
+        Map<?, ?> board = (Map<?, ?>) pets.leaderboard().getData();
+        List<?> leaders = (List<?>) board.get("leaders");
+        assertEquals(20, leaders.size());
+        Map<?, ?> first = (Map<?, ?>) leaders.get(0);
+        assertEquals(1L, first.get("rank"));
+        assertEquals("小橙", first.get("nickname"));
+        assertFalse(first.containsKey("ownerId"));
+        Map<?, ?> own = (Map<?, ?>) board.get("own");
+        assertEquals("奶糖", own.get("nickname"));
+        assertEquals(21L, own.get("rank"));
+        assertEquals(4L, own.get("growth"));
+        assertEquals(true, own.get("mine"));
+    }
+
+    /** 构造最小排行投影，不向测试结果提供登录账号或真实昵称 */
+    private PetRoomRepository.RankRow rankRow(int userId, long rank, long growth) {
+        PetRoomRepository.RankRow row = mock(PetRoomRepository.RankRow.class);
+        when(row.getOwnerId()).thenReturn(userId);
+        when(row.getRankNumber()).thenReturn(rank);
+        when(row.getScore()).thenReturn(growth);
+        return row;
+    }
 
     /** 测试完成后清理身份，避免下一用例继承登录状态 */
     @AfterEach
@@ -324,6 +558,7 @@ class BlockcoinTests {
         private final BlockcoinEntryRepository entries = mock(BlockcoinEntryRepository.class);
         private final GameRevocationRepository revocations = mock(GameRevocationRepository.class);
         private final MessageService messages = mock(MessageService.class);
+        private final PetPurchaseBatchRepository petBatches = mock(PetPurchaseBatchRepository.class);
         private final OfficialLevelCatalog levels = mock(OfficialLevelCatalog.class);
         private final GameService gameService = new GameService(games, users,
             mock(GameRecordRepository.class), mock(GamePlayRepository.class), mock(RecordVisibilityService.class), levels);

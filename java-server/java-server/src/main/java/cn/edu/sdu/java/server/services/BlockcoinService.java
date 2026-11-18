@@ -65,7 +65,7 @@ public class BlockcoinService {
      * 获取当前登录账户并加锁
      * 用悲观锁防止并发修改，比如张三同时在两个浏览器购买游戏，加锁后第二个请求会等第一个完成
      */
-    private User account() {
+    User account() {
         return users.lockAccount(CommonMethod.getUserId()).orElseThrow();
     }
 
@@ -73,7 +73,7 @@ public class BlockcoinService {
      * 获取或创建用户钱包
      * 首次使用商城的用户会自动获得100字块币的新手礼包，老用户直接返回原来的钱包
      */
-    private BlockcoinWallet wallet(User user) {
+    BlockcoinWallet wallet(User user) {
         Optional<BlockcoinWallet> found = wallets.findById(user.getUserId());
         if (found.isPresent()) {
             return found.get();
@@ -92,6 +92,17 @@ public class BlockcoinService {
      * 同时会给用户发送系统通知，让大家知道自己的余额变化
      */
     private void record(BlockcoinWallet wallet, String id, long amount, String reason, String path) {
+        saveEntry(wallet, id, amount, reason, path);
+        String change = Long.toString(amount);
+        if (amount > 0) {
+            change = "+" + change;
+        }
+        messages.notifyAccount("coins:" + id, wallet.getUserId(), "字块币变动",
+            reason + "\n变动：" + change + " BC\n当前余额：" + wallet.getBalance() + " BC");
+    }
+
+    /** 保存交易流水，桌宠消费用这笔流水记分，离开小屋时再统一发消息 */
+    private void saveEntry(BlockcoinWallet wallet, String id, long amount, String reason, String path) {
         BlockcoinEntry entry = new BlockcoinEntry();
         entry.setEntryId(id);
         entry.setUserId(wallet.getUserId());
@@ -101,12 +112,28 @@ public class BlockcoinService {
         entry.setGamePath(path);
         entry.setCreatedAt(Instant.now());
         entries.save(entry);
-        String change = Long.toString(amount);
-        if (amount > 0) {
-            change = "+" + change;
+    }
+
+    /** 判断该账户的宠物用品订单是否已经记账，重试时不再补发库存 */
+    boolean hasPetPurchase(String entryId) {
+        return entries.existsById(entryId);
+    }
+
+    /** 调用方持有账户锁，扣款和用品入库会在同一个事务中提交 */
+    boolean spendOnPet(BlockcoinWallet wallet, String entryId, long price, String itemName) {
+        if (wallet.getBalance() < price) {
+            return false;
         }
-        messages.notifyAccount("coins:" + id, wallet.getUserId(), "字块币变动",
-            reason + "\n变动：" + change + " BC\n当前余额：" + wallet.getBalance() + " BC");
+        wallet.setBalance(wallet.getBalance() - price);
+        wallets.save(wallet);
+        saveEntry(wallet, entryId, -price, "桌宠小屋 · 购买" + itemName, "");
+        return true;
+    }
+
+    /** 将小屋尚未通知的购买汇成一条站内消息，编号和批次绑定避免重复发送 */
+    void notifyPetPurchase(BlockcoinWallet wallet, String batchId, long spent, long quantity) {
+        String content = "猫粮：" + quantity + " 份\n支出：-" + spent + " BC\n当前余额：" + wallet.getBalance() + " BC";
+        messages.notifyAccount("pet-settle:" + batchId, wallet.getUserId(), "桌宠小屋消费结算", content);
     }
 
     /**

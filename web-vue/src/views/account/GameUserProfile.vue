@@ -37,7 +37,7 @@ import * as limits from "../../logic/limits.js";
 import { useAppStore } from "../../stores/app.js";
 import AccountGridPanel from "../../components/AccountGridPanel.vue";
 export default {
-  components: { AccountGridPanel },
+  components: { AccountGridPanel: AccountGridPanel },
   // 创建独立资料表单，加载结果只填入当前页面
   data: function data() {
     return {
@@ -48,7 +48,7 @@ export default {
       limits: limits,
     };
   },
-  // 页面打开时加载初始资料
+  // 打开资料页或弹窗时，读取当前登录账户的个人资料
   created: async function created() {
     const token = useAppStore().userInfo.token;
     this.loading = true;
@@ -72,7 +72,7 @@ export default {
     }
   },
   methods: {
-    // 保存当前账户的个人资料
+    // 提交当前表单，保存成功后把这份资料同步到概览和顶栏
     save: async function save() {
       if (this.loading) {
         return;

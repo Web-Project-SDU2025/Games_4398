@@ -236,15 +236,9 @@ import { createPvzMenu } from "./pvz-menu.mjs";
       const usePvzMenu =
         configuration.id === "pvz" && configuration.adapter === "pvz.browser.BrowserGame";
       if (usePvzMenu) {
-        natives.Java_pvz_game_Game_webMenuRequest = async function menuRequest() {
-          return pvzMenu.takeRequest();
-        };
-        natives.Java_pvz_game_Game_webMenuAvailability = async function menuAvailability(lib, visible) {
-          pvzMenu.setAvailable(visible);
-        };
-        natives.Java_pvz_game_Game_webMenuProgress = async function menuProgress(lib, progress) {
-          await pvzMenu.report(progress);
-        };
+        natives.Java_pvz_game_Game_webMenuRequest = readPvzMenuRequest;
+        natives.Java_pvz_game_Game_webMenuAvailability = updatePvzMenuAvailability;
+        natives.Java_pvz_game_Game_webMenuProgress = updatePvzMenuProgress;
       }
       await cheerpjInit({
         version: PLAYER_DEFAULTS.javaVersion,
@@ -258,11 +252,8 @@ import { createPvzMenu } from "./pvz-menu.mjs";
       if (usePvzMenu) {
         const template = document.getElementById("pvz-menu-template");
         document.getElementById("java-display").append(template.content.cloneNode(true));
-        pvzMenu = createPvzMenu(document, window.requestAnimationFrame.bind(window),
-          async function menuError(error) {
-            console.error("PVZ 菜单加载失败", error);
-            status(await errorMessage(error));
-          });
+        const nextFrame = window.requestAnimationFrame.bind(window);
+        pvzMenu = createPvzMenu(document, nextFrame, showPvzMenuError);
       }
       centerGameDisplay(
         configuration.display.width,
@@ -325,6 +316,28 @@ import { createPvzMenu } from "./pvz-menu.mjs";
       status("启动失败（" + phase + "）：" + (await errorMessage(error)));
       document.getElementById("retry-start").hidden = false;
     }
+  }
+
+  // Java 轮询菜单时读取一次网页发出的请求
+  async function readPvzMenuRequest() {
+    return pvzMenu.takeRequest();
+  }
+
+  // 接收 Java 菜单的可见状态，同步网页上的菜单入口
+  async function updatePvzMenuAvailability(library, visible) {
+    pvzMenu.setAvailable(visible);
+  }
+
+  // 接收 Java 的进度值，等待网页完成本次加载提示的更新
+  async function updatePvzMenuProgress(library, progress) {
+    await pvzMenu.report(progress);
+  }
+
+  // 菜单加载失败时记录错误，并在播放器显示可读原因
+  async function showPvzMenuError(error) {
+    console.error("PVZ 菜单加载失败", error);
+    const message = await errorMessage(error);
+    status(message);
   }
 
   // 固定独立游戏页的绘制像素比，高分屏继续使用原始画布大小

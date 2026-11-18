@@ -44,6 +44,33 @@
 .pet-avatar img.active {
   opacity: 1;
 }
+.pet-thought {
+  --pet-thought-width: min(13.5rem, calc(100dvw - 16px));
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: clamp(
+    calc(8px - var(--pet-left)),
+    calc(50% - var(--pet-thought-width) / 2),
+    calc(100dvw - var(--pet-left) - var(--pet-thought-width) - 8px)
+  );
+  box-sizing: border-box;
+  width: var(--pet-thought-width);
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 4px 14px var(--color-overlay);
+  font-size: var(--text-small);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.pet-thought-below {
+  top: calc(100% + 4px);
+  bottom: auto;
+}
 .pet-hide,
 .pet-restore,
 .pet-panel button {

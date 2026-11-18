@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
+import { GAME_MANAGEMENT_ROUTE, isGameManagementRoute } from "../src/logic/navigation.js";
 
 // 使用实际状态仓库和路由方法，后端只提供测试身份，不访问真实账号
 function loadSession(profileRequest, switchRequest) {
@@ -68,6 +69,8 @@ function loadSession(profileRequest, switchRequest) {
     createRouter: createRouter,
     createWebHistory: createWebHistory,
     showToast: showToast,
+    GAME_MANAGEMENT_ROUTE: GAME_MANAGEMENT_ROUTE,
+    isGameManagementRoute: isGameManagementRoute,
   };
   let routeSource = fs.readFileSync(
     new URL("../src/router/index.js", import.meta.url),
@@ -85,7 +88,7 @@ function loadSession(profileRequest, switchRequest) {
   };
 }
 
-// 独立管理页绑定真实路由守卫，商城仍向所有登录角色开放
+// 旧地址跳转到商城管理视图，后台更新的角色决定管理视图是否可打开
 test("游戏资料管理和商城按管理员权限分流", async function testGameManagementAccess() {
   let role = "ROLE_GAME_USER";
   // 返回当前服务器角色，使测试可以验证普通玩家和管理员的访问结果
@@ -106,15 +109,18 @@ test("游戏资料管理和商城按管理员权限分流", async function testG
   }
   const manage = session.routes.find(isManagementPage);
   const store = session.routes.find(isStorePage);
-  assert.ok(manage, "应注册独立的游戏资料管理路由");
-  assert.equal(manage.props.mode, "catalog");
-  assert.equal(await session.checkAccess(manage), "/MainPage");
+  assert.equal(manage.redirect.path, store.path);
+  assert.equal(manage.redirect.query.view, "manage");
+  const managementView = { path: store.path, query: manage.redirect.query, meta: {} };
+  assert.equal(await session.checkAccess(managementView), "/GameCatalog");
   assert.equal(
     await session.checkAccess({ path: store.path, meta: store.meta || {} }),
     true,
   );
   role = "ROLE_ADMIN";
-  assert.equal(await session.checkAccess(manage), true);
+  assert.equal(await session.checkAccess(managementView), true);
+  role = "ROLE_GAME_USER";
+  assert.equal(await session.checkAccess(managementView), "/GameCatalog");
 });
 
 // 浏览器旧身份按后端当前管理员身份更新

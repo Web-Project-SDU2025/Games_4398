@@ -10,8 +10,6 @@ export const ACTIVITY_INTERVALS = [
 export const DEFAULT_ACTIVITY_HOURS = 24;
 // 首页最近记录最多显示的条数
 export const RECENT_RECORD_LIMIT = 5;
-// 大厅首屏展示主推游戏和另一款游戏
-const LOBBY_GAME_LIMIT = 2;
 // 时长的小数位数，首页文字和图表使用同一精度
 export const DURATION_DECIMALS = 1;
 // 记录与统计共用北京时间
@@ -166,7 +164,7 @@ export function summarizeDashboard(
   };
 }
 
-// 当前对局优先，其次选择最近玩过、仍在库内且可启动的游戏
+// 当前对局和最近可玩的游戏排在前面，剩余游戏也保留在概览中
 export function lobbyGames(games, records, activePath) {
   const playable = new Map();
   let active;
@@ -198,9 +196,6 @@ export function lobbyGames(games, records, activePath) {
   for (const game of new Set([active, recent, billiards, plants].concat(games))) {
     if (game) {
       result.push(game);
-      if (result.length === LOBBY_GAME_LIMIT) {
-        break;
-      }
     }
   }
   return result;

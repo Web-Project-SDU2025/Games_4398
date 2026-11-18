@@ -1,15 +1,6 @@
 <template>
-  <main class="auth-page" :class="{ 'is-motion-paused': motionPaused }">
-    <!-- 星点独立于表单，三层分别移动形成远近层次 -->
-    <div class="auth-background" aria-hidden="true">
-      <div
-        v-for="layer in starLayers"
-        :key="layer.name"
-        class="auth-stars"
-        :class="layer.name"
-        :style="starLayerStyle(layer)"
-      ></div>
-    </div>
+  <main class="auth-page">
+    <AuthGridBackground :paused="motionPaused" :speed="motionSpeed" />
     <button
       class="auth-motion-toggle"
       type="button"
@@ -143,7 +134,7 @@
                   v-model="password"
                   name="password"
                   type="password"
-                  :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+                  :autocomplete="passwordAutocomplete"
                   :maxlength="passwordLimit"
                   required
                 />
@@ -170,7 +161,7 @@
                   inputmode="numeric"
                   autocomplete="off"
                   :maxlength="limits.CAPTCHA_LENGTH"
-                  :aria-describedby="captchaError ? 'captcha-feedback' : undefined"
+                  :aria-describedby="captchaDescription"
                   pattern="[0-9]{4}"
                   required
                 />
@@ -222,7 +213,8 @@
             :disabled="actionBusy"
             @click="demoLogin"
           >
-            {{ demoBusy ? "正在进入…" : "演示登录" }}
+            <template v-if="demoBusy">正在进入…</template>
+            <template v-else>演示登录</template>
             <span class="i-ep-arrow-right" aria-hidden="true"></span>
           </button>
         </div>
@@ -238,50 +230,19 @@ import * as auth from "./logic/auth.js";
 import * as limits from "./logic/limits.js";
 import { usePreferencesStore } from "./stores/preferences.js";
 import { getSwitchAccounts } from "./services/userServ.js";
+import AuthGridBackground from "./components/AuthGridBackground.vue";
 import {
   LOGIN_MOTION_SPEED,
   normalizePreferences,
 } from "./logic/preferences.js";
 
-// 三层星点的数量集中维护，小星点较密，大星点较疏
-const STAR_LAYERS = [
-  { name: "auth-stars-small", count: 420 },
-  { name: "auth-stars-medium", count: 130 },
-  { name: "auth-stars-large", count: 55 },
-];
-// 三层星点的基础循环时间用于按用户选择的倍数计算动画速度
-const STAR_LAYER_DURATIONS = {
-  "auth-stars-small": 150,
-  "auth-stars-medium": 100,
-  "auth-stars-large": 55,
-};
-
-// 创建三层星点的阴影位置，视口单位让窗口缩放后仍铺满背景
-function createStarLayers() {
-  const layers = [];
-  for (const configuration of STAR_LAYERS) {
-    const shadows = [];
-    for (let index = 0; index < configuration.count; index = index + 1) {
-      const horizontal = Math.random() * 100;
-      const vertical = Math.random() * 100;
-      const shadow = horizontal + "vw " + vertical + "vh currentColor";
-      shadows.push(shadow);
-    }
-    layers.push({
-      name: configuration.name,
-      style: { boxShadow: shadows.join(", ") },
-    });
-  }
-  return layers;
-}
-
 export default {
-  // 返回表单中使用的数据
+  components: { AuthGridBackground: AuthGridBackground },
+  // 每次打开登录页都创建独立的表单和背景设置状态
   data: function loginState() {
     const form = auth.createLoginForm();
     form.limits = limits;
     form.passwordLimit = account.REGISTER_PASSWORD_LIMIT;
-    form.starLayers = createStarLayers();
     form.settingsOpen = false;
     form.motionSpeedRange = LOGIN_MOTION_SPEED;
     form.demoEnabled = false;
@@ -289,6 +250,20 @@ export default {
     return form;
   },
   computed: {
+    // 登录填写已有密码，注册填写新密码，供浏览器选择正确的自动填充方式
+    passwordAutocomplete: function passwordAutocomplete() {
+      if (this.mode === "login") {
+        return "current-password";
+      }
+      return "new-password";
+    },
+    // 验证码加载失败时，将错误提示与验证码输入框关联
+    captchaDescription: function captchaDescription() {
+      if (this.captchaError) {
+        return "captcha-feedback";
+      }
+      return undefined;
+    },
     // 普通提交与演示登录使用同一会话，等待时禁止另一条路径
     actionBusy: function actionBusy() {
       return this.submitting || this.demoBusy;
@@ -308,14 +283,14 @@ export default {
       }
       return "暂停背景动画";
     },
-    // 根据当前操作显示表单标题
+    // 在同一面板中用标题区分登录和注册
     formTitle: function formTitle() {
       if (this.mode === "register") {
         return "创建账户";
       }
       return "欢迎回来";
     },
-    // 提交期间显示等待状态
+    // 请求尚未结束时，按钮显示提交进度而不是重复提示用户登录或注册
     submitText: function submitText() {
       if (this.submitting) {
         return "正在提交…";
@@ -332,15 +307,6 @@ export default {
     this.loadDemoStatus();
   },
   methods: {
-    // 为每层星点设置循环时间，速度倍数越大移动越快
-    starLayerStyle: function starLayerStyle(layer) {
-      const baseDuration = STAR_LAYER_DURATIONS[layer.name];
-      const duration = baseDuration / this.motionSpeed;
-      return {
-        boxShadow: layer.style.boxShadow,
-        animationDuration: duration + "s",
-      };
-    },
     // 显示或收起登录页的快捷背景设置
     toggleSettings: function toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
@@ -352,14 +318,14 @@ export default {
       settings.loginMotion = event.target.checked;
       store.update(settings);
     },
-    // 保存速度倍数并立即更新三层星点动画
+    // 保存速度倍数，画布在下一帧使用新设置
     setBackgroundSpeed: function setBackgroundSpeed(event) {
       const store = usePreferencesStore();
       const settings = normalizePreferences(store.settings);
       settings.loginMotionSpeed = Number(event.target.value);
       store.update(settings);
     },
-    // 切换背景动画的暂停状态，CSS 保留暂停时的位置以便继续播放
+    // 切换背景动画的暂停状态，画布保留暂停时的画面
     toggleBackgroundMotion: function toggleBackgroundMotion() {
       const store = usePreferencesStore();
       const settings = normalizePreferences(store.settings);

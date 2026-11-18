@@ -14,7 +14,7 @@
         class="installed-game-cover"
         :class="{ 'is-placeholder': !game.installed }"
       >
-        <img :src="game.cover" alt="" width="480" height="270" />
+        <img :src="game.cover" alt="" width="160" height="120" />
       </div>
       <div class="installed-game-description">
         <div

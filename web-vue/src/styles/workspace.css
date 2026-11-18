@@ -140,6 +140,7 @@
   box-sizing: border-box;
   padding: 10px 12px;
   font-size: var(--sidebar-link-size);
+  font-weight: 700;
   line-height: 1.4;
   gap: 12px;
   border-radius: var(--radius-control);
@@ -151,6 +152,9 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+}
+.desktop-shell .sidebar-shortcuts :is(a, button) {
+  font-weight: 700;
 }
 .desktop-shell .sidebar-group a.router-link-active,
 .desktop-shell .sidebar-shortcuts a.router-link-active {
@@ -279,6 +283,13 @@
   }
 }
 @media (min-width: 48rem) {
+  .desktop-shell .platform-sidebar {
+    --sidebar-link-size: 14px;
+    --sidebar-row-height: 36px;
+    --sidebar-row-padding: 6px;
+    --sidebar-group-gap: 6px;
+    --sidebar-summary-padding: 6px;
+  }
   .desktop-shell .platform-header-inner {
     justify-content: space-between;
     flex-wrap: nowrap;
@@ -314,29 +325,30 @@
     max-height: none;
     border-bottom: 0;
     border-right: 1px solid var(--color-rule);
-    padding: var(--space-md) 12px var(--space-sm);
+    padding: var(--space-sm) 12px;
+    scrollbar-width: thin;
   }
   .desktop-shell .sidebar-group + .sidebar-group {
-    margin-top: 10px;
+    margin-top: var(--sidebar-group-gap);
   }
   .desktop-shell .sidebar-group summary {
-    padding: 9px 8px 9px 10px;
+    padding: var(--sidebar-summary-padding) 8px var(--sidebar-summary-padding) 10px;
     color: var(--color-muted);
     font-size: 12px;
+    line-height: 1.4;
   }
   .desktop-shell .sidebar-group a,
   .desktop-shell .sidebar-shortcuts :is(a, button) {
     position: relative;
     gap: 10px;
-    padding: 8px 10px;
-    min-height: 38px;
-    margin-bottom: 2px;
-    font-size: 14px;
+    padding: var(--sidebar-row-padding) 10px;
+    min-height: var(--sidebar-row-height);
+    margin-bottom: 1px;
+    font-size: var(--sidebar-link-size);
   }
-  .desktop-shell .sidebar-group-play a {
-    min-height: 42px;
-    font-size: 15px;
-    font-weight: 600;
+  .desktop-shell .sidebar-shortcuts {
+    margin-top: var(--space-sm);
+    padding-top: var(--space-xs);
   }
   .desktop-shell .sidebar-group a.router-link-active,
   .desktop-shell .sidebar-shortcuts a.router-link-active {
@@ -421,6 +433,35 @@
   max-width: 176px;
   height: auto;
   margin-inline: auto;
+}
+@media (min-width: 48rem) {
+  .workspace-university {
+    padding-block: var(--space-sm);
+  }
+}
+/* 矮窗口先缩短菜单行，再缩小校标，菜单仍能按需滚动 */
+@media (min-width: 48rem) and (max-height: 830px) {
+  .desktop-shell .platform-sidebar {
+    --sidebar-link-size: 13px;
+    --sidebar-row-height: 30px;
+    --sidebar-row-padding: 4px;
+    --sidebar-group-gap: 4px;
+    --sidebar-summary-padding: 4px;
+  }
+  .workspace-university img {
+    max-width: 116px;
+  }
+}
+@media (min-width: 48rem) and (max-height: 680px) {
+  .desktop-shell .platform-sidebar {
+    --sidebar-row-height: 28px;
+    --sidebar-row-padding: 3px;
+    --sidebar-group-gap: 2px;
+    --sidebar-summary-padding: 3px;
+  }
+  .workspace-university img {
+    max-width: 112px;
+  }
 }
 .desktop-shell .workspace-user-menu {
   margin-block: 0;

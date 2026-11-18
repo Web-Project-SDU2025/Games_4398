@@ -28,9 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 通用游戏会话管理
  *
- * 所有游戏（植物大战僵尸、台球等）都用这套统一的开局、心跳、结束流程
- * 这样设计的好处是新游戏接入时不用重复写这些逻辑，只需要调用这几个接口就行
- * 关卡结果和奖励发放在同一个数据库事务里完成，要么全成功要么全回滚
+ * 新接入的游戏可复用开局、心跳和结束流程，不必重新维护会话
+ * 服务在同一个数据库事务中保存关卡结果并发放奖励，两项操作一起提交或回滚
  */
 @Service
 public class GameplayService {

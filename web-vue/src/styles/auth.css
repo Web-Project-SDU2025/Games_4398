@@ -1,16 +1,17 @@
 .auth-page {
-  /* 星点大小和亮度按远近层次分别维护 */
-  --auth-star-small-size: 1px;
-  --auth-star-medium-size: 2px;
-  --auth-star-large-size: 3px;
-  --auth-star-small-opacity: 0.16;
-  --auth-star-medium-opacity: 0.22;
-  --auth-star-large-opacity: 0.27;
+  /* 账号表单沿用原蓝色面板的描边、文字和输入框色彩 */
+  --auth-panel-border: #439ae2;
+  --auth-field-border: #35679d;
+  --auth-field-edge: #3c9ad5;
+  --auth-field-background: #060f2b;
+  --auth-field-text: #e7f8ff;
+  --auth-label-text: #aee8ff;
+  --auth-focus: #6de4ff;
   position: relative;
   isolation: isolate;
   flex: 1 0 auto;
   box-sizing: border-box;
-  background: var(--color-workspace-background);
+  background: #07153d;
   color: var(--color-ink);
   color-scheme: dark;
   padding: clamp(26px, 5vh, 64px) var(--space-lg) var(--space-xl);
@@ -18,42 +19,10 @@
 .auth-background {
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: -1;
-}
-.auth-stars {
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: var(--color-ink);
-  border-radius: 50%;
-}
-/* 上方复制一屏相同星点，向下移动一屏后首尾自然衔接 */
-.auth-stars::after {
-  content: "";
-  position: absolute;
-  top: -100vh;
-  left: 0;
-  width: inherit;
-  height: inherit;
-  border-radius: inherit;
-  box-shadow: inherit;
-}
-.auth-stars-small {
-  width: var(--auth-star-small-size);
-  height: var(--auth-star-small-size);
-  opacity: var(--auth-star-small-opacity);
-}
-.auth-stars-medium {
-  width: var(--auth-star-medium-size);
-  height: var(--auth-star-medium-size);
-  opacity: var(--auth-star-medium-opacity);
-}
-.auth-stars-large {
-  width: var(--auth-star-large-size);
-  height: var(--auth-star-large-size);
-  opacity: var(--auth-star-large-opacity);
 }
 .auth-motion-toggle {
   position: fixed;
@@ -137,18 +106,20 @@
   display: none;
 }
 .auth-panel {
+  position: relative;
   min-width: 0;
   padding: clamp(18px, 2.5vw, 34px);
-  background: var(--color-paper-2);
-  border: 1px solid var(--color-rule);
-  border-radius: 14px;
-  box-shadow: 0 18px 48px #0004;
+  background: linear-gradient(135deg, #071536f5, #080f2ef5);
+  border: 1px solid var(--auth-panel-border);
+  box-shadow: inset 0 0 28px #2164dc35, 0 0 16px #267af45c;
 }
 .auth-panel h1 {
   margin: 0 0 18px;
-  font-size: 32px;
+  color: #9feaff;
+  font-size: 27px;
   font-weight: 700;
   line-height: 1.15;
+  text-shadow: 0 0 12px #36bbff88;
 }
 .auth-tabs {
   display: grid;
@@ -195,8 +166,9 @@
   gap: 14px;
 }
 .auth-panel label {
-  color: var(--color-ink);
+  color: var(--auth-label-text);
   font-size: 14px;
+  font-weight: 600;
 }
 .auth-panel label small {
   margin-left: 4px;
@@ -209,10 +181,15 @@
   height: 44px;
   box-sizing: border-box;
   padding: 10px;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-control);
-  background: var(--color-field);
-  color: var(--color-ink);
+  border: 1px solid var(--auth-field-border);
+  border-left: 3px solid var(--auth-field-edge);
+  border-radius: 0;
+  background: var(--auth-field-background);
+  color: var(--auth-field-text);
+}
+.auth-panel :is(input, button):focus-visible {
+  outline: 2px solid var(--auth-focus);
+  outline-offset: 2px;
 }
 .captcha-row {
   display: grid;
@@ -266,14 +243,34 @@
   color: var(--color-ink);
 }
 .auth-submit {
+  --auth-button-shape: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+  position: relative;
+  isolation: isolate;
   width: 100%;
   min-height: 44px;
   border: 0;
   margin-top: 2px;
-  background: var(--color-play-action);
-  color: var(--color-play-action-ink);
-  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--auth-field-text);
   font-weight: 700;
+}
+.auth-submit::before,
+.auth-submit::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  clip-path: var(--auth-button-shape);
+  content: "";
+}
+.auth-submit::before {
+  background: linear-gradient(#159fe6, #a8edff);
+}
+.auth-submit::after {
+  inset: 2px;
+  background: linear-gradient(155deg, #15417d, #081735 72%);
+}
+.auth-submit:disabled {
+  opacity: 0.56;
 }
 .auth-demo {
   display: flex;
@@ -311,8 +308,9 @@
   font-weight: 600;
 }
 @media (hover: hover) {
-  .auth-submit:hover:not(:disabled) {
-    background: #e7f3ff;
+  /* 悬停只改变切角内层的颜色，按钮文字和轮廓保持清晰 */
+  .auth-submit:hover:not(:disabled)::after {
+    background: linear-gradient(155deg, #1d61a8, #0c2352 72%);
   }
   .demo-login:hover:not(:disabled),
   .captcha-button:hover:not(:disabled) {
@@ -340,8 +338,7 @@
     z-index: 1;
     margin: 0;
     color: #e2e9ef;
-    font-size: clamp(26px, 2.6vw, 38px);
-    letter-spacing: -0.035em;
+    font-size: 32px;
     line-height: 1.12;
     text-align: center;
   }

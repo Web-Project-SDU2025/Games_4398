@@ -147,7 +147,9 @@
           <template v-for="item in group.sList" :key="item.id">
             <RouterLink
               v-if="item.name"
-              :to="'/' + item.name"
+              :to="sidebarRoute(item)"
+              :active-class="sidebarActiveClass(item)"
+              :aria-current-value="sidebarCurrentValue(item)"
               @click="closeMenu"
               ><span
                 :class="menuIcon(item.name)"
@@ -243,9 +245,10 @@
     </router-view>
     <Octorange
       v-if="workspaceVisible"
-      v-show="!gameVisible"
+      v-show="!gameVisible && $route.path !== '/PetRoom'"
       :key="userInfo.id"
       :user-id="userInfo.id"
+      :available="!gameVisible && $route.path !== '/PetRoom'"
     />
     <PointerTrail />
     <InterfaceSettings v-if="workspaceVisible" ref="settings" />
@@ -298,6 +301,7 @@ const MENU_ICONS = {
   MainPage: "i-ep-house",
   GameCatalog: "i-ep-grid",
   GameLibrary: "i-ep-folder",
+  PetRoom: "i-ep-magic-stick",
   GameFavorites: "i-ep-star",
   GameRecords: "i-ep-document",
   GameUserProfile: "i-ep-user",
@@ -416,6 +420,31 @@ function menuIcon(name) {
     return MENU_ICONS[name];
   }
   return "i-ep-document";
+}
+/** 让旧的游戏资料菜单打开商城管理标签，其他菜单仍打开各自的页面 */
+function sidebarRoute(item) {
+  if (item.name === "GameManage") {
+    return navigation.GAME_MANAGEMENT_ROUTE;
+  }
+  return "/" + item.name;
+}
+/** 商城和资料管理共用路径，侧栏只高亮当前打开的那一项 */
+function sidebarActiveClass(item) {
+  const managing = navigation.isGameManagementRoute(this.$route);
+  if (item.name === "GameCatalog" && managing) {
+    return "sidebar-other-view";
+  }
+  if (item.name === "GameManage" && !managing) {
+    return "sidebar-other-view";
+  }
+  return "router-link-active";
+}
+/** 告诉读屏软件哪个商城入口对应当前页面 */
+function sidebarCurrentValue(item) {
+  if (this.sidebarActiveClass(item) === "sidebar-other-view") {
+    return "false";
+  }
+  return "page";
 }
 /** 切换小屏功能菜单，展开状态同时提供给辅助阅读工具 */
 function toggleMenu() {
@@ -571,6 +600,9 @@ export default {
     logout: logout,
     menuTitle: menuTitle,
     menuIcon: menuIcon,
+    sidebarRoute: sidebarRoute,
+    sidebarActiveClass: sidebarActiveClass,
+    sidebarCurrentValue: sidebarCurrentValue,
     toggleMenu: toggleMenu,
     closeMenu: closeMenu,
     openSettings: openSettings,

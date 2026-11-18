@@ -8,15 +8,17 @@ test("大厅优先展示当前对局和最近可玩的可见记录", function te
   const plants = { gameId: 1, id: "pvz", gamePath: "/pvz", owned: true, installed: true };
   const pool = { gameId: 2, id: "billiards", gamePath: "/pool", owned: false, installed: true };
   const unavailable = { gameId: 3, gamePath: "/other", owned: true, installed: false };
-  const games = [plants, pool, unavailable];
+  const joker = { gameId: 4, id: "joker-table", gamePath: "/joker", owned: true, installed: true };
+  const games = [plants, pool, unavailable, joker];
   const records = [
     { gameId: 2 },
     { gameId: 3 },
     { gameId: "1" },
   ];
-  assert.deepEqual(dashboard.lobbyGames(games, records, ""), [plants, pool]);
-  assert.deepEqual(dashboard.lobbyGames(games, records, "/pool"), [pool, plants]);
-  assert.deepEqual(dashboard.lobbyGames(games, [{ gameId: 1, hidden: true }], ""), [pool, plants]);
+  assert.deepEqual(dashboard.lobbyGames(games, records, ""), [plants, pool, unavailable, joker]);
+  assert.deepEqual(dashboard.lobbyGames(games, records, "/joker"), [joker, plants, pool, unavailable]);
+  const hiddenRecords = [{ gameId: 1, hidden: true }];
+  assert.deepEqual(dashboard.lobbyGames(games, hiddenRecords, ""), [pool, plants, unavailable, joker]);
   assert.deepEqual(dashboard.lobbyGames([], records, ""), []);
 });
 

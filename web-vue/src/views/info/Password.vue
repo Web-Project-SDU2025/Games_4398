@@ -11,7 +11,7 @@
           <input
             :id="field.id"
             v-model="passwords[field.key]"
-            :type="visible[field.key] ? 'text' : 'password'"
+            :type="passwordInputType(field.key)"
             :autocomplete="field.autocomplete"
             :maxlength="field.maxlength"
             :spellcheck="false"
@@ -22,8 +22,8 @@
             class="password-visibility"
             type="button"
             :aria-controls="field.id"
-            :aria-label="(visible[field.key] ? '隐藏' : '显示') + field.label"
-            @click="visible[field.key] = !visible[field.key]"
+            :aria-label="visibilityLabel(field)"
+            @click="toggleVisibility(field.key)"
           >
             <span
               v-if="visible[field.key]"
@@ -93,7 +93,9 @@ async function submitPassword() {
   if (this.saving) {
     return;
   }
-  const { oldPassword, newPassword, checkPassword } = this.passwords;
+  const oldPassword = this.passwords.oldPassword;
+  const newPassword = this.passwords.newPassword;
+  const checkPassword = this.passwords.checkPassword;
   const error = account.checkPasswordChange(
     oldPassword,
     newPassword,
@@ -105,7 +107,7 @@ async function submitPassword() {
   }
   this.saving = true;
   try {
-    const result = await updatePassword({ oldPassword, newPassword });
+    const result = await updatePassword({ oldPassword: oldPassword, newPassword: newPassword });
     if (result.code === 0) {
       this.reset();
       this.notice = "密码已修改";
@@ -118,10 +120,38 @@ async function submitPassword() {
     this.saving = false;
   }
 }
+
+// 每个密码输入框使用自己的显示状态
+function passwordInputType(key) {
+  if (this.visible[key]) {
+    return "text";
+  }
+  return "password";
+}
+
+// 为图标按钮说明点击后是显示还是隐藏密码
+function visibilityLabel(field) {
+  if (this.visible[field.key]) {
+    return "隐藏" + field.label;
+  }
+  return "显示" + field.label;
+}
+
+// 只切换当前输入框，不影响另外两个密码输入框
+function toggleVisibility(key) {
+  this.visible[key] = !this.visible[key];
+}
+
 export default {
-  components: { AccountGridPanel },
+  components: { AccountGridPanel: AccountGridPanel },
   data: passwordState,
-  methods: { submitPassword: submitPassword, reset: reset },
+  methods: {
+    submitPassword: submitPassword,
+    reset: reset,
+    passwordInputType: passwordInputType,
+    visibilityLabel: visibilityLabel,
+    toggleVisibility: toggleVisibility,
+  },
 };
 </script>
 
@@ -153,17 +183,17 @@ export default {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #8cd7ff;
+  color: var(--color-muted);
   font-size: 19px;
 }
 
 .password-visibility:hover {
-  color: #d3f9ff;
-  background: #15325c;
+  color: var(--color-ink);
+  background: var(--color-paper-3);
 }
 
 .password-visibility:focus-visible {
-  outline: 2px solid #6de4ff;
+  outline: 2px solid var(--color-focus);
   outline-offset: -3px;
 }
 </style>

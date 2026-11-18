@@ -47,28 +47,6 @@
 .admin-expense {
   color: var(--color-amber);
 }
-.game-manage-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-}
-.game-manage-heading h1 {
-  margin: 0;
-  font-size: 26px;
-}
-.game-manage-heading p {
-  margin: var(--space-sm) 0 0;
-  color: var(--color-muted);
-  font-size: 14px;
-}
-.game-manage-heading a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
 .game-page .game-manage-add {
   border-color: var(--color-play-action);
   background: var(--color-play-action);

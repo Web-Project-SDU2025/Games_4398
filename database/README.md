@@ -29,7 +29,7 @@
 | message_receipt | 每个账户的消息已读时间 |
 | feedback_resolution | 管理员对反馈的处理决定、回复和更新时间 |
 
-后端通过 `blockcoin-schema.sql` 创建字块币相关增量表，并保留已有表和记录。资金规则见[字块币说明](../docs/blockcoin.md)。
+后端通过 `blockcoin-schema.sql` 创建字块币及桌宠小屋的增量表，并保留已有表和记录。更新后重启后端即可加载新接口并创建桌宠表。资金规则见[字块币说明](../docs/blockcoin.md)。
 
 后端启动时会为旧 `game` 表补齐可空字段 `level_reward`，用于保存管理员配置的通关奖励。空值沿用发布配置，显式 0 表示停发通关奖励；已有资料和流水不会被覆盖。此更新需要重启后端生效。
 

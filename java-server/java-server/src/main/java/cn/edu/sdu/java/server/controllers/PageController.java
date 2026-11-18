@@ -18,7 +18,7 @@ public class PageController {
     @GetMapping({
         "/Login", "/MainPage", "/Password",
         "/MenuManage", "/DictionaryManage", "/GameCatalog", "/GameLibrary",
-        "/GameFavorites", "/GameRecords", "/GameUserProfile",
+        "/GameFavorites", "/GameRecords", "/GameUserProfile", "/PetRoom",
         "/GameUserManage", "/AccountManage", "/BlockcoinManage", "/RecordManage", "/AiSupport"
     })
     public String page() {

@@ -10,7 +10,7 @@ export const TRAIL_LIFETIME = 450;
 export const TRAIL_PARTICLE_LIMIT = 48;
 // 背景音乐滑块按百分比保存，实际输出统一乘以音频模块的响度倍率
 export const MUSIC_VOLUME = { minimum: 0, maximum: 100, defaultValue: 30 };
-// 登录星点速度按原速度倍数保存，速度范围为 1 到 8 倍
+// 登录背景速度按原速度倍数保存，速度范围为 1 到 8 倍
 export const LOGIN_MOTION_SPEED = {
   minimum: 1,
   maximum: 8,

@@ -72,7 +72,7 @@ import { coinAmount } from "../logic/store.js";
 import AccountFormDialog from "./AccountFormDialog.vue";
 
 export default {
-  components: { AccountFormDialog },
+  components: { AccountFormDialog: AccountFormDialog },
   computed: {
     // 登录身份和后端资料按当前账号同步，切号时重新读取
     userInfo: function userInfo() {

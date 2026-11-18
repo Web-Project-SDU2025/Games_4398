@@ -1445,8 +1445,7 @@ public class Game extends JPanel {
     /**
      * 停掉这一局，不再推进画面和逻辑
      *
-     * 关掉游戏窗口并不会自动停下计时器，这一局会在看不见的地方接着跑，
-     * 白白占着处理器。所以关窗口的时候要记得叫一声 stop
+     * 关闭窗口时调用此方法停止计时器，否则这一局仍会在后台更新
      */
     public void stop() {
         finishGameplay("closed");

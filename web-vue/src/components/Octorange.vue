@@ -16,7 +16,7 @@
         type="button"
         class="pet-toggle"
         aria-label="与 Octorange 聊游戏"
-        title="与 Octorange 聊游戏"
+        :aria-describedby="thoughtDescription"
         :aria-expanded="expanded"
         aria-controls="octorange-panel"
         @click="togglePanel"
@@ -27,8 +27,8 @@
         @lostpointercapture="cancelDrag"
         @pointerenter="hoverPet"
         @pointerleave="leavePet"
-        @focus="hoverPet"
-        @blur="leavePet"
+        @focus="focusPet"
+        @blur="blurPet"
         @keydown="moveWithKeyboard"
       >
         <img
@@ -42,6 +42,12 @@
           draggable="false"
         />
       </button>
+      <p
+        v-if="showThought"
+        id="octorange-thought"
+        class="pet-thought"
+        :class="{ 'pet-thought-below': top < thoughtClearance }"
+      >{{ thought }}</p>
       <button
         type="button"
         class="pet-hide"
@@ -122,11 +128,16 @@
 import SupportChat from "./SupportChat.vue";
 import * as pet from "../logic/pet.js";
 import * as support from "../logic/support.js";
+import { idlePetThought, THOUGHT_ROTATION_MS } from "../logic/petSpeech.js";
+import { generalRequest } from "../services/genServ.js";
+import { useAppStore } from "../stores/app.js";
 
 // 键盘每次移动宠物的距离，单位为像素
 const KEYBOARD_DISTANCE = 20;
+const THOUGHT_CLEARANCE = 136;
+const THOUGHT_VISIBLE_MS = 3600;
 
-// 宠物只负责浮窗和位置，真实问答使用和客服页面相同的聊天组件
+// 记录浮窗和气泡状态，聊天记录仍交给客服组件管理
 function petState() {
   const conversations = support.readConversations(this.userId + "-pet");
   let conversation = support.createConversation();
@@ -141,6 +152,15 @@ function petState() {
     top: 0,
     expanded: false,
     hovered: false,
+    focused: false,
+    mood: null,
+    moodPending: false,
+    moodRequest: 0,
+    thoughtIndex: 0,
+    idleThought: false,
+    thoughtRotation: 0,
+    thoughtTimeout: 0,
+    thoughtClearance: THOUGHT_CLEARANCE,
     thinking: false,
     modalOpen: false,
     observer: null,
@@ -153,7 +173,8 @@ function petState() {
 
 // 把位置写在固定容器上，状态图片的淡入由独立 CSS 控制
 function positionStyle() {
-  return { left: this.left + "px", top: this.top + "px" };
+  const left = this.left + "px";
+  return { left: left, top: this.top + "px", "--pet-left": left };
 }
 
 // 回答期间优先显示思考状态，结束后按悬停状态选择图片
@@ -161,14 +182,91 @@ function imageState() {
   if (this.thinking) {
     return "thinking";
   }
-  if (this.hovered) {
+  if (this.hovered || this.focused) {
     return "hover";
   }
   return "idle";
 }
 
+// 打开聊天、拖动或遇到业务弹窗时，让气泡避开正在操作的内容
+function showThought() {
+  const app = useAppStore();
+  return this.available && this.settings.visible && app.userInfo.loggedIn
+    && (this.hovered || this.focused || this.idleThought) && !this.expanded && !this.drag && !this.modalOpen;
+}
+
+// 气泡显示时才让桌宠按钮引用它的文字
+function thoughtDescription() {
+  if (this.showThought && this.focused) {
+    return "octorange-thought";
+  }
+  return null;
+}
+
+// 已有存档时说出当前状态，没有存档时沿用小屋的问候
+function thought() {
+  return idlePetThought(this.mood, this.thoughtIndex);
+}
+
+// 自动气泡到时收起，鼠标仍停在桌宠上时继续显示
+function hideIdleThought() {
+  this.idleThought = false;
+}
+
+// 空闲时轮换一句短话，隐藏桌宠、游玩或编辑时不打扰用户
+function rotateThought() {
+  if (document.hidden || !this.available || !this.settings.visible || this.modalOpen || this.expanded || this.drag) {
+    return;
+  }
+  this.thoughtIndex = this.thoughtIndex + 1;
+  this.idleThought = true;
+  window.clearTimeout(this.thoughtTimeout);
+  this.thoughtTimeout = window.setTimeout(this.hideIdleThought, THOUGHT_VISIBLE_MS);
+}
+
+// 令牌变化时清除上一账户的气泡和仍在等待的请求
+function resetMood() {
+  this.moodRequest = this.moodRequest + 1;
+  this.moodPending = false;
+  this.mood = null;
+  this.thoughtIndex = 0;
+  window.clearTimeout(this.thoughtTimeout);
+  this.hideIdleThought();
+}
+
+// 读取当前身份，账号切换或令牌更新时不沿用旧气泡
+function moodToken() {
+  const app = useAppStore();
+  return app.userInfo.token;
+}
+
+// 每次查看气泡时读取最新存档，同时合并悬停与聚焦发起的请求
+async function refreshMood() {
+  if (!this.showThought || !this.moodToken || this.moodPending) {
+    return;
+  }
+  const token = this.moodToken;
+  const request = this.moodRequest;
+  this.moodPending = true;
+  try {
+    const result = await generalRequest("/api/pet/mood", {});
+    if (request === this.moodRequest && token === this.moodToken && result.code === 0) {
+      this.mood = result.data;
+    }
+  } catch (error) {
+    if (request === this.moodRequest && token === this.moodToken) {
+      this.mood = null;
+    }
+  } finally {
+    if (request === this.moodRequest) {
+      this.moodPending = false;
+    }
+  }
+}
+
 // 监听尺寸和业务弹窗，编辑弹窗打开时暂时隐藏宠物
 function mountPet() {
+  this.thoughtRotation = window.setInterval(this.rotateThought, THOUGHT_ROTATION_MS);
   this.$nextTick(this.restorePosition);
   window.addEventListener("resize", this.restorePosition);
   this.layoutObserver = new ResizeObserver(this.restorePosition);
@@ -189,6 +287,8 @@ function mountPet() {
 
 // 卸载时清理全局监听，切号后由新组件重新初始化
 function disposePet() {
+  window.clearInterval(this.thoughtRotation);
+  this.resetMood();
   window.removeEventListener("resize", this.restorePosition);
   if (this.observer) {
     this.observer.disconnect();
@@ -200,6 +300,9 @@ function disposePet() {
 
 // 切换页面后重新避让控件，等待新页面的输入框实际显示再测量
 function pageChanged() {
+  this.hovered = false;
+  this.focused = false;
+  this.resetMood();
   this.$nextTick(this.restorePosition);
 }
 
@@ -405,14 +508,26 @@ function closePanel() {
   }
 }
 
-// 鼠标停留和键盘聚焦都显示相同的宠物状态
-function hoverPet() {
-  this.hovered = true;
+// 只有鼠标和笔停留时显示气泡，触摸直接交给原来的拖动逻辑
+function hoverPet(event) {
+  if (event.pointerType !== "touch") {
+    this.hovered = true;
+  }
 }
 
-// 移出宠物时回到待机，真实请求仍优先显示思考状态
+// 指针离开时清掉悬停状态，键盘焦点单独保留
 function leavePet() {
   this.hovered = false;
+}
+
+// 键盘聚焦时也能看到气泡，普通点击保持原来的聊天操作
+function focusPet(event) {
+  this.focused = event.currentTarget.matches(":focus-visible");
+}
+
+// 键盘移到其他控件后收起气泡，悬停状态由指针事件维护
+function blurPet() {
+  this.focused = false;
 }
 
 // 子组件通知等待状态，宠物据此切换思考图片
@@ -432,6 +547,8 @@ function savePreferences() {
 // 隐藏后留下一个小恢复按钮，用户随时可以重新显示
 function hidePet() {
   this.closePanel();
+  this.hovered = false;
+  this.focused = false;
   this.settings.visible = false;
   this.savePreferences();
 }
@@ -468,15 +585,19 @@ function clearChat() {
 
 export default {
   components: { SupportChat: SupportChat },
-  props: { userId: { type: Number, required: true } },
+  props: { userId: { type: Number, required: true }, available: { type: Boolean, required: true } },
   data: petState,
   computed: {
     positionStyle: positionStyle,
     imageState: imageState,
+    showThought: showThought,
+    thoughtDescription: thoughtDescription,
+    thought: thought,
+    moodToken: moodToken,
   },
   mounted: mountPet,
   beforeUnmount: disposePet,
-  watch: { "$route.path": pageChanged },
+  watch: { "$route.path": pageChanged, showThought: refreshMood, moodToken: resetMood, available: resetMood },
   methods: {
     restorePosition: restorePosition,
     applyPosition: applyPosition,
@@ -491,6 +612,11 @@ export default {
     closePanel: closePanel,
     hoverPet: hoverPet,
     leavePet: leavePet,
+    focusPet: focusPet,
+    blurPet: blurPet,
+    resetMood: resetMood,
+    rotateThought: rotateThought,
+    hideIdleThought: hideIdleThought,
     setThinking: setThinking,
     savePreferences: savePreferences,
     hidePet: hidePet,

@@ -171,7 +171,7 @@ export default {
       saving: false,
     };
   },
-  // 页面打开时加载初始资料
+  // 进入账户管理页时，先加载未筛选的账户列表
   created: function created() {
     this.query();
   },
@@ -204,7 +204,7 @@ export default {
     roleName: function roleName(role) {
       return getRoleName(role);
     },
-    // 查询账户
+    // 按搜索词查询账户，切号后不显示旧账户发起的查询结果
     query: async function query() {
       if (this.loading) {
         return;
@@ -241,7 +241,7 @@ export default {
       }
       this.$refs.editor.showModal();
     },
-    // 保存账户
+    // 根据编辑状态新增或更新账户，保存失败时保留管理员填写的内容
     save: async function save() {
       if (this.saving) {
         return;
@@ -266,11 +266,11 @@ export default {
         this.saving = false;
       }
     },
-    // 关闭当前页面的对话框
+    // 关闭账户编辑框，取消时不提交草稿
     close: function close() {
       this.$refs.editor.close();
     },
-    // 删除游戏用户
+    // 管理员确认账号后才删除它，成功后重新读取账户列表
     remove: async function remove(account) {
       const confirmed = await messageConform(
         "确认删除账号“" + account.username + "”？",

@@ -18,12 +18,10 @@ import pvz.zombie.ZombieCatalog;
 import pvz.zombie.ZombieSpawn;
 
 /**
- * 关卡编辑器眼里的一个关卡
+ * 保存关卡编辑器使用的关卡数据
  *
- * 关卡文件里的僵尸是一条条"第几毫秒、第几行、什么僵尸"的流水账，
- * 人看不出波次，也不好改。这个类把它换成一张表格：
- * 横向是第几波，纵向是草坪第几行，一个格子记着"这一波这一行出哪种僵尸、出几只"
- * 编辑时改表格，存盘时再把表格摊平回流水账
+ * 关卡文件按出场时间保存僵尸，编辑器则按波次和草坪行位置显示它们
+ * 每格记录对应波次、对应行的僵尸种类和数量，保存时再把表格转换为出场记录
  */
 public class LevelDesign {
     /** 编辑器能放置的僵尸品种，必须都是游戏真正实现了的 */
@@ -120,7 +118,7 @@ public class LevelDesign {
     /** 导入老关卡时如果做了近似处理，把说明记在这里给用户看 */
     public String importNote = "";
 
-    /** 表格里每个格子放的僵尸品种，没放就是 null。第一维是行，第二维是波 */
+    /** 按行和波次保存每格的僵尸品种，空格的值为 null */
     private String[][] kinds = new String[Layout.ROW_COUNT][DEFAULT_WAVE_COUNT];
 
     /** 表格里每个格子放了几只僵尸，和 kinds 一一对应 */
@@ -432,7 +430,7 @@ public class LevelDesign {
     }
 
     /**
-     * 把表格摊平成游戏要的出场表
+     * 将编辑表格转换为游戏使用的出场记录
      *
      * 每格数量展开为对应条数，出场时刻按 spawnSpacing 依次递增
      * 如果格子标记了随机行，僵尸会随机出现在任意一行而非固定行
@@ -615,9 +613,7 @@ public class LevelDesign {
         design.skySunInterval = LevelJson.readSkySunInterval(json);
         design.maxCards = LevelJson.readCardSlots(json);
 
-        // 认不出的植物名跳过、不报错：编辑器得能打开任何文件，包括别的版本写出来的、
-        // 带了新植物的关卡，好让用户看到问题再自己把那项删掉
-        // 但跳过不能一声不吭，所以先把名字攒着，最后并进 importNote 显示给用户
+        // 导入其他版本的关卡时，编辑器跳过它不支持的植物，并收集这些植物的名称供用户核对
         List<String> unknownPlants = new ArrayList<String>();
         design.cardPool.addAll(LevelJson.readPlantListSkippingUnknown(
             json, LevelJson.CARD_POOL, unknownPlants));
@@ -634,14 +630,14 @@ public class LevelDesign {
 
         // rebuildFromSpawns 也会写 importNote（同一格合并了品种、有不认识的僵尸），
         // 所以这里得往后接，不能直接赋值把前一句盖掉
-        design.importNote = design.importNote + unknownPlantNote(unknownPlants);
+        design.importNote = joinImportNotes(design.importNote, unknownPlantNote(unknownPlants));
         return design;
     }
 
     /**
-     * 把认不出的植物名拼成一句给用户看的提示
+     * 生成导入提示，列出编辑器跳过的植物名称
      *
-     * 参数：unknownPlants 是读文件时跳过的植物名，已经去过重
+     * 参数：unknownPlants 是导入时跳过的植物名称，列表中没有重复项
      * 返回：提示文字；一个名字都没跳过就返回空字符串
      */
     private static String unknownPlantNote(List<String> unknownPlants) {
@@ -655,7 +651,7 @@ public class LevelDesign {
             }
             names = names + unknownPlants.get(index);
         }
-        return "存在本编辑器不认识的植物（" + names + "），已跳过。";
+        return "已跳过编辑器不支持的植物（" + names + "）";
     }
 
     /**
@@ -788,12 +784,12 @@ public class LevelDesign {
     }
 
     /**
-     * 统计每一波每一行的僵尸，填进表格的格子里
+     * 将按波次分组的僵尸填入编辑表格
      *
-     * 一个格子只能记一种僵尸，所以同一波同一行混着几种时只能取数量最多的那种，
-     * 数量仍按该行的总数算，这样僵尸总数不会变少。做了这种合并会写进 importNote 告诉用户
+     * 同一格有多种僵尸时，保留数量最多的品种，数量仍取这一格的总数
+     * 编辑器会提醒用户哪些品种被合并或跳过
      *
-     * 参数：waves 是切好的波次
+     * 参数：waves 是按出场时间分好的波次列表
      */
     private void fillCellsFromWaves(List<List<ZombieSpawn>> waves) {
         setWaveCount(waves.size());
@@ -816,12 +812,23 @@ public class LevelDesign {
 
         String note = "";
         if (merged) {
-            note = note + "同一波同一行出现了多种僵尸，已按数量最多的品种合并。";
+            note = "同一波同一行有多种僵尸，已合并为数量最多的品种";
         }
         if (unknown) {
-            note = note + "存在编辑器不支持的僵尸品种，已跳过。";
+            note = joinImportNotes(note, "已跳过编辑器不支持的僵尸品种");
         }
         importNote = note;
+    }
+
+    /** 两条导入提示都有内容时用分号隔开，否则只返回有内容的那条 */
+    private static String joinImportNotes(String first, String second) {
+        if (first.isEmpty()) {
+            return second;
+        }
+        if (second.isEmpty()) {
+            return first;
+        }
+        return first + "；" + second;
     }
 
     /**
@@ -911,31 +918,31 @@ public class LevelDesign {
      */
     public String validate() {
         if (totalZombies() == 0) {
-            return "网格里一只僵尸都没有，进入关卡后会立刻通关。";
+            return "网格中没有僵尸，进入关卡后会立即通关";
         }
         // 空卡池虽然能够读取，但无法生成卡片，保存前提醒以免进入无法种植的关卡
         if (barType != Layout.BAR_NORMAL && cardPool.isEmpty()) {
-            return "传送带和保龄球模式必须至少选一张卡池里的植物，否则关卡无法载入。";
+            return "传送带和保龄球模式的卡池至少需要一张植物卡，否则无法载入关卡";
         }
         if (barType == Layout.BAR_NORMAL && backgroundIndex != 0) {
-            return "只有白天草坪（背景 0）的正常选卡关卡会从天上掉阳光，当前设置下阳光生成速度不起作用。";
+            return "只有白天草坪（背景 0）的正常选卡关卡会掉落阳光，当前的阳光生成速度设置不会生效";
         }
         // 必选超过卡槽数量时，游戏只能放入前几张，不能按关卡原计划选卡
         if (requiredPlants.size() > maxCards) {
             return "卡槽数量是 " + maxCards + " 张，必选植物却有 " + requiredPlants.size()
-                + " 张，进了关卡没法开始。";
+                + " 张，关卡无法开始";
         }
-        // 除开禁用和必选，候选区剩下的植物不够填满卡槽，玩家照样凑不齐没法开始
+        // 扣除禁用和必选植物后，检查候选植物是否足够填满卡槽
         int usablePlants = PlantCatalog.CHOOSER_COUNT - bannedPlants.size() - requiredPlants.size();
         if (usablePlants < maxCards) {
             return "禁用和必选之后只剩 " + usablePlants + " 种植物可选，凑不满 " + maxCards
-                + " 张卡槽，进了关卡没法开始。";
+                + " 张卡槽，关卡无法开始";
         }
         // 同时禁用和必选的植物按必选执行，校验结果向编辑者说明该优先级
         for (int index = 0; index < bannedPlants.size(); index = index + 1) {
             int plant = bannedPlants.get(index).intValue();
             if (requiredPlants.contains(Integer.valueOf(plant))) {
-                return PlantCatalog.nameAt(plant) + " 同时出现在禁用和必选清单里，游戏里会按必选处理。";
+                return PlantCatalog.nameAt(plant) + " 同时出现在禁用和必选清单中，游戏会按必选处理";
             }
         }
         return "";

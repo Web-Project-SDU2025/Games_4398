@@ -1,7 +1,7 @@
 import { getValidateCode, registerUser } from "../services/userServ.js";
 import { createRegistration } from "./account.js";
 
-// 创建独立登录表单，每次打开页面时密码和验证码均为空
+// 每次打开登录页都创建新表单，不带入上一次的密码和验证码
 export function createLoginForm() {
   return {
     mode: "login",
@@ -21,7 +21,7 @@ export function createLoginForm() {
   };
 }
 
-// 只采纳最新验证码请求，失败提示独立于登录和注册的结果
+// 只显示最后一次请求的验证码，避免迟到的图片覆盖刚刷新的验证码
 export async function refreshCaptcha(form) {
   const request = form.captchaRequest + 1;
   form.captchaRequest = request;
@@ -39,7 +39,7 @@ export async function refreshCaptcha(form) {
     form.captchaImage = result.img;
   } catch (error) {
     if (request === form.captchaRequest) {
-      form.captchaError = "验证码加载失败，请点击重新加载。";
+      form.captchaError = "验证码加载失败，请点击刷新按钮重试";
     }
   } finally {
     if (request === form.captchaRequest) {
@@ -48,7 +48,7 @@ export async function refreshCaptcha(form) {
   }
 }
 
-// 切换表单时保留账号、清空密码，提交期间保持当前模式
+// 用户可以带着当前账号切换表单，但需要重新输入密码和验证码
 export async function changeLoginMode(form, mode) {
   if (form.mode === mode || form.submitting) {
     return;

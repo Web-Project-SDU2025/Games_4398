@@ -20,6 +20,7 @@ final class VictoryAnimation {
     private static final Color COIN_FACE = new Color(66, 46, 23);
     private static BufferedImage light;
 
+    /** 绘制方法由胜利流程直接调用，不需要创建动画对象 */
     private VictoryAnimation() {
     }
 
@@ -119,6 +120,7 @@ final class VictoryAnimation {
         }
     }
 
+    /** 用指定透明度覆盖战场，独立画笔避免影响后续绘制 */
     private static void drawWhite(Graphics2D painter, float opacity) {
         Graphics2D overlay = (Graphics2D) painter.create();
         overlay.setComposite(AlphaComposite.SrcOver.derive(opacity));

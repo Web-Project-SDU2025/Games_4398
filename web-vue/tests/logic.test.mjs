@@ -10,6 +10,7 @@ import * as support from "../src/logic/support.js";
 import * as limits from "../src/logic/limits.js";
 import * as dashboard from "../src/logic/dashboard.js";
 import { coinAmount } from "../src/logic/store.js";
+import { idlePetThought, petThought } from "../src/logic/petSpeech.js";
 import {
   outcomeName,
   recordDescription,
@@ -21,6 +22,23 @@ import {
   ADMIN_SEARCH_LIMIT,
   blockcoinFilters,
 } from "../src/logic/admin.js";
+
+// 桌宠说的是自己的感受，状态变化后不继续说上一句
+test("桌宠按当前状态和探索对象切换第一人称气泡", function testPetThought() {
+  const room = { fullness: 26, food: 0, energy: 45, bond: 20 };
+  assert.match(petThought(room, ""), /^我.*饿.*粮仓/);
+  room.fullness = 68;
+  room.energy = 18;
+  assert.match(petThought(room, ""), /^我.*累/);
+  room.energy = 88;
+  room.bond = 80;
+  assert.match(petThought(room, ""), /^我.*是你/);
+  assert.match(petThought(room, "star"), /^我.*星星/);
+  assert.match(petThought(null, ""), /^我/);
+  assert.match(idlePetThought(room, 1), /^我.*粮仓/);
+  assert.notEqual(idlePetThought(room, 2), idlePetThought(room, 3));
+  assert.equal(idlePetThought(room, 4), idlePetThought(room, 0));
+});
 
 // 提问只创建用户消息，真实回答由接口成功后添加，编辑记录不修改原对象
 test("客服不再使用本地问答，消息和记录编辑保持独立", function testSupportAndRecords() {
@@ -381,7 +399,7 @@ test("列表首次只读取一次，缓存未过期不刷新，失败后保留�
       useAppStore: useAppStore,
     });
     const state = component.data();
-    state.mode = "catalog";
+    state.mode = "library";
     // Vue 会绑定方法，这里明确绑定以便直接执行同一段逻辑
     state.query = component.methods.query.bind(state);
     const before = requests;
@@ -400,6 +418,95 @@ test("列表首次只读取一次，缓存未过期不刷新，失败后保留�
     assert.equal(requests, before + 3);
     assert.equal(state.loadedRevision, store[page.revision]);
   }
+});
+
+// 管理视图独立查询目录，保存和删除成功后同步商品列表
+test("商城资料管理保留查询、编辑和删除流程", async function testGameManagement() {
+  const store = { userInfo: { token: "test-admin" } };
+  const game = { gameId: 3, name: "小丑牌", levelReward: 0 };
+  let catalogReads = 0;
+  let walletReads = 0;
+  let deletedGame;
+  let savedForm;
+  let confirmed = false;
+  // 让管理视图使用稳定的测试账户
+  function useAppStore() {
+    return store;
+  }
+  // 记录管理视图是否按原协议查询商城目录
+  async function getGames(mode, search) {
+    assert.equal(mode, "catalog");
+    assert.equal(search, "小丑");
+    catalogReads = catalogReads + 1;
+    return { code: 0, data: [game] };
+  }
+  // 记录提交的草稿，不修改原游戏资料
+  async function saveGame(form) {
+    savedForm = form;
+    return { code: 0 };
+  }
+  // 记录删除目标，不发送实际请求
+  async function deleteGame(gameId) {
+    deletedGame = gameId;
+    return { code: 0 };
+  }
+  // 模拟用户先取消、再确认删除
+  async function messageConform(warning) {
+    assert.match(warning, /小丑牌/);
+    return confirmed;
+  }
+  // 记录每次写入后商城是否重新读取商品和余额
+  async function refreshWallet() {
+    walletReads = walletReads + 1;
+  }
+  // 提供测试用的钱包仓库，不读取真实数据
+  function useWalletStore() {
+    return { refresh: refreshWallet };
+  }
+  const component = loadListComponent("../src/views/game/GameManagement.vue", {
+    useAppStore: useAppStore,
+    useWalletStore: useWalletStore,
+    createGameForm: forms.createGameForm,
+    getGames: getGames,
+    saveGame: saveGame,
+    deleteGame: deleteGame,
+    messageConform: messageConform,
+  });
+  const state = component.data();
+  const editor = { open: false };
+  // 用打开状态代替原生对话框，检查编辑流程
+  function showModal() {
+    editor.open = true;
+  }
+  // 模拟原生对话框关闭
+  function close() {
+    editor.open = false;
+  }
+  editor.showModal = showModal;
+  editor.close = close;
+  state.$refs = { editor: editor };
+  for (const method of Object.keys(component.methods)) {
+    state[method] = component.methods[method].bind(state);
+  }
+  state.search = "小丑";
+  await component.mounted.call(state);
+  assert.equal(state.games[0], game);
+  state.editGame(game);
+  assert.equal(editor.open, true);
+  state.form.name = "小丑牌测试";
+  await state.confirmGame();
+  assert.equal(editor.open, false);
+  assert.equal(savedForm.name, "小丑牌测试");
+  assert.equal(game.name, "小丑牌");
+  assert.equal(state.notice, "游戏资料已更新");
+  await state.removeGame(game);
+  assert.equal(deletedGame, undefined);
+  confirmed = true;
+  await state.removeGame(game);
+  assert.equal(deletedGame, game.gameId);
+  assert.equal(state.notice, "已删除");
+  assert.equal(catalogReads, 3);
+  assert.equal(walletReads, 2);
 });
 
 // 概览返回时使用缓存，游戏或记录变化后刷新，错误时保留原概览并允许重试
@@ -511,7 +618,7 @@ test("大厅在游玩记录返回前显示可启动的游戏", async function te
 });
 
 // 管理菜单替换旧入口并按固定顺序显示，普通用户的侧栏只保留个人功能
-test("管理区包含独立游戏资料入口且仅对管理员显示", function testSidebarManagement() {
+test("侧栏显示账户功能，游戏资料入口仅对管理员显示", function testSidebarManagement() {
   const original = [
     {
       id: 1,
@@ -529,8 +636,9 @@ test("管理区包含独立游戏资料入口且仅对管理员显示", function
     },
   ];
   const admin = navigation.createSidebarGroups(original, true);
-  assert.equal(admin.length, 1);
-  assert.deepEqual(admin[0].sList.map(menuName), [
+  assert.equal(admin.length, 3);
+  assert.equal(admin[0].sList[0].name, "PetRoom");
+  assert.deepEqual(admin[2].sList.map(menuName), [
     "AccountManage",
     "BlockcoinManage",
     "RecordManage",
@@ -539,9 +647,10 @@ test("管理区包含独立游戏资料入口且仅对管理员显示", function
   assert.equal(navigation.findMenuTitle([], "GameManage"), "游戏资料管理");
   assert.equal(original[1].sList[1].name, "GameUserManage");
   const ordinary = navigation.createSidebarGroups(original, false);
-  assert.equal(ordinary.length, 0);
+  assert.equal(ordinary.length, 2);
+  assert.deepEqual(ordinary[1].sList.map(menuName), ["GameUserProfile", "Password"]);
   const fallback = navigation.createSidebarGroups([], true);
-  assert.equal(fallback[0].sList[0].name, "AccountManage");
+  assert.equal(fallback[2].sList[0].name, "AccountManage");
 });
 
 // 玩家入口按使用顺序重新分组，同时保留服务器菜单中的其他入口
@@ -572,10 +681,12 @@ test("侧栏分组保留商城、游玩和自定义菜单", function testPlayerN
   assert.deepEqual(reordered[0].sList.map(menuName), [
     "GameCatalog",
     "GameLibrary",
+    "PetRoom",
   ]);
   assert.deepEqual(reordered[1].sList.map(menuName), ["GameFavorites", "GameRecords"]);
-  assert.deepEqual(reordered[2].sList.map(menuName), ["Help"]);
-  assert.equal(reordered.length, 3);
+  assert.deepEqual(reordered[2].sList.map(menuName), ["GameUserProfile", "Password"]);
+  assert.deepEqual(reordered[3].sList.map(menuName), ["Help"]);
+  assert.equal(reordered.length, 4);
   assert.equal(groups[0].sList[0].name, "Password");
 });
 

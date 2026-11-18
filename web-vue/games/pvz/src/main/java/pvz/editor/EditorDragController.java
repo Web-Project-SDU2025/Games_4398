@@ -3,15 +3,14 @@ package pvz.editor;
 import java.awt.Point;
 
 /**
- * 编辑器里"拖动僵尸"这件事的约定
+ * 约定编辑器如何处理僵尸拖动
  *
- * 僵尸列表和出怪网格是两块各自独立的面板，但一次拖动往往从一块开始、
- * 在另一块结束，两边都要知道当前拖的是什么。于是把拖动的处理交给主窗口，
- * 两块面板只管把鼠标动作按这个约定报上去，不必互相认识
+ * 拖动可以从僵尸列表开始，在出怪网格结束
+ * 两个面板都把鼠标动作交给主窗口，由它记录拖动中的僵尸及其位置
  */
 public interface EditorDragController {
     /**
-     * 报告一次拖动开始了
+     * 通知主窗口开始拖动僵尸
      *
      * 参数：kind 是拖的僵尸品种；count 是拖的只数；
      *       fromRow、fromWave 是拖动起点所在的格子，从僵尸列表拖出来时传 -1；
@@ -20,23 +19,23 @@ public interface EditorDragController {
     void beginDrag(String kind, int count, int fromRow, int fromWave, Point screenPoint);
 
     /**
-     * 报告拖动中鼠标移动了
+     * 报告拖动期间鼠标的新位置
      *
      * 参数：screenPoint 是鼠标在屏幕上的位置
      */
     void updateDrag(Point screenPoint);
 
     /**
-     * 报告拖动结束，在这个位置松手了
+     * 报告用户松开鼠标时的位置
      *
      * 参数：screenPoint 是鼠标在屏幕上的位置
      */
     void finishDrag(Point screenPoint);
 
     /**
-     * 查询此刻是不是正在拖动
+     * 判断当前是否正在拖动僵尸
      *
-     * 返回：正在拖动就返回真。面板靠它决定要不要画悬停高亮
+     * 返回：正在拖动时为 true，面板据此决定是否高亮鼠标下方的格子
      */
     boolean isDragging();
 
@@ -54,9 +53,9 @@ public interface EditorDragController {
      */
     void selectKind(String kind);
 
-    /** 报告网格内容被改动了，主窗口据此刷新画面和底部的统计 */
+    /** 网格内容变化后，通知主窗口刷新画面和底部统计 */
     void designChanged();
 
-    /** 报告用户换了选中的格子，主窗口据此把随机行复选框同步过来 */
+    /** 用户选中另一个格子后，通知主窗口更新随机行复选框 */
     void selectionChanged();
 }

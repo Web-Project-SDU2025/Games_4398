@@ -144,7 +144,7 @@ export default {
   },
   methods: {
     describeRecord: recordDescription,
-    // 获取游戏记录
+    // 读取可查看的游玩记录，成功后记下列表对应的数据版本
     query: async function query() {
       if (this.loading) {
         return;
@@ -183,7 +183,7 @@ export default {
         this.notice = "游戏库加载失败";
       }
     },
-    // 保存游戏记录
+    // 提交手动添加的记录，保存成功后关闭表单并刷新列表
     save: async function save() {
       try {
         const result = await saveRecord(this.form);
@@ -197,7 +197,7 @@ export default {
         this.editorNotice = "保存失败";
       }
     },
-    // 关闭当前页面的对话框
+    // 关闭添加记录的对话框，不提交未保存的内容
     close: function close() {
       this.$refs.editor.close();
     },

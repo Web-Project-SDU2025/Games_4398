@@ -320,9 +320,9 @@ export default {
         return;
       }
       const address = this.session.address;
-      let message = "结束后需要重新启动游戏。";
+      let message = "结束后需要重新启动游戏";
       if (this.session.game.id === "billiards") {
-        message = "结束游戏？如果本局还未分出胜负，本局成就不会结算。";
+        message = "结束游戏？尚未分出胜负的对局不结算成就";
       }
       this.confirmingClose = true;
       const shell = this.$refs.player.closest(".platform-shell");

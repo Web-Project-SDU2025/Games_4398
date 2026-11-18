@@ -49,9 +49,10 @@
   }
 }
 
-/* 游戏厅与登录入口共用深色表面和主操作配色 */
+/* 账户弹窗挂载在网页根部，与游戏厅共用深色配色 */
 .desktop-shell,
-.auth-shell {
+.auth-shell,
+.account-form-dialog {
   --color-paper: var(--color-workspace-background);
   --color-header: #101216;
   --color-paper-2: #1c1f24;

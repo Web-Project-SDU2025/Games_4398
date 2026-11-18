@@ -180,7 +180,7 @@ h3 {
 }
 .platform-main h2 {
   font-size: 24px;
-  font-weight: 400;
+  font-weight: 700;
   margin: 0 0 var(--space-lg);
 }
 .game-page .game-toolbar {
@@ -338,10 +338,6 @@ h3 {
     background: var(--color-accent-dark);
     color: var(--color-ink);
     border-color: var(--color-accent);
-  }
-  .auth-submit:hover {
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
   }
   .platform-secondary-button:hover {
     background: var(--color-paper-3);

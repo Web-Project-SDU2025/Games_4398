@@ -287,27 +287,7 @@ body dialog[open]::backdrop {
     }
   }
 }
-/* 登录背景采用长周期装饰动画，暂停时保留当前位置 */
-.auth-stars {
-  animation-name: auth-star-fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-.auth-page.is-motion-paused .auth-stars {
-  animation-play-state: paused;
-}
-@keyframes auth-star-fall {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100vh);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .auth-stars {
-    animation: none;
-  }
   .auth-motion-toggle,
   .auth-settings-toggle {
     display: none;

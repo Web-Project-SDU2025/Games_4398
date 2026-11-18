@@ -3,6 +3,38 @@ CREATE TABLE IF NOT EXISTS blockcoin_wallet (
     user_id INT NOT NULL PRIMARY KEY,
     balance BIGINT NOT NULL
 );
+
+-- 每个账户拥有独立的桌宠养成进度和猫粮库存
+CREATE TABLE IF NOT EXISTS pet_room (
+    user_id INT NOT NULL PRIMARY KEY,
+    fullness INT NOT NULL,
+    bond INT NOT NULL,
+    energy INT NOT NULL,
+    experience INT NOT NULL,
+    food INT NOT NULL,
+    CONSTRAINT fk_pet_room_user FOREIGN KEY (user_id) REFERENCES `user` (user_id) ON DELETE CASCADE
+);
+-- 昵称独立保存，旧存档无需补写就能使用默认名称
+CREATE TABLE IF NOT EXISTS pet_nickname (
+    user_id INT NOT NULL PRIMARY KEY,
+    nickname VARCHAR(24) NOT NULL,
+    CONSTRAINT fk_pet_nickname_room FOREIGN KEY (user_id) REFERENCES pet_room (user_id) ON DELETE CASCADE
+) DEFAULT CHARACTER SET utf8mb4;
+-- 单独保存互动成长，升级时不改写旧宠物的经验和库存
+CREATE TABLE IF NOT EXISTS pet_care (
+    user_id INT NOT NULL PRIMARY KEY,
+    care_points BIGINT NOT NULL,
+    last_pet_at BIGINT NOT NULL,
+    CONSTRAINT fk_pet_care_room FOREIGN KEY (user_id) REFERENCES pet_room (user_id) ON DELETE CASCADE
+);
+-- 保留还未发消息的小屋消费，账户删除时一起清理
+CREATE TABLE IF NOT EXISTS pet_purchase_batch (
+    user_id INT NOT NULL PRIMARY KEY,
+    batch_id VARCHAR(36) NOT NULL,
+    spent BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,
+    CONSTRAINT fk_pet_purchase_batch_room FOREIGN KEY (user_id) REFERENCES pet_room (user_id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS blockcoin_entry (
     entry_id VARCHAR(120) NOT NULL PRIMARY KEY,
     user_id INT NOT NULL,

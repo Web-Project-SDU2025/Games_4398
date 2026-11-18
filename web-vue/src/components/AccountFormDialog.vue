@@ -3,7 +3,7 @@
     <dialog
       ref="dialog"
       class="account-form-dialog"
-      :aria-label="form === 'password' ? '修改密码' : '个人资料'"
+      :aria-label="dialogTitle"
       @close="clearForm"
     >
       <button
@@ -11,7 +11,7 @@
         type="button"
         aria-label="关闭弹窗"
         autofocus
-        @click="dialog.close()"
+        @click="closeDialog"
       >
         <span class="i-ep-close" aria-hidden="true"></span>
       </button>
@@ -22,15 +22,29 @@
 </template>
 
 <script setup>
-import { nextTick, onDeactivated, ref } from "vue";
+import { computed, nextTick, onDeactivated, ref } from "vue";
 import GameUserProfile from "../views/account/GameUserProfile.vue";
 import Password from "../views/info/Password.vue";
 
 const dialog = ref(null);
 const form = ref(null);
 
+// 按当前表单设置弹窗的无障碍名称
+function readDialogTitle() {
+  if (form.value === "password") {
+    return "修改密码";
+  }
+  return "个人资料";
+}
+
+const dialogTitle = computed(readDialogTitle);
+
+// 等待表单挂载后再打开原生弹窗，确保焦点可以进入弹窗
 async function open(type) {
-  if (dialog.value.open) return;
+  const panel = dialog.value;
+  if (!panel || panel.open) {
+    return;
+  }
   form.value = type;
   await nextTick();
   if (dialog.value && !dialog.value.open && form.value === type) {
@@ -38,51 +52,50 @@ async function open(type) {
   }
 }
 
-// 关闭即卸载表单，停止背景动画，也清空未提交的密码。
+// 关闭即卸载表单，清空未提交的密码
 function clearForm() {
-  if (!dialog.value?.open) form.value = null;
+  const panel = dialog.value;
+  if (!panel || !panel.open) {
+    form.value = null;
+  }
 }
 
-onDeactivated(() => {
-  if (dialog.value?.open) dialog.value.close();
+// 点击关闭或离开游戏概览时，收起弹窗并释放表单
+function closeDialog() {
+  const panel = dialog.value;
+  if (panel && panel.open) {
+    panel.close();
+  }
   clearForm();
-});
+}
 
-defineExpose({ open });
+onDeactivated(closeDialog);
+defineExpose({ open: open });
 </script>
 
 <style scoped>
 .account-form-dialog {
-  --dialog-gutter: clamp(12px, 2vw, 28px);
   position: fixed;
   inset: 0;
-  width: calc((100% - var(--dialog-gutter) * 2) * 0.75);
-  height: calc((100dvh - var(--dialog-gutter) * 2) * 0.75);
+  width: min(560px, calc(100% - var(--space-lg)));
+  max-height: 85dvh;
   box-sizing: border-box;
   margin: auto;
   padding: 0;
   overflow: auto;
-  border: 1px solid #4bb9ed;
-  background: #07153d;
-  color: #e0f8ff;
-  box-shadow: 0 0 26px #2966ee70;
-  scrollbar-color: #4387b9 #081634;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
 }
 
 .account-form-dialog::backdrop {
-  background: rgb(2 7 22 / 65%);
+  background: var(--color-overlay);
 }
 
 .account-form-dialog :deep(section.account-grid-page) {
-  display: grid;
-  align-items: center;
   box-sizing: border-box;
-  min-height: 100%;
-  padding-top: 54px;
-}
-
-.account-form-dialog :deep(.account-grid-content) {
-  margin-inline: auto;
+  padding: var(--space-lg);
 }
 
 .account-form-close {
@@ -92,16 +105,13 @@ defineExpose({ open });
   right: 12px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid #4bb9ed;
-  background: #0b244a;
-  color: #a3ecff;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
   font-size: 18px;
 }
 
-.account-form-close:focus-visible {
-  outline: 2px solid #a3ecff;
-  outline-offset: 2px;
-}
 </style>
