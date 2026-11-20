@@ -1,6 +1,8 @@
 // 静态位图由原 Java 绘制器生成，浏览器使用本地构建资源，不再运行 Java
 const IMAGE_URLS = import.meta.glob("./assets/*.png", { eager: true, query: "?url", import: "default" });
+// 球与球或库边相撞时使用的音轨
 const BALL_AUDIO = new URL("./assets/ball.wav", import.meta.url).href;
+// 球落袋时使用的音轨
 const POCKET_AUDIO = new URL("./assets/pocket.wav", import.meta.url).href;
 // 播放音量上限按两种音色分别维护，轻碰仍能保留自然起音
 const AUDIO_GAIN = { ball: 0.5, pocket: 0.65 };
@@ -10,6 +12,7 @@ const AUDIO_WINDOW_MS = 40;
 const AUDIO_LEAD_SECONDS = { ball: 0.057, pocket: 0.1 };
 // 轻于此速度的接触不播放，速度达到满音量基准后不再继续增大
 const AUDIO_MINIMUM_SPEED = 45;
+// 达到此速度后音效不再随碰撞速度增大
 const AUDIO_FULL_SPEED = 1500;
 
 // 加载一张图像，成功后返回可直接用于 Canvas 的 Image 对象

@@ -1,8 +1,11 @@
 // 平台与启动器共用的游戏配置边界，构建时将本模块复制为站内运行文件
 export const GAME_REGISTRY = "/games/registry.json";
+// 游戏编号以小写字母开头，只允许字母、数字和短横线
 export const GAME_ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
+// Java 入口必须使用带包名的完整类名
 export const JAVA_CLASS_PATTERN =
   /^[a-zA-Z_$][a-zA-Z0-9_$]*(\.[a-zA-Z_$][a-zA-Z0-9_$]*)+$/;
+// 游戏描述未提供尺寸、Java 版本和像素比例时使用的值
 export const PLAYER_DEFAULTS = {
   width: 1440,
   height: 960,
@@ -10,6 +13,7 @@ export const PLAYER_DEFAULTS = {
   // 独立游戏页采用原始像素比例，主平台继续使用浏览器自己的屏幕比例
   pixelRatio: 1,
 };
+// 关卡导入未配置时的编号范围、文件限制和字段名称
 const IMPORT_DEFAULTS = {
   minimum: 0,
   maximum: 99,
@@ -17,12 +21,14 @@ const IMPORT_DEFAULTS = {
   accept: ".json,application/json",
   label: "关卡编号",
 };
+// 游戏未明确声明时，不开放编辑、数据传输和游玩事件
 const DEFAULT_CAPABILITIES = {
   editor: false,
   importData: false,
   exportData: false,
   gameplayEvents: false,
 };
+// 游戏描述的名称、依赖、参数、显示尺寸和导入限制
 const MANIFEST_LIMITS = {
   nameLength: 50,
   dependencyCount: 32,

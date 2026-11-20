@@ -1,15 +1,28 @@
 import Matter from "matter-js";
 
+// 玩具球的半径，模型、碰撞和拖动使用同一个值
 export const TOY_RADIUS = 0.2;
+// 球在垫子上的初始位置和归位目标
 export const TOY_START = { x: 1.33, z: 0.98 };
+// 食碗的初始位置和归位目标
 export const BOWL_START = { x: -1.55, z: 0.85 };
+// 食碗的碰撞半径，同时用于限制拖动间距
 export const BOWL_RADIUS = 0.36;
+// 碗沿的高度和管身半径，用于保持进食动作和碗沿之间的距离
+export const BOWL_RIM = { height: 0.18, thickness: 0.044 };
+// 一个场景单位对应的 Matter.js 长度
 const SCALE = 120;
+// 物理每秒计算 120 次，不受显示帧率影响
 const STEP_MS = 1000 / 120;
+// 猫拨球时给球的初始速度，具体方向由调用方传入
 const KICK_SPEED = 4.8;
+// 球低于这个速度时按停稳处理，可以开始归位
 const STOP_SPEED = 0.08;
+// 球可滚动区域的左右半宽
 const HALF_WIDTH = 3.1;
+// 滚动区域靠墙一侧的边界
 const MIN_DEPTH = -2.1;
+// 滚动区域靠镜头一侧的边界
 const MAX_DEPTH = 2.17;
 
 // 用 Matter.js 在地板平面模拟球、猫和食碗，画面仍由 Three.js 绘制

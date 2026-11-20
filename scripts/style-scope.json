@@ -5,8 +5,14 @@
     "web-vue/tests",
     "web-vue/games",
     "java-server/java-server/src",
+    "database",
     "packaging",
     "scripts"
+  ],
+  "standaloneFiles": [
+    "package.cmd",
+    "web-vue/index.html",
+    "java-server/java-server/pom.xml"
   ],
   "preservedFileList": "scripts/preserved-files.txt",
   "ignoredDirectories": [
@@ -16,10 +22,12 @@
     ".git",
     "assets",
     "lib",
+    "backups",
     "images",
     "font"
   ],
   "generatedFiles": [
+    "database/schema.sql",
     "web-vue/src/components.d.ts",
     "web-vue/src/env.d.ts"
   ],

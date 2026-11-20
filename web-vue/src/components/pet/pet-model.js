@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { DecalGeometry } from "three/addons/geometries/DecalGeometry.js";
 
+// 模型的毛色、脸部和饰品沿用桌宠原画的颜色
 const COLORS = {
   fur: 0xffd881,
   ginger: 0xe97939,
@@ -12,14 +13,23 @@ const COLORS = {
   silver: 0xc4bcb4,
   pendant: 0xc5947a,
 };
+// 曲线沿长度方向的分段数，三种尾形必须使用同一份拓扑
 const CORD_SEGMENTS = 24;
+// 曲线每段横截面的边数
 const CORD_SIDES = 8;
+// 躯干的前后半径，尾根用它找臀部后侧表面
 const CHEST_DEPTH = 0.48;
+// 尾根比躯干中心低的距离，随躯干高度一起缩放
 const TAIL_ROOT_DROP = 0.06;
+// 尾根伸入表面的距离，防止变形时留下缝隙
 const TAIL_ROOT_INSET = 0.05;
+// 三种尾形共用的起始段，先朝正后方伸出再弯曲
 const TAIL_ROOT_CURVE = [[0, 0, 0], [0, 0.01, -0.14]];
+// 坐姿时向侧上方翘起的尾身控制点
 const TAIL_UP = [[0.28, 0.04, -0.25], [0.7, 0.2, -0.2], [1.04, 0.62, -0.06], [1.23, 0.85, 0.12], [1.43, 0.78, 0.24]];
+// 睡姿时绕开后爪并贴近垫子的尾身控制点
 const TAIL_CURLED = [[0.32, -0.14, -0.26], [0.69, -0.22, -0.21], [0.91, -0.25, 0.06], [0.91, -0.25, 0.39], [0.78, -0.25, 0.63]];
+// 步行时朝臀部后方延伸的尾身控制点
 const TAIL_WALK = [[0.03, 0.055, -0.35], [0.07, 0.13, -0.55], [0.13, 0.23, -0.75], [0.19, 0.36, -0.92], [0.23, 0.47, -1.02]];
 
 // 创建可被灯光照亮的哑光材质，颜色来自桌宠原画
@@ -137,7 +147,8 @@ function addChest(body, sphere, materials) {
   chest.name = "chest";
   chest.position.set(0, 0.56, -0.15);
   body.add(chest);
-  const hitBody = oval(chest, sphere, materials.fur, 0, 0, 0, 0.55, 0.585, CHEST_DEPTH);
+  const chestMesh = oval(chest, sphere, materials.fur, 0, 0, 0, 0.55, 0.585, CHEST_DEPTH);
+  chestMesh.name = "chestMesh";
   oval(chest, sphere, materials.cream, 0, 0.03, 0.379, 0.35, 0.406, 0.145);
   oval(chest, sphere, materials.ginger, 0, 0.29, 0.494, 0.224, 0.21, 0.084);
   const collar = new THREE.Group();
@@ -149,7 +160,7 @@ function addChest(body, sphere, materials) {
   oval(collar, sphere, materials.silver, 0, -0.113, 0.336, 0.125, 0.13, 0.058);
   oval(collar, sphere, materials.pendant, 0, -0.113, 0.382, 0.092, 0.099, 0.027);
   cord(collar, [[-0.054, -0.166, 0.399], [-0.055, -0.066, 0.401], [0.052, -0.065, 0.403], [0.05, -0.164, 0.401], [0, -0.156, 0.41], [0, -0.106, 0.412]], 0.011, materials.cream);
-  return hitBody;
+  return chest;
 }
 
 // 用带倒角的三角轮廓塑造有厚度的耳朵
@@ -240,7 +251,7 @@ function makeHead(root, sphere, materials) {
   root.add(head);
   const shell = sphere.clone();
   shell.scale(0.73, 0.565, 0.59);
-  const hitFace = placeMesh(head, shell, materials.fur, 0, 0, 0);
+  placeMesh(head, shell, materials.fur, 0, 0, 0);
   addMarkings(head, shell);
   const ears = [];
   const eyes = [];
@@ -254,7 +265,7 @@ function makeHead(root, sphere, materials) {
   }
   oval(head, sphere, materials.ink, 0, -0.176, 0.628, 0.066, 0.043, 0.043);
   cord(head, [[-0.12, -0.28, 0.603], [-0.06, -0.31, 0.632], [0, -0.27, 0.642], [0.06, -0.31, 0.632], [0.12, -0.28, 0.603]], 0.016, materials.ink);
-  return { head: head, ears: ears, eyes: eyes, hitFace: hitFace };
+  return { head: head, ears: ears, eyes: eyes };
 }
 
 // 组合坐姿、银灰项圈和可摆动的翘尾，返回动画会用到的节点
@@ -268,16 +279,16 @@ export function createPetModel() {
   const body = new THREE.Group();
   body.name = "body";
   root.add(body);
-  const hitBody = addChest(body, sphere, materials);
+  const chest = addChest(body, sphere, materials);
   addBackLeg(body, sphere, materials, -1, "left");
   addBackLeg(body, sphere, materials, 1, "right");
   addFrontLeg(body, sphere, materials, -1, "left");
   addFrontLeg(body, sphere, materials, 1, "right");
   const tail = new THREE.Group();
   tail.name = "tail";
-  attachTailRoot(tail, hitBody.parent);
+  attachTailRoot(tail, chest);
   body.add(tail);
   addTail(tail, sphere, materials);
   const face = makeHead(body, sphere, materials);
-  return { root: root, body: body, head: face.head, ears: face.ears, eyes: face.eyes, tail: tail, hitParts: [face.hitFace, hitBody] };
+  return { root: root, body: body, chest: chest, head: face.head, ears: face.ears, eyes: face.eyes, tail: tail };
 }

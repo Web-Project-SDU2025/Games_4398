@@ -14,6 +14,7 @@ export const RECENT_RECORD_LIMIT = 5;
 export const DURATION_DECIMALS = 1;
 // 记录与统计共用北京时间
 const RECORD_TIME_ZONE = "Asia/Shanghai";
+// 将接口未带时区的时间按北京时间解释
 const RECORD_TIME_OFFSET = "+08:00";
 // 小时转换使用的秒数
 const SECONDS_PER_HOUR = 3600;
@@ -21,6 +22,7 @@ const SECONDS_PER_HOUR = 3600;
 const HOURS_PER_DAY = 24;
 // 时间段计算统一使用毫秒
 const HOUR_MILLISECONDS = SECONDS_PER_HOUR * 1000;
+// 一天的毫秒数，用于逐日生成活动统计范围
 const DAY_MILLISECONDS = HOURS_PER_DAY * HOUR_MILLISECONDS;
 
 // 将日期转换为北京时间的年月日，返回适合比较的日期文字

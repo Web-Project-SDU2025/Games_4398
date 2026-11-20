@@ -2,6 +2,7 @@ import { ElMessageBox } from "element-plus";
 
 // 提示框使用独立标记，确认与取消的页面顺序和键盘顺序保持一致
 const CONFIRM_BUTTON_CLASS = "platform-confirm-action";
+// 为取消按钮应用次要操作样式
 const CANCEL_BUTTON_CLASS = "platform-cancel-action";
 
 // 组件挂载后把确认按钮移动到取消按钮前，观察范围只处理带标记的提示框

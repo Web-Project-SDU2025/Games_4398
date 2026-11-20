@@ -55,6 +55,7 @@ import pvz.zombie.ZombieSpawn;
 public class SelfCheckTest {
     /** 行为测试统一使用草坪中间的行和列 */
     private static final int TEST_ROW = Layout.ROW_COUNT / 2;
+    /** 在靠左但不贴边的列布置测试植物 */
     private static final int TEST_COLUMN = Layout.COLUMN_COUNT / 3;
 
     /** 避开未启动状态的游戏时刻 */

@@ -9,14 +9,6 @@ export const GAME_MANAGEMENT_ROUTE = {
   query: { view: "manage" },
 };
 
-// 同时检查地址和查询参数，避免其他页面使用同名参数时被当作商城管理页
-export function isGameManagementRoute(route) {
-  if (route.path !== GAME_MANAGEMENT_ROUTE.path || !route.query) {
-    return false;
-  }
-  return route.query.view === GAME_MANAGEMENT_ROUTE.query.view;
-}
-
 // 根据玩家使用顺序分组，实际可见入口仍来自账户的菜单
 const PLAYER_GROUPS = [
   { id: "play", title: "玩游戏", pages: ["GameCatalog", "GameLibrary", "PetRoom"] },
@@ -24,7 +16,9 @@ const PLAYER_GROUPS = [
 ];
 // 小屋对所有登录账户开放，不依赖旧版数据库的菜单记录
 const PET_ROOM_MENU = { id: "pet-room", name: "PetRoom", title: "桌宠小屋" };
+// 这些入口由首页和账户分组呈现，不再从菜单数据重复添加
 const UNGROUPED_PAGES = new Set(["MainPage", "GameUserProfile", "Password"]);
+// 旧数据库仍可能返回这些入口，新版导航不再展示
 const LEGACY_ADMIN_PAGES = ["MenuManage", "DictionaryManage", "GameUserManage"];
 // 两个账户页面对所有已登录用户开放，固定分组可以避免旧菜单漏掉入口
 const ACCOUNT_GROUP = {
@@ -35,6 +29,14 @@ const ACCOUNT_GROUP = {
     { id: "password", name: "Password", title: "修改密码" },
   ],
 };
+
+// 同时检查地址和查询参数，避免其他页面使用同名参数时被当作商城管理页
+export function isGameManagementRoute(route) {
+  if (route.path !== GAME_MANAGEMENT_ROUTE.path || !route.query) {
+    return false;
+  }
+  return route.query.view === GAME_MANAGEMENT_ROUTE.query.view;
+}
 
 /** 根据路由名查找管理入口，角色判断在整理菜单时统一处理 */
 function findAdminPage(name) {

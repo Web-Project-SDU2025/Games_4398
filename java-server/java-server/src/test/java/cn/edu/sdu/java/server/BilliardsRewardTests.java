@@ -32,6 +32,7 @@ import static org.mockito.Mockito.*;
 class BilliardsRewardTests {
     /** 固定合法局号与会话编号，重复请求必须使用相同编号 */
     private static final String RUN = "a88f3c18-67c7-46fa-bd50-66e8566b29a4";
+    /** 使用固定局号验证同一盘重复提交不会重复领奖 */
     private static final String ROUND = "ce2e3140-c77f-4088-885a-e4c7988f0914";
 
     /** 检查结束后清空测试身份，不影响下一项检查 */

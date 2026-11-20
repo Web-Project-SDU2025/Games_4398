@@ -2,6 +2,7 @@
 const PROGRESS_DURATION_MS = 15000;
 // 菜单请求编号与 Java 端读取的编号一致
 const ADVENTURE_REQUEST = 1;
+// Java 主菜单用此编号识别图鉴请求
 const ALMANAC_REQUEST = 2;
 
 // 让上一帧有机会显示，之后再进入 Java，或撤下已经完成的加载层

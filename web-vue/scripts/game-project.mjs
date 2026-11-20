@@ -14,9 +14,13 @@ export const FRONTEND_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
+// 游戏类文件面向 Java 17，浏览器运行器也使用这一版本
 export const JAVA_RELEASE = "17";
+// 各游戏下用于存放编译文件的目录名
 const BUILD_DIRECTORY = "build";
+// 一次导入允许的文件数上限
 const IMPORT_FILE_LIMIT = 10000;
+// 一次导入允许的总字节数上限
 const IMPORT_BYTE_LIMIT = 512 * 1024 * 1024;
 
 // 将相对路径限定在指定目录内，并核对符号链接指向的真实位置

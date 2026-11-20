@@ -1,5 +1,6 @@
 SET NAMES utf8mb4;
 
+-- 这一步从旧教务库迁移，执行前需要备份原库
 DROP TABLE family_member;
 DROP TABLE fee;
 DROP TABLE student_statistics;
@@ -12,6 +13,7 @@ ALTER TABLE game_user DROP COLUMN major, DROP COLUMN class_name;
 ALTER TABLE game_user ADD COLUMN signature VARCHAR(200);
 INSERT INTO game_user (person_id) SELECT person_id FROM user WHERE person_id NOT IN (SELECT person_id FROM game_user);
 
+-- 沿用原课程表的基础字段，清空旧课程后改作游戏目录
 ALTER TABLE course DROP FOREIGN KEY FK17gwkcq6pmnubgtpk3yebx740;
 DELETE FROM course;
 ALTER TABLE course RENAME TO game;
@@ -51,6 +53,7 @@ CREATE TABLE game_record (
     CONSTRAINT fk_record_game FOREIGN KEY (game_id) REFERENCES game(game_id)
 );
 
+-- 合并旧角色并重建导航，管理员仍使用原角色编号
 UPDATE user_type SET name = 'ROLE_GAME_USER' WHERE id = 2;
 UPDATE user SET user_type_id = 2 WHERE user_type_id = 3;
 DELETE FROM user_type WHERE id = 3;

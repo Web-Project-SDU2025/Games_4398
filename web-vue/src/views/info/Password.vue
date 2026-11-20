@@ -49,6 +49,7 @@ import { updatePassword } from "../../services/systemServ.js";
 import * as account from "../../logic/account.js";
 import AccountGridPanel from "../../components/AccountGridPanel.vue";
 
+// 密码表单的字段顺序及对应的浏览器自动填充类型
 const PASSWORD_FIELDS = [
   {
     id: "old-password",

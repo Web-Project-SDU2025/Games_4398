@@ -11,17 +11,29 @@ namespace Games4398
     // 启动器持有进程组句柄，窗口关闭后 Windows 会结束组内进程
     public sealed class StartupProcessJob : IDisposable
     {
+        // Windows 接口的扩展进程组限制编号
         private const int ExtendedLimitInformation = 9;
+        // 最后一个组句柄关闭时，结束组内仍在运行的进程
         private const uint KillOnJobClose = 0x2000;
+        // 告诉 Windows 使用显式指定的三个标准输入输出句柄
         private const uint UseStdHandles = 0x100;
+        // 子进程由启动器管理，不另开控制台窗口
         private const uint CreateNoWindow = 0x08000000;
+        // 告诉 Windows 读取带属性列表的扩展启动参数
         private const uint ExtendedStartupInfoPresent = 0x00080000;
+        // 启动时写入可继承句柄名单和进程组两项属性
         private const int StartupAttributeCount = 2;
+        // 标准输入、标准输出和标准错误共用三个槽位
         private const int StandardHandleCount = 3;
+        // 将空设备作为输入时只需读权限
         private const uint ReadAccess = 0x80000000;
+        // 允许其他进程读写同一个空设备
         private const uint ShareReadWrite = 3;
+        // 打开系统已有的空设备，不创建文件
         private const uint OpenExisting = 3;
+        // 指定可继承句柄名单的 Windows 属性编号
         private static readonly IntPtr HandleListAttribute = new IntPtr(0x00020002);
+        // 指定子进程所属进程组的 Windows 属性编号
         private static readonly IntPtr JobListAttribute = new IntPtr(0x0002000D);
         private readonly SafeFileHandle job;
 

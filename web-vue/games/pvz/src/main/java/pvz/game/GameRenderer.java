@@ -32,18 +32,26 @@ public class GameRenderer {
     static final Rectangle PAUSE_BUTTON = new Rectangle(Layout.SPEED_BUTTON_LEFT,
         Layout.SPEED_BUTTON_TOP + Layout.SPEED_BUTTON_HEIGHT + 4,
         Layout.SPEED_BUTTON_WIDTH, Layout.SPEED_BUTTON_HEIGHT);
+    /** 暂停面板内继续游戏的按钮区域 */
     static final Rectangle CONTINUE_BUTTON = new Rectangle(Layout.WINDOW_WIDTH / 2 - 90,
         Layout.WINDOW_HEIGHT / 2 - 16, 180, 38);
+    /** 重新开始与继续按钮对齐，绘制和点击共用此区域 */
     static final Rectangle RESTART_BUTTON = new Rectangle(CONTINUE_BUTTON.x,
         CONTINUE_BUTTON.y + 52, CONTINUE_BUTTON.width, CONTINUE_BUTTON.height);
+    /** 胜利面板前往下一关的按钮区域 */
     static final Rectangle NEXT_LEVEL_BUTTON = new Rectangle(200, 389, 172, 50);
+    /** 胜利面板返回菜单的按钮区域 */
     static final Rectangle VICTORY_MENU_BUTTON = new Rectangle(428, 389, 172, 50);
 
     /** 调试框使用独立颜色，图例同时写出类型，避免只靠颜色判断 */
     private static final Color PLANT_DEBUG_COLOR = new Color(68, 235, 114);
+    /** 普通敌对僵尸碰撞框的颜色 */
     private static final Color ZOMBIE_DEBUG_COLOR = new Color(255, 93, 86);
+    /** 已被魅惑的僵尸碰撞框的颜色 */
     private static final Color HYPNO_DEBUG_COLOR = new Color(78, 225, 240);
+    /** 飞行子弹碰撞框的颜色 */
     private static final Color BULLET_DEBUG_COLOR = new Color(255, 227, 74);
+    /** 可收集阳光范围的颜色 */
     private static final Color SUN_DEBUG_COLOR = new Color(255, 161, 62);
 
     /** 提供图片素材 */

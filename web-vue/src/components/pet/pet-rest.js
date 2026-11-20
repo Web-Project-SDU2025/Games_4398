@@ -1,9 +1,14 @@
 import { AnimationClip, MathUtils, NumberKeyframeTrack } from "three";
 
+// 从伏低到重新坐稳的总秒数，场景也用它安排醒来的提示
 export const REST_DURATION = 8.25;
+// 依次对应坐姿、卧下、睡稳和起身的关键时刻，单位为秒
 const REST_TIMES = [0, 0.28, 0.62, 1.05, 1.26, 7.08, 7.28, 7.65, REST_DURATION];
+// 开始闭眼的时刻，单位为秒
 const CLOSED_FROM = 0.82;
+// 起身时重新睁眼的时刻，单位为秒
 const CLOSED_UNTIL = 7.5;
+// 每两个不同姿势间的采样段数，用于保留平滑且不过冲的过渡
 const STEPS_PER_POSE = 8;
 
 // 依次记录坐姿、探爪、伏低、侧卧、抬头和撑起时各关节的位置

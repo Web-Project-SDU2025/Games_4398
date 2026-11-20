@@ -7,6 +7,7 @@ export const MESSAGE_PAGE_SIZE = ADMIN_PAGE_SIZE;
 export const MESSAGE_POLL_MILLISECONDS = 30000;
 // 标题和正文上限与后端消息规则对应
 export const MESSAGE_TITLE_LIMIT = 80;
+// 公告、反馈和回复共用的正文长度上限
 export const MESSAGE_CONTENT_LIMIT = 2000;
 // 页码上限阻止极大偏移量占用数据库查询资源
 export const MESSAGE_MAX_PAGE = 100000;

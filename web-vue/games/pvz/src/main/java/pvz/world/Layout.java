@@ -445,16 +445,22 @@ public final class Layout {
     /** 加速按钮的左上角坐标和尺寸 */
     public static final int SPEED_BUTTON_LEFT = 620;
 
+    /** 倍速按钮离窗口顶部的像素距离 */
     public static final int SPEED_BUTTON_TOP = 4;
 
+    /** 倍速按钮的绘制和点击宽度 */
     public static final int SPEED_BUTTON_WIDTH = 60;
 
+    /** 倍速按钮的绘制和点击高度 */
     public static final int SPEED_BUTTON_HEIGHT = 22;
 
     /** 返回选关按钮靠右上角放置，绘制与点击共用坐标以免错位 */
     public static final int RETURN_SELECTION_LEFT = WINDOW_WIDTH - 112;
+    /** 返回选关按钮距顶部的像素距离 */
     public static final int RETURN_SELECTION_TOP = 4;
+    /** 返回选关按钮的绘制和点击宽度 */
     public static final int RETURN_SELECTION_WIDTH = 108;
+    /** 返回选关按钮的绘制和点击高度 */
     public static final int RETURN_SELECTION_HEIGHT = 32;
 
     /**
@@ -475,6 +481,7 @@ public final class Layout {
      */
     public static final int WATERMARK_RIGHT = 790;
 
+    /** 水印文字的纵向基线，靠近窗口底边 */
     public static final int WATERMARK_BOTTOM = 592;
 
     /** 水印文字 */
@@ -496,16 +503,22 @@ public final class Layout {
      */
     public static final int MENU_BUTTON_LEFT = 435;
 
+    /** 主菜单冒险模式按钮距顶部的像素距离 */
     public static final int MENU_BUTTON_TOP = 75;
 
+    /** 主菜单按钮的绘制和点击宽度 */
     public static final int MENU_BUTTON_WIDTH = 280;
 
+    /** 主菜单按钮的绘制和点击高度 */
     public static final int MENU_BUTTON_HEIGHT = 131;
 
     /** 图鉴书本入口放在主菜单右下方，坐标供绘制和点击共用以免系统缩放后错位 */
     public static final int ALMANAC_BUTTON_LEFT = 630;
+    /** 图鉴入口离窗口顶部的像素距离 */
     public static final int ALMANAC_BUTTON_TOP = 398;
+    /** 图鉴入口的绘制和点击宽度 */
     public static final int ALMANAC_BUTTON_WIDTH = 100;
+    /** 图鉴入口的绘制和点击高度 */
     public static final int ALMANAC_BUTTON_HEIGHT = 100;
 
     /** 选卡界面"开始战斗"按钮的左沿横坐标 */

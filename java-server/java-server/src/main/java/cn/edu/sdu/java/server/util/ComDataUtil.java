@@ -12,6 +12,7 @@ import java.util.Map;
  * 缓存由当前进程持有
  */
 public class ComDataUtil {
+    /** 各业务入口共用的通用数据工具实例 */
     private static final ComDataUtil INSTANCE = new ComDataUtil();
     private Map<String, List<OptionItem>> dictListMap = new HashMap<>();
     private Map<String, Map<String, String>> dictMapMap = new HashMap<>();

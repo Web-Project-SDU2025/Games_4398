@@ -1,25 +1,74 @@
 import * as THREE from "three";
 import { createPetModel, matte, oval, placeMesh, cord } from "./pet-model.js";
-import { createPetMotion } from "./pet-motion.js";
+import { createPetMotion, PET_DURATION } from "./pet-motion.js";
+import { applyFeedLean, FEED_DURATION, FOOD_GRAIN_COUNT, readFeedPose } from "./pet-feed.js";
+import { CLOCK_FACE_RADIUS, CLOCK_TURN, createClockPreview, readClockAngles, readClockHour } from "./pet-clock.js";
 import { REST_DURATION } from "./pet-rest.js";
-import { BOWL_START, createPetFloor, TOY_RADIUS, TOY_START } from "./pet-floor.js";
+import { BOWL_RADIUS, BOWL_RIM, BOWL_START, createPetFloor, TOY_RADIUS, TOY_START } from "./pet-floor.js";
 import { createPetPicker } from "./pet-picker.js";
 import { PLAY_CONTACT, PLAY_DURATION, readPlayPose } from "./pet-play.js";
 import { dragPropPosition, makePropReturn, readPropReturn } from "./pet-props.js";
+import { createWindowDetails, readWindowView, WINDOW_VIEWS, WINDOW_NIGHT } from "./pet-window.js";
+import { advancePetStars, PET_STARS } from "../../logic/petKeepsake.js";
 
+// 墙面、背景与远处雾色统一使用暖色
 const ROOM_COLOR = 0xeee4cf;
+// 镜头沿前后轴离场景中心的距离
 const CAMERA_DISTANCE = 7.6;
+// 镜头至少保留的水平半宽，让窄屏也能取到主要摆件
 const SCENE_HALF_WIDTH = 3.38;
+// 矮而宽的画布也要容下完整钟面，拖动才不会从画布外开始
+const SCENE_HALF_HEIGHT = 2.22;
+// 按下后移动超过这个像素距离时，按拖动处理
 const TAP_DISTANCE = 8;
+// 限制高分屏上的画布倍率，控制渲染开销
 const MAX_PIXEL_RATIO = 1.6;
+// 转头和视角跟随目标的速度，值越大跟随越快
 const LOOK_DAMPING = 11;
+// 小脚印在地面停留的秒数
 const PRINT_DURATION = 1.8;
+// 落地灯打开时的点光源强度
 const LAMP_INTENSITY = 8;
-const CLOCK_STEP = Math.PI / 30;
+// 灯罩亮起时的发光强度，初始状态和点亮操作共用
+const LAMP_SHADE_GLOW = 0.4;
+// 点按摆件后小猫继续注视它的秒数
 const PROP_REACTION_TIME = 1.3;
+// 鼠标按住物件多久才开始拖动，单位为毫秒
 const HOLD_MS = 280;
+// 两次点球至少间隔的毫秒数，防止连点不断重设球速
 const TAP_FEEDBACK_MS = 280;
-const ACTION_DURATION = { pet: 0.9, play: PLAY_DURATION, feed: 1.14, rest: REST_DURATION };
+// 各照顾动作占用宠物的秒数，动作结束前不重复播放
+const ACTION_DURATION = { pet: PET_DURATION, play: PLAY_DURATION, feed: FEED_DURATION, rest: REST_DURATION };
+// 仙人掌被碰后摇摆的毫秒数，也是两次反馈的最短间隔
+const PLANT_EFFECT_MS = 850;
+// 仙人掌摇摆的频率和最大角度，角度会随时间逐渐减小
+const PLANT_SWAY = { speed: 16, angle: 0.09 };
+// 窗边补光按晨光、晚霞和夜色排列，跟随窗景一起变亮或变暗
+const WINDOW_LIGHT_LEVELS = [2.2, 1.4, 0.25];
+// 空闲时呼吸和摆尾使用同一个节奏，幅度分别限定
+const IDLE_MOTION = { speed: 2.1, breath: 0.009, tail: 0.075 };
+// 从初始视角看小猫时略朝一侧，重置视角也用它
+const DEFAULT_HEADING = -0.2;
+// 鼠标横向移动一个像素对应的视角旋转弧度
+const DRAG_RADIANS_PER_PIXEL = 0.012;
+// 窗口卡顿时限制一次物理和视角更新的时间，关节动画仍按实时时钟播放
+const MAX_FRAME_SECONDS = 0.05;
+// 体型只在前五级长大，避免高级宠物挡住摆件和视角
+const MODEL_SCALE = { base: 0.93, perLevel: 0.036, lastGrowthLevel: 5 };
+// 减弱动效时短暂展示碗里的猫粮，取消走路和低头动作
+const REDUCED_FEED_SECONDS = 0.84;
+// 绘制脚印时与地面保持的轻微间隔，避免深度冲突
+const PAW_TRACK_LIFT = 0.012;
+// 将桌宠等级换成模型尺寸时使用的起始等级
+const FIRST_PET_LEVEL = 1;
+// 球偏离原位超过这个距离时，场景才加入归位队列
+const TOY_RETURN_DISTANCE = 0.09;
+// 玩家直接点球时，力度比小猫主动拨球轻
+const TOY_TAP_STRENGTH = 0.58;
+// 注视摆件时头部可以转过的最大弧度
+const PROP_LOOK_LIMIT = 0.57;
+// 光标只引导小幅转头，保留面向镜头的坐姿
+const POINTER_LOOK = { sensitivity: 0.46, limit: 0.2 };
 
 // 用指定尺寸的盒体搭建窗框和凳腿
 function box(parent, material, x, y, z, width, height, depth) {
@@ -33,15 +82,16 @@ function addBowl(scene) {
   bowl.position.set(BOWL_START.x, 0, BOWL_START.z);
   scene.add(bowl);
   const bowlMaterial = matte(0x427f79);
-  const rim = placeMesh(bowl, new THREE.TorusGeometry(0.36, 0.044, 12, 44), bowlMaterial, 0, 0.18, 0);
+  const rimShape = new THREE.TorusGeometry(BOWL_RADIUS, BOWL_RIM.thickness, 12, 44);
+  const rim = placeMesh(bowl, rimShape, bowlMaterial, 0, BOWL_RIM.height, 0);
   rim.rotation.x = Math.PI / 2;
-  const shape = [new THREE.Vector2(0.01, 0.045), new THREE.Vector2(0.26, 0.045), new THREE.Vector2(0.36, 0.18), new THREE.Vector2(0.31, 0.18), new THREE.Vector2(0.23, 0.091), new THREE.Vector2(0.01, 0.091)];
+  const shape = [new THREE.Vector2(0.01, 0.045), new THREE.Vector2(0.26, 0.045), new THREE.Vector2(BOWL_RADIUS, 0.18), new THREE.Vector2(0.31, 0.18), new THREE.Vector2(0.23, 0.091), new THREE.Vector2(0.01, 0.091)];
   placeMesh(bowl, new THREE.LatheGeometry(shape, 44), bowlMaterial, 0, 0, 0);
   const food = new THREE.Group();
   bowl.add(food);
   const grain = new THREE.SphereGeometry(1, 10, 8);
   const brown = matte(0xb77541);
-  for (let index = 0; index < 10; index = index + 1) {
+  for (let index = 0; index < FOOD_GRAIN_COUNT; index = index + 1) {
     const angle = index * 2.4;
     const distance = 0.07 + index * 0.017;
     oval(food, grain, brown, Math.cos(angle) * distance, 0.12, Math.sin(angle) * distance, 0.061, 0.035, 0.05);
@@ -103,7 +153,7 @@ function addLamp(scene, wood) {
   return { stand: stand, shade: shade, glow: glow };
 }
 
-// 挂钟的分针绕表盘中心转动，不带动边框和刻度
+// 三根指针分别绕同一个表盘中心转动，边框和刻度保持原位
 function addWallClock(scene, wood, linen) {
   const frame = new THREE.Group();
   frame.position.set(-0.82, 2.48, -2.11);
@@ -111,21 +161,24 @@ function addWallClock(scene, wood, linen) {
   const caseShape = new THREE.CylinderGeometry(0.31, 0.31, 0.09, 40);
   const clockCase = placeMesh(frame, caseShape, wood, 0, 0, 0);
   clockCase.rotation.x = Math.PI / 2;
-  placeMesh(frame, new THREE.CircleGeometry(0.27, 40), linen, 0, 0, 0.051);
+  const face = placeMesh(frame, new THREE.CircleGeometry(CLOCK_FACE_RADIUS, 40), linen, 0, 0, 0.051);
   const ink = matte(0x6f4d3a);
   const mark = new THREE.SphereGeometry(0.016, 10, 8);
   for (let position = 0; position < 12; position = position + 1) {
-    const angle = position * CLOCK_STEP * 5;
+    const angle = position / 12 * CLOCK_TURN;
     placeMesh(frame, mark, ink, Math.sin(angle) * 0.225, Math.cos(angle) * 0.225, 0.059);
   }
-  const hourHand = box(frame, ink, -0.052, 0.038, 0.072, 0.12, 0.024, 0.02);
-  hourHand.rotation.z = -0.62;
+  const hourHand = new THREE.Group();
+  frame.add(hourHand);
+  box(hourHand, ink, 0, 0.062, 0.072, 0.024, 0.14, 0.016);
   const minuteHand = new THREE.Group();
-  minuteHand.rotation.z = -0.4;
   frame.add(minuteHand);
   box(minuteHand, ink, 0, 0.08, 0.08, 0.019, 0.19, 0.018);
+  const secondHand = new THREE.Group();
+  frame.add(secondHand);
+  box(secondHand, matte(0xb05537), 0, 0.092, 0.096, 0.008, 0.23, 0.008);
   placeMesh(frame, mark, ink, 0, 0, 0.096);
-  return { frame: frame, minuteHand: minuteHand };
+  return { frame: frame, face: face, hourHand: hourHand, minuteHand: minuteHand, secondHand: secondHand };
 }
 
 // 窗框、地毯和矮凳留在宠物背后，为旋转模型提供清晰的远近参照
@@ -150,10 +203,10 @@ function furnishRoom(scene) {
   windowFrame.position.set(-2.35, 1.42, -2.1);
   scene.add(windowFrame);
   box(windowFrame, deepMint, 0, 0, 0, 1.75, 2.05, 0.19);
-  box(windowFrame, matte(0xf9e8b7), 0, 0, 0.105, 1.5, 1.8, 0.035);
   box(windowFrame, deepMint, 0, 0, 0.14, 0.065, 1.8, 0.04);
   box(windowFrame, deepMint, 0, -0.12, 0.14, 1.51, 0.065, 0.04);
   box(windowFrame, linen, 0, -1.05, 0.23, 1.97, 0.08, 0.44);
+  const windowDetails = createWindowDetails(windowFrame);
 
   const planter = addCactus(scene, wood, peach);
   const lamp = addLamp(scene, wood);
@@ -169,10 +222,11 @@ function furnishRoom(scene) {
   const sunshine = new THREE.PointLight(0xffbd61, 0, 5);
   sunshine.position.set(-2, 1.8, -1.35);
   scene.add(sunshine);
-  const star = makeWindowStar(windowFrame);
   const tracks = makePawTracks(scene);
   const spots = [
     { name: "window", object: windowFrame },
+    { name: "curtain", object: windowDetails.curtains },
+    { name: "chime", object: windowDetails.chime },
     { name: "plant", object: planter.stand },
     { name: "lamp", object: lamp.stand },
     { name: "clock", object: wallClock.frame },
@@ -182,9 +236,13 @@ function furnishRoom(scene) {
     { name: "rug", object: rugEdge },
     { name: "floor", object: plane },
   ];
+  // 星位是窗框的子节点，拾取时仍要区分玻璃、星星和窗帘
+  for (let index = 0; index < PET_STARS.length; index = index + 1) {
+    spots.push({ name: PET_STARS[index].name, object: windowDetails.stars[index] });
+  }
   return {
     toy: toy, bowl: bowl, plant: planter.cactus, lamp: lamp, wallClock: wallClock,
-    spots: spots, sunshine: sunshine, star: star, tracks: tracks,
+    spots: spots, sunshine: sunshine, windowDetails: windowDetails, tracks: tracks,
   };
 }
 
@@ -209,31 +267,6 @@ function makePawTracks(scene) {
   return group;
 }
 
-// 第三次敲窗才会显出玻璃上的小星星，平时将它藏在窗框里
-function makeWindowStar(windowFrame) {
-  const outline = new THREE.Shape();
-  for (let point = 0; point < 10; point = point + 1) {
-    const angle = Math.PI / 2 + point * Math.PI / 5;
-    let radius = 0.19;
-    if (point % 2 === 1) {
-      radius = 0.083;
-    }
-    const horizontal = Math.cos(angle) * radius;
-    const vertical = Math.sin(angle) * radius;
-    if (point === 0) {
-      outline.moveTo(horizontal, vertical);
-    } else {
-      outline.lineTo(horizontal, vertical);
-    }
-  }
-  outline.closePath();
-  const material = new THREE.MeshBasicMaterial({ color: 0xf19d28, side: THREE.DoubleSide });
-  const star = placeMesh(windowFrame, new THREE.ShapeGeometry(outline), material, 0.38, 0.46, 0.178);
-  star.castShadow = false;
-  star.visible = false;
-  return star;
-}
-
 // 暖色主光照亮桌宠，保留少量柔和的补光看清背面
 function lightRoom(scene) {
   scene.add(new THREE.HemisphereLight(0xffe3c1, 0xc5aa93, 1.74));
@@ -249,10 +282,10 @@ function lightRoom(scene) {
   scene.add(sun);
 }
 
-// 窄屏也保留摆件所需的宽度，窗户和仙人掌不会被画布裁开
+// 按画布比例保留摆件所需的宽高，让窗框和挂钟都能完整显示
 function fitCamera(camera, width, height) {
   const aspect = width / height;
-  const halfHeight = Math.max(1.76, SCENE_HALF_WIDTH / aspect);
+  const halfHeight = Math.max(SCENE_HALF_HEIGHT, SCENE_HALF_WIDTH / aspect);
   const halfWidth = halfHeight * aspect;
   camera.left = -halfWidth;
   camera.right = halfWidth;
@@ -293,7 +326,7 @@ function disposeScene(scene) {
 }
 
 // 建立小屋场景，区分桌宠和陈设，拖动不提交任何照顾动作
-export function createPetScene(host, onPet, onExplore, onActivity) {
+export function createPetScene(host, onPet, onExplore, onActivity, onWindowChange, onKeepsake) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   const canvas = renderer.domElement;
   canvas.setAttribute("aria-hidden", "true");
@@ -309,16 +342,18 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
   camera.lookAt(0, 1.13, 0);
   lightRoom(scene);
   const props = furnishRoom(scene);
+  const clockPreview = createClockPreview();
   const pet = createPetModel();
   const motion = createPetMotion(pet);
   const floor = createPetFloor();
   scene.add(pet.root);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const picker = createPetPicker(camera, pet.hitParts, props.spots);
+  const picker = createPetPicker(camera, pet.root, props.spots);
   const rollAxis = new THREE.Vector3();
   const direction = new THREE.Vector3();
+  const focusPoint = new THREE.Vector3();
   const toyRotation = new THREE.Quaternion();
-  let angle = -0.2;
+  let angle = DEFAULT_HEADING;
   let level = 1;
   let reaction = "";
   let reactionStart = 0;
@@ -327,21 +362,22 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
   let targetLook = 0;
   let shownLook = 0;
   let drag = null;
-  let visits = 0;
+  let windowView = 0;
+  let curtainClosed = false;
+  let starProgress = 0;
   let lampOn = true;
   let playTarget = null;
   let propFocus = null;
   let headTurn = 0;
   let propFocusUntil = 0;
   let plantStarted = -Infinity;
-  let windowStarted = -Infinity;
   let toyTapped = -Infinity;
   let tracksStarted = -Infinity;
   let returning = null;
   let pendingAction = "";
   let ready = true;
   const movedProps = new Set();
-  props.lamp.shade.emissiveIntensity = 0.4;
+  props.lamp.shade.emissiveIntensity = LAMP_SHADE_GLOW;
   host.appendChild(canvas);
 
   // 从画布实际尺寸更新取景，不依赖浏览器窗口的宽高
@@ -372,7 +408,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     }
     const position = floor.advance(delta * 1000);
     showToy(position);
-    if (Math.hypot(position.x - TOY_START.x, position.z - TOY_START.z) > 0.09) {
+    if (Math.hypot(position.x - TOY_START.x, position.z - TOY_START.z) > TOY_RETURN_DISTANCE) {
       movedProps.add("toy");
     }
   }
@@ -390,37 +426,50 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     }
   }
 
-  // 小猫靠近正在使用的物件，物件留在原位，动作结束后回到垫子中央
-  function placePet(sinceAction, now) {
+  // 将模型放回默认位置，再读取光标或摆件引导的转头角度
+  function placePet(now) {
     pet.root.position.set(0, 0, 0);
     pet.root.rotation.y = shownAngle;
     if (reduced.matches) {
       return shownLook;
     }
-    const target = props.bowl.group.position;
-    let weight = 0;
-    const reach = 0.9;
-    if (reaction === "play") {
+    if (reaction === "play" || reaction === "feed" || reaction === "rest") {
       return 0;
-    } else if (reaction === "feed" && sinceAction < 1.14) {
-      weight = approachWeight(sinceAction, 0.3, 1.14, 0.31);
-    } else if (reaction === "rest") {
-      pet.root.rotation.y = shownAngle;
-      return 0;
-    } else if (propFocus && now < propFocusUntil) {
+    }
+    if (propFocus && now < propFocusUntil) {
       const look = targetHeading(propFocus, pet.root.position, shownAngle);
-      return THREE.MathUtils.clamp(look, -0.57, 0.57);
+      return THREE.MathUtils.clamp(look, -PROP_LOOK_LIMIT, PROP_LOOK_LIMIT);
     }
-    if (weight > 0) {
-      const distance = Math.hypot(target.x, target.z);
-      if (distance > reach) {
-        const travel = (distance - reach) * weight;
-        pet.root.position.set(target.x / distance * travel, 0, target.z / distance * travel);
+    return shownLook;
+  }
+
+  // 固定食碗位置，小猫走近后才俯身，猫粮随咀嚼逐口减少
+  function poseFeeding(elapsed, size) {
+    const food = props.bowl.food;
+    food.visible = reaction === "feed";
+    if (!food.visible) {
+      return false;
+    }
+    if (reduced.matches) {
+      food.visible = elapsed < REDUCED_FEED_SECONDS;
+      for (const grain of food.children) {
+        grain.visible = true;
       }
-      const turn = targetHeading(target, pet.root.position, shownAngle);
-      pet.root.rotation.y = shownAngle + turn * weight;
+      return false;
     }
-    return shownLook * (1 - weight);
+    const bowl = props.bowl.group.position;
+    const pose = readFeedPose(elapsed, bowl, size);
+    pet.root.position.set(pose.x, 0, pose.z);
+    const turn = targetHeading(bowl, pet.root.position, shownAngle);
+    pet.root.rotation.y = shownAngle + turn * pose.stand;
+    pet.body.scale.y = 1;
+    motion.carry(pose, true);
+    applyFeedLean(pet, pose);
+    const count = pose.foodCount;
+    for (let index = 0; index < food.children.length; index = index + 1) {
+      food.children[index].visible = index < count;
+    }
+    return true;
   }
 
   // 逗玩沿用四足步态，直到爪子碰球才由物理引擎推动玩具
@@ -510,6 +559,29 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     return props.bowl.group;
   }
 
+  // 摆件反馈各自按经过的时间衰减，不改变小猫动作和物理状态
+  function updateRoomEffects(now, delta) {
+    const plantAge = (now - plantStarted) / 1000;
+    const plantDuration = PLANT_EFFECT_MS / 1000;
+    props.plant.rotation.z = 0;
+    if (plantAge < plantDuration && !reduced.matches) {
+      const sway = Math.sin(plantAge * PLANT_SWAY.speed);
+      const remaining = 1 - plantAge / plantDuration;
+      props.plant.rotation.z = sway * remaining * PLANT_SWAY.angle;
+    }
+    const weights = props.windowDetails.update(now, delta, reduced.matches);
+    props.sunshine.intensity = 0;
+    if (!curtainClosed) {
+      let lightLevel = 0;
+      for (let index = 0; index < weights.length; index = index + 1) {
+        const contribution = weights[index] * WINDOW_LIGHT_LEVELS[index];
+        lightLevel = lightLevel + contribution;
+      }
+      props.sunshine.intensity = lightLevel;
+    }
+    props.tracks.visible = now - tracksStarted < PRINT_DURATION * 1000;
+  }
+
   // 保留独立的视角、注视和关节动作，用户可以随时打断前一个动作
   function render(now) {
     const age = now / 1000;
@@ -517,7 +589,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     if (lastFrame > 0) {
       frameTime = Math.max(0, (now - lastFrame) / 1000);
     }
-    const delta = Math.min(0.05, frameTime);
+    const delta = Math.min(MAX_FRAME_SECONDS, frameTime);
     lastFrame = now;
     const sinceAction = Math.max(0, (now - reactionStart) / 1000);
     if (reaction && sinceAction >= ACTION_DURATION[reaction]) {
@@ -529,29 +601,30 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     }
     let idle = 0;
     if (!reduced.matches) {
-      idle = Math.sin(age * 2.1);
+      idle = Math.sin(age * IDLE_MOTION.speed);
       shownAngle = THREE.MathUtils.damp(shownAngle, angle, LOOK_DAMPING, delta);
       shownLook = THREE.MathUtils.damp(shownLook, targetLook, LOOK_DAMPING, delta);
     } else {
       shownAngle = angle;
       shownLook = 0;
     }
-    const size = 0.93 + (level - 1) * 0.036;
+    const visibleLevel = Math.min(level, MODEL_SCALE.lastGrowthLevel);
+    const size = MODEL_SCALE.base + (visibleLevel - FIRST_PET_LEVEL) * MODEL_SCALE.perLevel;
     pet.root.scale.setScalar(size);
-    const focus = placePet(sinceAction, now);
+    const focus = placePet(now);
     headTurn = THREE.MathUtils.damp(headTurn, focus, LOOK_DAMPING, delta);
     pet.head.rotation.y = headTurn;
-    pet.body.scale.y = 1 + 0.009 * idle;
-    pet.tail.rotation.z = 0.075 * idle;
+    pet.body.scale.y = 1 + IDLE_MOTION.breath * idle;
+    pet.tail.rotation.z = IDLE_MOTION.tail * idle;
     if (reaction === "rest") {
       pet.body.scale.y = 1;
       pet.tail.rotation.z = 0;
     }
-    props.bowl.food.visible = reaction === "feed" && sinceAction < 0.84;
     motion.update(frameTime, age, reduced.matches);
     const tidying = updateReturn(now, delta);
     const playing = posePlay(sinceAction, size);
-    if (!tidying && !playing) {
+    const feeding = poseFeeding(sinceAction, size);
+    if (!tidying && !playing && !feeding) {
       motion.clearCarry();
     }
     motion.syncTail();
@@ -559,17 +632,8 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     if (!tidying && !(drag && drag.holding)) {
       updateToy(delta, sinceAction, reduced.matches);
     }
-    const plantAge = (now - plantStarted) / 1000;
-    props.plant.rotation.z = 0;
-    if (plantAge < 0.85 && !reduced.matches) {
-      props.plant.rotation.z = Math.sin(plantAge * 16) * (1 - plantAge / 0.85) * 0.09;
-    }
-    const windowAge = (now - windowStarted) / 1000;
-    props.sunshine.intensity = 0;
-    if (windowAge < 1.5 && !reduced.matches) {
-      props.sunshine.intensity = 7 * (1 - windowAge / 1.5);
-    }
-    props.tracks.visible = now - tracksStarted < PRINT_DURATION * 1000;
+    updateRoomEffects(now, delta);
+    updateClock(now);
     renderer.render(scene, camera);
     if (pendingAction && canReact()) {
       const next = pendingAction;
@@ -583,6 +647,40 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     }
   }
 
+  // 每帧读取设备时间，表盘交互只临时改变时针和分针的角度
+  function updateClock(now) {
+    const date = new Date();
+    const offset = clockPreview.readOffset(now, reduced.matches, date);
+    const angles = readClockAngles(date, offset);
+    const clock = props.wallClock;
+    clock.hourHand.rotation.z = angles.hour;
+    clock.minuteHand.rotation.z = angles.minute;
+    clock.secondHand.rotation.z = angles.second;
+  }
+
+  // 分针跟随鼠标转动，并用当前拨到的时间切换窗景
+  function pointClock(event) {
+    const point = picker.readClockPoint(event, canvas, props.wallClock.face);
+    if (!point) {
+      return false;
+    }
+    const date = new Date();
+    const now = performance.now();
+    const changed = clockPreview.point(point.x, point.y, date, now);
+    if (changed) {
+      updateWindowFromClock(now, date);
+    }
+    return changed;
+  }
+
+  // 只在玩家拨钟时选窗景，指针自动校时经过的时段不会改动窗景
+  function updateWindowFromClock(now, date) {
+    const offset = clockPreview.readOffset(now, false, date);
+    const hour = readClockHour(date, offset);
+    const view = readWindowView(hour);
+    setWindowView(view, now);
+  }
+
   // 按下可移动物件时启动长按计时，点一下仍保留原本的探索动作
   function startDrag(event) {
     if (!event.isPrimary || event.button !== 0 || drag) {
@@ -592,12 +690,32 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     const movable = hit.name === "toy" || hit.name === "bowl";
     drag = {
       id: event.pointerId, x: event.clientX, y: event.clientY, angle: angle, hit: hit,
-      moved: false, holding: false, timer: 0, offsetX: 0, offsetZ: 0,
+      moved: false, holding: false, clockPointed: false, timer: 0, offsetX: 0, offsetZ: 0,
     };
+    if (hit.name === "clock") {
+      canvas.classList.add("pet-scene-holding");
+    }
     if (movable && event.pointerType === "mouse" && !returning && !playTarget && reaction !== "feed") {
       drag.timer = window.setTimeout(grabProp, HOLD_MS);
     }
     canvas.setPointerCapture(event.pointerId);
+  }
+
+  // 超过点按距离后才开始拨针，单击挂钟不受当前时段限制
+  function dragClock(event) {
+    if (!drag.moved) {
+      const horizontal = event.clientX - drag.x;
+      const vertical = event.clientY - drag.y;
+      if (Math.hypot(horizontal, vertical) < TAP_DISTANCE) {
+        return;
+      }
+      drag.moved = true;
+      const start = { clientX: drag.x, clientY: drag.y };
+      drag.clockPointed = pointClock(start);
+    }
+    if (pointClock(event)) {
+      drag.clockPointed = true;
+    }
   }
 
   // 保留抓取位置的偏移，物件不会在长按成功的一刻跳到鼠标中心
@@ -665,11 +783,17 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       if (event.pointerType === "mouse") {
         const area = canvas.getBoundingClientRect();
         const centered = (event.clientX - area.left) / area.width - 0.5;
-        targetLook = THREE.MathUtils.clamp(centered * 0.46, -0.2, 0.2);
+        const look = centered * POINTER_LOOK.sensitivity;
+        targetLook = THREE.MathUtils.clamp(look, -POINTER_LOOK.limit, POINTER_LOOK.limit);
         const hit = picker.read(event, canvas);
-        canvas.classList.toggle("pet-scene-target", hit.name !== "floor");
-        canvas.classList.toggle("pet-scene-grab", hit.name === "toy" || hit.name === "bowl");
+        const canTap = Boolean(hit.name) && hit.name !== "floor" && hit.name !== "window";
+        canvas.classList.toggle("pet-scene-target", canTap);
+        canvas.classList.toggle("pet-scene-grab", hit.name === "toy" || hit.name === "bowl" || hit.name === "clock");
       }
+      return;
+    }
+    if (drag.hit.name === "clock") {
+      dragClock(event);
       return;
     }
     if (drag.holding) {
@@ -683,16 +807,24 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       window.clearTimeout(drag.timer);
     }
     if (drag.moved) {
-      angle = drag.angle + changeX * 0.012;
+      angle = drag.angle + changeX * DRAG_RADIANS_PER_PIXEL;
     }
   }
 
-  // 使用按下时选中的物件，避免移动中的球或小猫在松手前抢走这次点按
+  // 抚摸需要按下和松手都碰到小猫，其他静态摆件沿用按下时的选中结果
   function finishDrag(event) {
     if (!drag || event.pointerId !== drag.id) {
       return;
     }
     const pressed = drag;
+    if (pressed.hit.name === "clock") {
+      dragClock(event);
+      cancelDrag();
+      if (pressed.clockPointed) {
+        sayClockWindow();
+      }
+      return;
+    }
     cancelDrag();
     if (pressed.holding) {
       return;
@@ -702,18 +834,25 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       return;
     }
     if (pressed.hit.name === "pet") {
-      onPet();
+      const released = picker.read(event, canvas);
+      if (released.name === "pet") {
+        onPet();
+      }
       return;
     }
     explore(pressed.hit.name, pressed.hit.point);
   }
 
-  // 陈设只播放场景反馈，点击背景不会改变账户资产或成长值
+  // 陈设只播放场景反馈，挂钟和玻璃不响应点按
   function explore(name, point) {
     const now = performance.now();
+    if (!name || name === "clock" || name === "window") {
+      return;
+    }
     for (const spot of props.spots) {
       if (spot.name === name && name !== "floor" && name !== "rug") {
-        propFocus = spot.object.position;
+        spot.object.getWorldPosition(focusPoint);
+        propFocus = focusPoint;
         propFocusUntil = now + PROP_REACTION_TIME * 1000;
         break;
       }
@@ -722,9 +861,9 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       toyTapped = now;
       direction.set(props.toy.position.x, 0, props.toy.position.z);
       direction.normalize();
-      floor.push(-direction.x * 0.58, -direction.z * 0.58);
+      floor.push(-direction.x * TOY_TAP_STRENGTH, -direction.z * TOY_TAP_STRENGTH);
     }
-    if (name === "plant" && now - plantStarted >= 850) {
+    if (name === "plant" && now - plantStarted >= PLANT_EFFECT_MS) {
       plantStarted = now;
     }
     if (name === "lamp") {
@@ -732,7 +871,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       props.lamp.glow.visible = lampOn;
       props.lamp.shade.emissiveIntensity = 0;
       if (lampOn) {
-        props.lamp.shade.emissiveIntensity = 0.4;
+        props.lamp.shade.emissiveIntensity = LAMP_SHADE_GLOW;
       }
       if (reaction !== "rest") {
         if (lampOn) {
@@ -743,28 +882,30 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
       }
       return;
     }
-    if (name === "clock") {
-      const hand = props.wallClock.minuteHand;
-      hand.rotation.z = hand.rotation.z - CLOCK_STEP;
-    }
     if (name === "floor") {
       tracksStarted = now;
       if (point) {
-        props.tracks.position.set(point.x, point.y + 0.012, point.z);
+        props.tracks.position.set(point.x, point.y + PAW_TRACK_LIFT, point.z);
       } else {
         props.tracks.position.set(0.3, 0.02, 1.55);
       }
     }
-    if (name === "window") {
-      if (now - windowStarted >= 1500) {
-        windowStarted = now;
+    if (name === "curtain") {
+      curtainClosed = props.windowDetails.toggleCurtain(starProgress);
+      reportWindow();
+      if (curtainClosed) {
+        sayWindow("curtain-closed");
+      } else {
+        sayWindow(WINDOW_VIEWS[windowView].topic);
       }
-      visits = visits + 1;
-      if (visits === 3) {
-        props.star.visible = true;
-        if (reaction !== "rest") {
-          onExplore("star");
-        }
+      return;
+    }
+    if (name === "chime") {
+      props.windowDetails.ring(now);
+    }
+    for (const star of PET_STARS) {
+      if (name === star.name) {
+        connectStar(name);
         return;
       }
     }
@@ -773,12 +914,79 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     }
   }
 
+  // 侧栏立即报出时段，玻璃从当前画面逐渐过渡过去
+  function setWindowView(view, now) {
+    if (view === windowView) {
+      return;
+    }
+    windowView = view;
+    props.windowDetails.setView(windowView, starProgress, now, reduced.matches);
+    reportWindow();
+  }
+
+  // 拨到夜色且窗帘打开时，仍给玩家留一句连星提示
+  function sayClockWindow() {
+    if (windowView === WINDOW_NIGHT && !curtainClosed) {
+      sayWindow(WINDOW_VIEWS[WINDOW_NIGHT].topic);
+    } else {
+      sayWindow("clock");
+    }
+  }
+
+  // 只有窗帘拉开且能看见夜空时才连星，完成后交给页面收藏
+  function connectStar(name) {
+    if (windowView !== WINDOW_NIGHT || curtainClosed) {
+      return;
+    }
+    const previous = starProgress;
+    starProgress = advancePetStars(previous, name);
+    props.windowDetails.setStars(starProgress);
+    reportWindow();
+    if (starProgress === PET_STARS.length && previous < starProgress) {
+      const artwork = props.windowDetails.celebrate(performance.now());
+      onKeepsake(artwork);
+      sayWindow("keepsake");
+    } else if (starProgress === 0) {
+      sayWindow("star-retry");
+    } else if (starProgress > previous) {
+      sayWindow("star-next");
+    }
+  }
+
+  // 将当前窗景、窗帘状态和连星进度同步给侧栏
+  function reportWindow() {
+    const showStars = windowView === WINDOW_NIGHT && !curtainClosed;
+    const label = WINDOW_VIEWS[windowView].label;
+    onWindowChange({ label: label, showStars: showStars, curtainClosed: curtainClosed, progress: starProgress });
+  }
+
+  // 小猫睡觉时仍能探索，但不打断睡觉的气泡
+  function sayWindow(topic) {
+    if (reaction !== "rest") {
+      onExplore(topic);
+    }
+  }
+
+  // 切换账户后从晨景重新开始，避免把连星进度留给下一位玩家
+  function resetWindow() {
+    windowView = 0;
+    starProgress = 0;
+    if (curtainClosed) {
+      curtainClosed = props.windowDetails.toggleCurtain(starProgress);
+    }
+    props.windowDetails.setView(windowView, starProgress, performance.now(), reduced.matches);
+    reportWindow();
+  }
+
   // 浏览器取消手势后清除拖动状态
   function cancelDrag() {
     if (!drag) {
       return;
     }
     window.clearTimeout(drag.timer);
+    if (drag.hit.name === "clock" && drag.clockPointed) {
+      clockPreview.release(performance.now(), new Date());
+    }
     if (drag.holding && drag.moved) {
       movedProps.add(drag.hit.name);
     }
@@ -832,7 +1040,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
 
   // 回到进入小屋时的视角
   function resetView() {
-    angle = -0.2;
+    angle = DEFAULT_HEADING;
     clearLook();
   }
 
@@ -845,6 +1053,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
   canvas.addEventListener("lostpointercapture", cancelDrag);
   canvas.addEventListener("pointerleave", clearLook);
   resize();
+  reportWindow();
   renderer.setAnimationLoop(render);
 
   // 退出小屋时停止绘制，移除画布并释放占用的图形资源
@@ -858,13 +1067,7 @@ export function createPetScene(host, onPet, onExplore, onActivity) {
     renderer.dispose();
   }
 
-  return { canReact: canReact, react: react, explore: explore, shiftProp: shiftProp, setLevel: setLevel, rotate: rotate, resetView: resetView, dispose: dispose };
-}
-
-// 在起步和收回时放缓速度，让身体经过目标姿态而不是瞬移
-function approachWeight(elapsed, approach, duration, retreat) {
-  const progress = Math.min(elapsed / approach, (duration - elapsed) / retreat);
-  return THREE.MathUtils.smoothstep(progress, 0, 1);
+  return { canReact: canReact, react: react, explore: explore, shiftProp: shiftProp, setLevel: setLevel, rotate: rotate, resetView: resetView, resetWindow: resetWindow, dispose: dispose };
 }
 
 // 计算当前朝向到物件的最短转角，绕过半圈时也不会突然折返

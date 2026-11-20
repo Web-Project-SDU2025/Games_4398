@@ -34,6 +34,7 @@ public class LoginControlUtil {
 
     /** 验证码有效期（毫秒） */
     private static final long CODE_LIFETIME = 5 * 60 * 1000;
+    /** 保存本进程验证码数据的唯一工具实例 */
     private static final LoginControlUtil INSTANCE = new LoginControlUtil();
     private final SecureRandom random = new SecureRandom();
     private final Map<Integer, Captcha> codes = new HashMap<>();

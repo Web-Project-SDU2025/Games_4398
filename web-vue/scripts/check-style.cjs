@@ -4,6 +4,8 @@ const sources = require("../../scripts/source-files.cjs");
 
 // JavaScript 与 Vue 共用工作区范围，原服务器连接文件由清单保留
 const EXTENSIONS = [".js", ".mjs", ".cjs", ".vue"];
+// 大写的模块级常量集中排在函数前，避免把调参项散在业务实现中
+const MODULE_CONSTANT_NAME = /^[A-Z][A-Z0-9_]+$/;
 // 禁用语法与对应提示，按语法树节点名称查询
 const FORBIDDEN_SYNTAX = {
   ArrowFunctionExpression: "请使用有名称的普通函数",
@@ -26,6 +28,47 @@ function report(
   message,
 ) {
   errors.push(filename + ":" + node.loc.start.line + " " + message);
+}
+
+// 声明说明必须是紧邻上方的中文注释，上一行代码末尾的注释不算
+function hasExplanation(position, comments, source) {
+  for (const comment of comments) {
+    if (comment.end > position) {
+      break;
+    }
+    const gap = source.slice(comment.end, position);
+    const lineStart = source.lastIndexOf("\n", comment.start - 1) + 1;
+    const before = source.slice(lineStart, comment.start);
+    if (!gap.trim() && !before.trim() && /\p{Script=Han}/u.test(comment.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// 检查普通声明及导出的常量，不把函数内的计算结果当作模块配置
+function checkModuleConstants(program, comments, source, filename) {
+  let functionsStarted = false;
+  for (const statement of program.body) {
+    const declaration = statement.declaration || statement;
+    if (declaration.type === "FunctionDeclaration") {
+      functionsStarted = true;
+    }
+    if (declaration.type !== "VariableDeclaration" || declaration.kind !== "const") {
+      continue;
+    }
+    for (const item of declaration.declarations) {
+      if (!item.id.name || !MODULE_CONSTANT_NAME.test(item.id.name)) {
+        continue;
+      }
+      if (functionsStarted) {
+        report(filename, item, "模块常量应在函数之前：" + item.id.name);
+      }
+      if (!hasExplanation(statement.start, comments, source)) {
+        report(filename, item, "常量上方需要中文说明：" + item.id.name);
+      }
+    }
+  }
 }
 
 // 按语法节点检查表达式，字符串中的符号由解析器识别为文字
@@ -66,16 +109,7 @@ function checkNode(
     } else if (parent && parent.type === "CallExpression") {
       declaration = parent.start;
     }
-    let explained = false;
-    for (const comment of comments) {
-      const gap = source.substring(comment.end, declaration);
-      if (comment.end <= declaration && gap.trim() === "") {
-        if (/[\u4e00-\u9fff]/.test(comment.value)) {
-          explained = true;
-        }
-      }
-    }
-    if (!explained) {
+    if (!hasExplanation(declaration, comments, source)) {
       report(filename, node, "函数上方需要中文功能说明");
     }
   }
@@ -112,6 +146,7 @@ function checkFile(filename) {
       report(filename, comment, "注释最后一句末尾不加句号");
     }
   }
+  checkModuleConstants(tree.program, tree.comments, source, filename);
   checkNode(tree.program, null, tree.comments, source, filename);
 }
 

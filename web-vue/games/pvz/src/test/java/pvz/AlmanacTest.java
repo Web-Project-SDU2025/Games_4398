@@ -17,6 +17,7 @@ import pvz.zombie.ZombieCatalog;
 
 /** 检查图鉴入口、全部条目、GIF 实际帧变化和返回路径，避免新增界面影响选关与战斗 */
 public class AlmanacTest {
+    /** 图鉴动画测试的起始毫秒数，保持每次运行一致 */
     private static final long START_TIME = 1000;
 
     /** 参数 assets 是共用素材，root 是素材目录；保存代表性截图供人工核对 */

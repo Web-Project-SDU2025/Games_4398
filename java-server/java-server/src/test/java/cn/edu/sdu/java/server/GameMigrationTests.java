@@ -53,6 +53,13 @@ class GameMigrationTests {
         return games.saveAndFlush(game);
     }
 
+    /** 在事务内准备已有归属的账户，不依赖开发账号当前的字块币余额 */
+    private void addOwnedGame(Integer accountId, Game game) {
+        User account = users.findById(accountId).orElseThrow();
+        account.getGames().add(game);
+        users.saveAndFlush(account);
+    }
+
     /** 对照管理员和普通用户的账户、游戏维护权限 */
     @Test
     void onlyAdministratorCanManageAccountsAndGames() throws Exception {
@@ -69,25 +76,34 @@ class GameMigrationTests {
     void libraryFavoritesAndRecordsBelongToCurrentAccount() throws Exception {
         Game game = createGame();
         String gameId = game.getGameId().toString();
+        // 只匹配本次创建的游戏，其他游戏或记录不影响归属判断
+        String gameRow = "$.data[?(@.gameId == " + gameId + ")]";
+        String scoredRow = "$.data[?(@.gameId == " + gameId + " && @.score == 120)]";
         String collection = "{\"data\":{\"gameId\":" + gameId + ",\"mode\":\"library\",\"added\":true}}";
+        // 同一个入口只允许恢复已有归属，不能用来跳过商城购买
+        client.perform(request("/api/game/collection", collection, 2))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(1));
+        addOwnedGame(2, game);
         client.perform(request("/api/game/collection", collection, 2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(0));
         client.perform(request("/api/game/list", "{\"data\":{\"mode\":\"library\"}}", 2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].gameId").value(game.getGameId()));
+                .andExpect(MockMvcResultMatchers.jsonPath(gameRow).isNotEmpty());
         client.perform(request("/api/game/list", "{\"data\":{\"mode\":\"library\"}}", 3))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty());
+                .andExpect(MockMvcResultMatchers.jsonPath(gameRow).isEmpty());
         String favorite = "{\"data\":{\"gameId\":" + gameId + ",\"mode\":\"favorites\",\"added\":true}}";
         client.perform(request("/api/game/collection", favorite, 2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(0));
         client.perform(request("/api/game/list", "{\"data\":{\"mode\":\"favorites\"}}", 2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].gameId").value(game.getGameId()));
+                .andExpect(MockMvcResultMatchers.jsonPath(gameRow).isNotEmpty());
+        client.perform(request("/api/game/list", "{\"data\":{\"mode\":\"favorites\"}}", 3))
+                .andExpect(MockMvcResultMatchers.jsonPath(gameRow).isEmpty());
         String record = "{\"data\":{\"gameId\":" + gameId + ",\"score\":120,\"durationSeconds\":30}}";
         client.perform(request("/api/game/recordSave", record, 2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(0));
         client.perform(request("/api/game/records", "{\"data\":{}}", 2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data[0].score").value(120));
+                .andExpect(MockMvcResultMatchers.jsonPath(scoredRow).isNotEmpty());
         client.perform(request("/api/game/records", "{\"data\":{}}", 3))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.data").isEmpty());
+                .andExpect(MockMvcResultMatchers.jsonPath(gameRow).isEmpty());
         client.perform(request("/api/game/delete", "{\"data\":{\"gameId\":" + gameId + "}}", 1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.code").value(1));
     }

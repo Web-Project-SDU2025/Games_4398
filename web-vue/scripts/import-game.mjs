@@ -10,6 +10,7 @@ import {
 
 // 导入包使用一份 game.json，命令行可显式指定包外的配置文件
 const PACKAGE_DIRECTORY = process.argv[2];
+// 可选的描述文件位置，从第二个命令行参数读取
 const DESCRIPTOR_FILE = process.argv[3];
 
 // 校验所有文件后才复制到新目录，已有游戏由维护者在原目录更新，导入不覆盖现有工程

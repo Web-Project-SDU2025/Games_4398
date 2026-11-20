@@ -1,8 +1,13 @@
 ﻿param(
+    # 本机交付配置路径，省略时使用后端的本地配置
     [string]$ConfigurationPath = '',
+    # ZIP 和运行目录的输出位置，省略时使用项目下的 dist
     [string]$OutputDirectory = '',
+    # 构建用的 JDK 21，不作为运行环境复制到包内
     [string]$JavaHome = $env:JAVA_HOME,
+    # 已下载的官方运行环境压缩包，仍需通过官方摘要校验
     [string]$RuntimeArchive = '',
+    # 复用已构建的 JAR，仍然执行运行包校验
     [switch]$SkipBuild
 )
 
@@ -10,6 +15,10 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 # 运行环境从官方清单获取，压缩包必须通过清单给出的 SHA-256 校验
 $runtimeCatalog = 'https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jre&os=windows&vendor=eclipse'
+# 获取官方版本清单的最长等待秒数
+$catalogTimeoutSeconds = 60
+# 下载运行环境 ZIP 的最长等待秒数
+$downloadTimeoutSeconds = 300
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $frontendRoot = Join-Path $projectRoot 'web-vue'
 $backendRoot = Join-Path $projectRoot 'java-server\java-server'
@@ -100,7 +109,7 @@ function Remove-EmbeddedSecrets {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::Open($JarPath, [System.IO.Compression.ZipArchiveMode]::Update)
     try {
-        foreach ($name in @('BOOT-INF/classes/application-local.properties', 'BOOT-INF/classes/application-dev.properties')) {
+        foreach ($name in $DeliveryLocalConfigEntries) {
             $entry = $archive.GetEntry($name)
             if ($entry) {
                 $entry.Delete()
@@ -131,7 +140,7 @@ function Remove-EmbeddedSecrets {
 function Get-PackageRuntime {
     param([string]$ExistingArchive)
 
-    $catalog = Invoke-RestMethod -Uri $runtimeCatalog -TimeoutSec 60
+    $catalog = Invoke-RestMethod -Uri $runtimeCatalog -TimeoutSec $catalogTimeoutSeconds
     if ($catalog.Count -eq 0) {
         throw '官方运行环境清单为空，请稍后重新打包'
     }
@@ -142,7 +151,7 @@ function Get-PackageRuntime {
         $archivePath = (Resolve-Path -LiteralPath $ExistingArchive).Path
     } elseif (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
         Write-Host '正在下载教师运行所需的 Java 21 环境'
-        Invoke-WebRequest -Uri $package.link -OutFile $archivePath -UseBasicParsing -TimeoutSec 300
+        Invoke-WebRequest -Uri $package.link -OutFile $archivePath -UseBasicParsing -TimeoutSec $downloadTimeoutSeconds
     }
     $hash = Get-FileHash -LiteralPath $archivePath -Algorithm SHA256
     if ($hash.Hash -ne $package.checksum) {

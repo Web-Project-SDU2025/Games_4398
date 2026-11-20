@@ -1,3 +1,4 @@
+-- 先在账户表增加个人资料字段，再从旧表迁移已有内容
 ALTER TABLE user
     ADD COLUMN name VARCHAR(50),
     ADD COLUMN gender VARCHAR(2),
@@ -22,6 +23,7 @@ SET user.name = person.name,
     user.photo = person.photo,
     user.signature = game_user.signature;
 
+-- 游戏库、收藏和记录改用同一个账户编号，保留原有数据关联
 ALTER TABLE user CHANGE person_id user_id INT NOT NULL AUTO_INCREMENT;
 ALTER TABLE user_game DROP FOREIGN KEY fk_library_user;
 ALTER TABLE user_game ADD CONSTRAINT fk_library_user FOREIGN KEY (user_id) REFERENCES user(user_id);

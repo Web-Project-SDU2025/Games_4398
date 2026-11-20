@@ -33,9 +33,11 @@ import java.util.Random;
 public final class GameRefreshTest {
     /** 用相同总时长模拟两种画面刷新节奏，检查游戏逻辑保持一致 */
     private static final long TOTAL_TIME = 16000;
+    /** 用两种绘制间隔验证战斗结果不受帧率影响，单位为毫秒 */
     private static final long[] FRAME_INTERVALS = {16, 33};
     /** 用明显落后于系统时间的游戏时刻复现浏览器加载后的状态 */
     private static final long ANIMATION_TIME = 1000;
+    /** 连续采样动画画面的时间差，单位为毫秒 */
     private static final long ANIMATION_SAMPLE_INTERVAL = 150;
 
     /** 此类只提供自检入口 */

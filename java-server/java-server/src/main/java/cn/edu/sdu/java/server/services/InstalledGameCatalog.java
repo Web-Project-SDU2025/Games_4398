@@ -23,7 +23,9 @@ public class InstalledGameCatalog {
     /** 游戏入口只接受发布目录中的英文编号，避免配置越过资源目录 */
     private static final String GAME_PATH = "/games/[a-z][a-z0-9-]{0,39}/game\\.json";
 
+    /** 按已发布清单路径识别需要更名的小丑牌旧商品 */
     private static final String JOKER_PATH = "/games/joker-table/game.json";
+    /** 只更新使用原内置游戏编号的条目 */
     private static final String JOKER_NUMBER = "JOKER-TABLE";
 
     private final GameRepository games;

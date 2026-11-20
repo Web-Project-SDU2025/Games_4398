@@ -12,6 +12,7 @@ import java.util.UUID;
 
 /** 将开局、累计时长和结果交给网页，所有游戏事件使用同一协议 */
 public final class BrowserGameplay {
+    /** 保存尚未由网页取走的游玩事件，按产生顺序交给运行器 */
     private static final Queue<JsonObject> EVENTS = new ArrayDeque<JsonObject>();
 
     /** 此类只保存浏览器运行实例中的待处理事件 */

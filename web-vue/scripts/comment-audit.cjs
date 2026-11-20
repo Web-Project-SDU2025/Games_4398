@@ -5,6 +5,7 @@ const sources = require("../../scripts/source-files.cjs");
 
 // 扫描项目维护的源码，文件保留和生成目录沿用公共清单
 const DEFENSIVE = /兜底|万一|免得|不值得|不用担心|只好|不是笔误|收摊|攥着/;
+// 注释读取规则覆盖项目维护的这些文件类型
 const EXTENSIONS = [
   ".java",
   ".js",
@@ -17,7 +18,11 @@ const EXTENSIONS = [
   ".ps1",
   ".cmd",
   ".bat",
+  ".sql",
+  ".xml",
 ];
+// SQL 的引号内容先作为普通数据跳过，避免把种子文字里的符号认作注释
+const SQL_TOKENS = /'(?:\\.|''|[^'\\])*'|"(?:\\.|""|[^"\\])*"|`(?:``|[^`])*`|--(?=\s)[^\r\n]*|#[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const errors = [];
 let checked = 0;
 
@@ -54,7 +59,7 @@ function auditFile(filename, absolute) {
     for (const comment of tree.comments) {
       inspectComment(comment.value, filename, source, comment.start);
     }
-  } else if (extension === ".vue" || extension === ".html") {
+  } else if (extension === ".vue" || extension === ".html" || extension === ".xml") {
     for (const match of source.matchAll(/<!--[\s\S]*?-->/g)) {
       inspectComment(match[0].slice(4, -3), filename, source, match.index);
     }
@@ -69,6 +74,13 @@ function auditFile(filename, absolute) {
       const start = style.index + style[0].indexOf(">") + 1;
       for (const comment of style[1].matchAll(/\/\*[\s\S]*?\*\//g)) {
         inspectComment(comment[0], filename, source, start + comment.index);
+      }
+    }
+  } else if (extension === ".sql") {
+    for (const match of source.matchAll(SQL_TOKENS)) {
+      const token = match[0];
+      if (token.startsWith("--") || token.startsWith("#") || token.startsWith("/*")) {
+        inspectComment(token, filename, source, match.index);
       }
     }
   } else if (extension === ".java" || extension === ".cs") {

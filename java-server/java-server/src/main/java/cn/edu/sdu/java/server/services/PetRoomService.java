@@ -22,26 +22,55 @@ import org.springframework.transaction.annotation.Transactional;
 /** 维护桌宠养成和用品购买，所有写入与字块币商城共用同一个账户锁 */
 @Service
 public class PetRoomService {
+    // 没有自定义昵称时，小屋和排行榜都显示这个名字
     private static final String DEFAULT_NICKNAME = "小橙";
+    // 昵称长度上限与存储字段和输入框保持一致
     private static final int NICKNAME_LIMIT = 24;
+    // 饱腹、精力和亲密度共用的满值
     private static final int MAX_METER = 100;
+    // 首次进入小屋时宠物的饱腹值
+    private static final int START_FULLNESS = 52;
+    // 首次进入小屋时宠物的亲密度
+    private static final int START_BOND = 20;
+    // 首次进入小屋时宠物的精力
+    private static final int START_ENERGY = 78;
+    // 新存档获赠的猫粮份数
+    private static final int START_FOOD = 2;
+    // 粮仓能存放的最大份数
     private static final int MAX_FOOD = 30;
+    // 每份猫粮的字块币价格，由服务端扣除
     private static final int FOOD_PRICE = 8;
+    // 喂一份猫粮恢复的饱腹值，不超过满值
     private static final int FOOD_FILL = 24;
+    // 喂一份猫粮获得的等级经验
     private static final int FOOD_EXPERIENCE = 16;
+    // 每次逗玩消耗的精力
     private static final int PLAY_COST = 18;
+    // 每次逗玩消耗的饱腹值
     private static final int PLAY_HUNGER = 12;
+    // 每次休息恢复的精力
     private static final int REST_GAIN = 26;
+    // 一次有效摸摸增加的亲密度
     private static final int PET_BOND = 4;
+    // 一次逗玩增加的亲密度
     private static final int PLAY_BOND = 8;
+    // 小橙总等级上限
+    private static final int MAX_LEVEL = 100;
+    // 每升一级所需的经验
     private static final int LEVEL_EXPERIENCE = 40;
-    private static final int MAX_LEVEL = 5;
+    // 从一级升到满级需要的总经验，超过后不再累计等级经验
     private static final int MAX_EXPERIENCE = (MAX_LEVEL - 1) * LEVEL_EXPERIENCE;
+    // 公开排行显示的人数，榜外还会附带本人名次
     private static final int LEADERBOARD_LIMIT = 20;
+    // 两次有效摸摸至少间隔的毫秒数
     private static final long PET_INTERVAL = 5000;
+    // 有效摸摸增加的成长值
     private static final int PET_POINTS = 2;
+    // 逗玩增加的成长值
     private static final int PLAY_POINTS = 6;
+    // 有效休息增加的成长值
     private static final int REST_POINTS = 1;
+    // 喂食另计的成长值，不含等级经验
     private static final int FEED_POINTS = 5;
     private final PetRoomRepository rooms;
     private final PetCareRepository careRecords;
@@ -66,10 +95,10 @@ public class PetRoomService {
         }
         PetRoom room = new PetRoom();
         room.setUserId(ownerId);
-        room.setFullness(52);
-        room.setBond(20);
-        room.setEnergy(78);
-        room.setFood(2);
+        room.setFullness(START_FULLNESS);
+        room.setBond(START_BOND);
+        room.setEnergy(START_ENERGY);
+        room.setFood(START_FOOD);
         return rooms.save(room);
     }
 
@@ -84,6 +113,7 @@ public class PetRoomService {
         Map<String, Object> view = new LinkedHashMap<String, Object>();
         view.put("nickname", rooms.readNickname(room.getUserId()).orElse(DEFAULT_NICKNAME));
         view.put("nicknameLimit", NICKNAME_LIMIT);
+        view.put("meterMax", MAX_METER);
         view.put("fullness", room.getFullness());
         view.put("bond", room.getBond());
         view.put("energy", room.getEnergy());

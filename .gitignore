@@ -38,6 +38,7 @@ web-vue/games/*/build/
 **/.env.local
 **/.env.*.local
 **/application-local.properties
+**/application-local-db.yml
 **/application-dev.properties
 database/backups/
 web-db.sql

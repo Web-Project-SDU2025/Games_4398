@@ -9,12 +9,17 @@ import java.util.regex.Pattern;
 
 /** 检查项目 Java 源码的基础风格，识别字符串和注释后再检查，避免误报界面文字 */
 public class JavaStyleTest {
+    /** 先找出字符串和注释，语法检查不误判其中的符号 */
     private static final Pattern TOKENS = Pattern.compile(
         "//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'");
+    /** 检查注释行末的中英文句号 */
     private static final Pattern COMMENT_END = Pattern.compile("[。.]\\s*(?:\\*/|$)", Pattern.MULTILINE);
+    /** 需要改成普通语句的运算符与回调写法 */
     private static final Pattern SHORTCUTS = Pattern.compile(
         "\\+\\+|--|\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^=|<<=|>>=|->|::|\\.\\.\\.");
+    /** 检查三目运算符，泛型通配符不是条件表达式 */
     private static final Pattern TERNARY = Pattern.compile("\\?(?!\\s*(?:extends|super)\\b|\\s*[,>])");
+    /** 检查缺少独立类名的实现 */
     private static final Pattern ANONYMOUS = Pattern.compile(
         "new\\s+[A-Za-z][A-Za-z0-9_.$]*(?:\\s*<[^;{}]*>)?\\s*\\([^;{}]*\\)\\s*\\{");
 

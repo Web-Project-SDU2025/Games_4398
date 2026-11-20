@@ -13,10 +13,15 @@ import pvz.world.Layout;
 
 /** 在原战场上弹出字块币，白光扩散后淡入原有胜利画面 */
 final class VictoryAnimation {
+    /** 奖励金币弹出的毫秒数 */
     static final long POP_DURATION = 640;
+    /** 金币闪烁展示的毫秒数 */
     static final long FLASH_DURATION = 2850;
+    /** 结算图层淡出的毫秒数 */
     static final long FADE_DURATION = 650;
+    /** 金币外缘和奖励高光的颜色 */
     private static final Color GOLD = new Color(255, 210, 121);
+    /** 金币正面字样的深色 */
     private static final Color COIN_FACE = new Color(66, 46, 23);
     private static BufferedImage light;
 

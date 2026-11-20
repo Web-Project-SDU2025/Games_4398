@@ -1,10 +1,13 @@
 /* 状态和补给集中在操作栏，暖色画布留给小橘和房间摆件 */
 .pet-room {
+  /* 画布底色与气泡深色文字，画面本身由 Three.js 绘制 */
   --pet-stage: #eee4cf;
   --pet-ink: #183a34;
+  /* 成长和状态用于强调的薄荷、金色和浅橙 */
   --pet-accent: #80d3be;
   --pet-gold: #f3be77;
   --pet-peach: #ef9d88;
+  /* 档案、弹窗和操作按钮的背景、边线与文字颜色 */
   --pet-button: #23403a;
   --pet-surface: #162a26;
   --pet-line: #3a554d;
@@ -19,6 +22,7 @@
 }
 
 .pet-room-stage {
+  /* 视角按钮的固定宽度，气泡也据此给按钮预留空间 */
   --pet-camera-size: 44px;
   position: relative;
   min-width: 0;
@@ -42,7 +46,8 @@
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: pan-y;
+  /* 单指拨钟时保留完整拖动轨迹，双指仍可缩放页面 */
+  touch-action: pinch-zoom;
   cursor: grab;
 }
 
@@ -97,10 +102,155 @@
   pointer-events: none;
 }
 
+.pet-room-window-state {
+  color: var(--pet-muted);
+  font-size: var(--text-small);
+}
+
+/* 摆件和夜空星位共用三列，按钮文字变长时也不会挤乱列宽 */
 .pet-room-explore {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(44px, 1fr);
+  gap: var(--space-sm);
+}
+
+.pet-room .pet-room-explore button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  justify-content: start;
+  width: 100%;
+  padding-inline: var(--space-xs);
+  text-align: left;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pet-room-explore button[aria-pressed="true"] {
+  border-color: var(--pet-gold);
+}
+
+/* 明信片以湖蓝插画和暖白纸面区分正反面，铜色只用于墨印和邮戳 */
+.platform-main .pet-room dialog.pet-keepsake-dialog {
+  width: min(38rem, calc(100% - 2 * var(--space-md)));
+  max-height: calc(100dvh - 2 * var(--space-md));
+}
+
+.pet-keepsake {
+  --postcard-paper: #f8f4e9;
+  --postcard-ink: #203a3a;
+  --postcard-muted: #495e5b;
+  --postcard-rule: #b6b7a5;
+  --postcard-stamp: #805339;
+  --postcard-serif: "Noto Serif CJK SC", "Songti SC", SimSun, serif;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  margin: var(--space-sm) 0 0;
+  border: 1px solid var(--postcard-rule);
+  border-radius: var(--radius-control);
+  background: var(--postcard-paper);
+  color: var(--postcard-ink);
+  overflow-wrap: anywhere;
+}
+
+.pet-keepsake-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pet-keepsake figcaption {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.pet-keepsake-postmark {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  align-self: flex-end;
+  width: 64px;
+  height: 64px;
+  box-sizing: border-box;
+  border: 3px double var(--postcard-stamp);
+  border-radius: 50%;
+  color: var(--postcard-stamp);
+  font-size: 11px;
+  transform: rotate(-9deg);
+}
+
+.pet-keepsake-postmark .i-ep-star {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.platform-main .pet-room .pet-keepsake h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--postcard-ink);
+  font-family: var(--postcard-serif);
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pet-keepsake-signature {
+  display: grid;
   gap: var(--space-xs);
+  width: 100%;
+  margin-top: auto;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--postcard-rule);
+  color: var(--postcard-muted);
+  font-size: var(--text-small);
+}
+
+.pet-keepsake p {
+  margin: 0 0 var(--space-sm);
+  line-height: 1.65;
+}
+
+@media (min-width: 36rem) {
+  .pet-keepsake {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 35.99rem) {
+  .pet-keepsake-image {
+    height: min(14rem, 32dvh);
+    object-fit: cover;
+    object-position: center 31%;
+  }
+}
+
+/* 入口只在刚解锁时亮一次，重新打开弹窗不会重播奖励动效 */
+.pet-room .pet-keepsake-open {
+  border-color: var(--pet-gold);
+  animation: pet-keepsake-reveal var(--dur-dialog) var(--ease-out) both;
+}
+
+@keyframes pet-keepsake-reveal {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-room .pet-keepsake-open {
+    animation: pet-keepsake-fade var(--dur-reduced) var(--ease-out) both;
+  }
+}
+
+@keyframes pet-keepsake-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .pet-room-care {

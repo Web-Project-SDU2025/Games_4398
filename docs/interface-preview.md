@@ -26,11 +26,13 @@
 
 ## 桌宠小屋
 
-| 小屋档案 | 修改昵称 |
+| 小屋档案 | 窗外夜色 |
 | :---: | :---: |
-| [![小屋档案](images/pet-room.png)](images/pet-room.png) | [![修改昵称](images/pet-room-rename.png)](images/pet-room-rename.png) |
-| **成长排行榜** | **小橙休息** |
-| [![成长排行榜](images/pet-room-ranking.png)](images/pet-room-ranking.png) | [![小橙休息](images/pet-room-rest.png)](images/pet-room-rest.png) |
+| [![小屋档案](images/pet-room.png)](images/pet-room.png) | [![窗外夜色](images/pet-room-night.png)](images/pet-room-night.png) |
+| **小橙进食** | **小橙休息** |
+| [![小橙进食](images/pet-room-feed.png)](images/pet-room-feed.png) | [![小橙休息](images/pet-room-rest.png)](images/pet-room-rest.png) |
+
+[星空明信片](images/pet-room-postcard.png) · [修改昵称](images/pet-room-rename.png) · [成长排行榜](images/pet-room-ranking.png)
 
 ## 消息、账户与管理
 

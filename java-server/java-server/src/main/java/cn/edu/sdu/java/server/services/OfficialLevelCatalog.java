@@ -134,14 +134,15 @@ public class OfficialLevelCatalog {
         }
     }
 
-    /**
-     * 读取商城显示的通关奖励
-     * 从游戏配置文件读取默认奖励金额，商城页面会显示这个数字
-     */
+    /** 从游戏配置读取商城默认奖励，并将金额限制在可发放范围内 */
     public long reward(String path) {
         try {
-            return Math.max(0, Math.min(GameplayRules.MAX_LEVEL_REWARD,
-                manifest(path).path("gameplay").path("reward").asLong(0)));
+            JsonNode config = manifest(path);
+            JsonNode gameplay = config.path("gameplay");
+            JsonNode reward = gameplay.path("reward");
+            long configuredReward = reward.asLong(0);
+            long limitedReward = Math.min(GameplayRules.MAX_LEVEL_REWARD, configuredReward);
+            return Math.max(0, limitedReward);
         } catch (Exception error) {
             return 0;
         }

@@ -1,7 +1,9 @@
 ﻿param(
     [Parameter(Mandatory = $true)]
     [string]$PackageDirectory,
+    # 使用独立端口验证，不占用开发后端的端口
     [int]$Port = 22322,
+    # 只跳过实际 AI 问答，仍核对运行包的 AI 配置
     [switch]$SkipAi
 )
 
@@ -9,7 +11,12 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 # 验证使用明确的现有管理员，只读业务接口，不创建用户或修改资金
 $testUsername = 'admin'
+# 云端问答可能耗时较长，业务请求单独使用这个超时秒数
 $apiTimeoutSeconds = 75
+# 读取首页和游戏清单的最长等待秒数
+$staticTimeoutSeconds = 15
+# 验证令牌的有效期，单位为秒
+$testTokenSeconds = 300
 # 验证图片保留完整封面比例，宽度限制使请求小于正式图片体积上限
 $testImageWidth = 480
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -37,7 +44,7 @@ function New-DeliveryTestToken {
     $encoding = [System.Text.Encoding]::UTF8
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     $header = $encoding.GetBytes('{"alg":"HS256","typ":"JWT"}')
-    $payload = @{ sub = $Username; iat = $now; exp = $now + 300 }
+    $payload = @{ sub = $Username; iat = $now; exp = $now + $testTokenSeconds }
     $payloadText = ConvertTo-Json -InputObject $payload -Compress
     $payloadBytes = $encoding.GetBytes($payloadText)
     $headerPart = ConvertTo-TokenPart -Bytes $header
@@ -117,24 +124,26 @@ try {
         throw '右上角账户切换未正常提供账户列表'
     }
     $report.Add('PASS: local account switching')
-    $homepage = Invoke-WebRequest -Uri ($address + '/MainPage') -UseBasicParsing -TimeoutSec 15
+    $homepage = Invoke-WebRequest -Uri ($address + '/MainPage') -UseBasicParsing -TimeoutSec $staticTimeoutSeconds
     if ($homepage.Content -notmatch 'id="app"') {
         throw '后端没有提供已构建的网页入口'
     }
-    $registry = Invoke-RestMethod -Uri ($address + '/games/registry.json') -TimeoutSec 15
+    $registry = Invoke-RestMethod -Uri ($address + '/games/registry.json') -TimeoutSec $staticTimeoutSeconds
     foreach ($gamePath in @('/games/pvz/game.json', '/games/billiards/game.json', '/games/joker-table/game.json')) {
         if ($registry -notcontains $gamePath) {
             throw ('游戏清单缺少：' + $gamePath)
         }
-        $game = Invoke-RestMethod -Uri ($address + $gamePath) -TimeoutSec 15
+        $game = Invoke-RestMethod -Uri ($address + $gamePath) -TimeoutSec $staticTimeoutSeconds
         if (-not $game.id) { throw ('游戏配置无效：' + $gamePath) }
     }
     $report.Add('PASS: website and three game manifests')
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $jarPath = Join-Path $packageRoot 'app\4398.jar'
     $archive = [System.IO.Compression.ZipFile]::OpenRead($jarPath)
-    if ($archive.GetEntry('BOOT-INF/classes/application-local.properties')) {
-        throw '交付 JAR 中仍存在开发配置'
+    foreach ($name in $DeliveryLocalConfigEntries) {
+        if ($archive.GetEntry($name)) {
+            throw ('交付 JAR 中仍存在开发配置：' + $name)
+        }
     }
     foreach ($name in @('java-player.js', 'native-player.js', 'pvz/game.jar', 'pvz/assets.zip', 'joker-table/runtime/index.html', 'joker-table/media/cover.jpg')) {
         $entry = $archive.GetEntry('BOOT-INF/classes/public/games/' + $name)

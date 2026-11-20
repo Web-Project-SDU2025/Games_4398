@@ -10,7 +10,9 @@ server:
     enabled: true
 spring:
   config:
-    import: optional:classpath:application-local.properties
+    import:
+      - optional:classpath:application-local.properties
+      - optional:classpath:application-local-db.yml
   application:
     name: java-server
   datasource:

@@ -134,7 +134,9 @@ import { useAppStore } from "../stores/app.js";
 
 // 键盘每次移动宠物的距离，单位为像素
 const KEYBOARD_DISTANCE = 20;
+// 桌宠离窗口顶部不足这个像素距离时，把气泡放到下方
 const THOUGHT_CLEARANCE = 136;
+// 自动气泡每次停留的毫秒数，悬停时仍可继续阅读
 const THOUGHT_VISIBLE_MS = 3600;
 
 // 记录浮窗和气泡状态，聊天记录仍交给客服组件管理

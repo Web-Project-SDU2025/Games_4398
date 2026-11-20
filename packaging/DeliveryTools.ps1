@@ -7,6 +7,13 @@ $DeliveryPortAttempts = 20
 $DeliveryStartupSeconds = 180
 $DeliveryProbeSeconds = 3
 
+# 教师包从外部配置读取凭据，打包和验收共用这份 JAR 内本机配置清单
+$DeliveryLocalConfigEntries = @(
+    'BOOT-INF/classes/application-local.properties'
+    'BOOT-INF/classes/application-dev.properties'
+    'BOOT-INF/classes/application-local-db.yml'
+)
+
 # 读取交付配置的键值，不将数据库密码或云端密钥显示到终端
 function Read-DeliveryProperties {
     param([string]$Path)

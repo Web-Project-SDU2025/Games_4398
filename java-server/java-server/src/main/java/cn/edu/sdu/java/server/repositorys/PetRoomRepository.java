@@ -12,8 +12,10 @@ import org.springframework.data.repository.query.Param;
 public interface PetRoomRepository extends JpaRepository<PetRoom, Integer> {
     // 排行和个人档案共用计分口径，消费分只读取宠物用品的实际扣款
     String PURCHASE_PREFIX = "pet-food:";
+    // 只累计猫粮实际扣款，不把退款或其他消费计入成长
     String SPENDING = "select user_id, sum(-amount) as spent from blockcoin_entry "
         + "where amount < 0 and entry_id like '" + PURCHASE_PREFIX + "%' group by user_id";
+    // 合并昵称、互动和实付支出，作为公开排名的计分来源
     String SCORES = "select room.user_id, "
         + "names.nickname, "
         + "1 + room.experience + coalesce(care.care_points, 0) as interaction_points, "

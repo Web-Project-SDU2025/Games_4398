@@ -5,7 +5,9 @@ import { STROKE } from "./stroke.mjs";
 // 画面颜色与原球台保持一致，线宽和球杆长度使用逻辑像素
 const COLORS = { aim: "#ffffff99", target: "#4fc3f7", cue: "#e8c98a",
   legal: "#66bb6a", foul: "#e53935" };
+// 画布中球杆的长度，单位为像素
 const CUE_LENGTH = 300;
+// 瞄准时目标球方向线的长度，单位为像素
 const TARGET_GUIDE = 90;
 // 白球碰撞后方向线的长度，贴球时仍可从白球轮廓外读出方向，单位为逻辑像素
 const CUE_GUIDE = 60;

@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 public final class MainGameTest {
     /** 主线程在限定时间内等待具名游戏线程返回结果 */
     private static final int WAIT_SECONDS = 10;
+    /** 启动的游戏入口完成时释放，让测试线程继续检查结果 */
     private static final CountDownLatch COMPLETED = new CountDownLatch(1);
     private static String[] received;
 

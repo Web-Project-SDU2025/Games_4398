@@ -38,12 +38,17 @@ public class CheckJavaStyle {
     );
     /** 原服务器连接文件沿用用户指定风格，目录清单是跨语言检查的共同依据 */
     private static final Path PRESERVED_FILES = Path.of("scripts/preserved-files.txt");
+    /** 不扫描编译输出、外部依赖和游戏素材 */
     private static final List<String> IGNORED_DIRECTORIES = List.of("build", "assets", "lib", "target");
     /** 先分开字符串与注释，再检查注释文字，示例代码和路径字符串保持原义 */
     private static final Pattern SOURCE_TOKENS = Pattern.compile(
         "\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|//[^\\r\\n]*|/\\*[\\s\\S]*?\\*/");
+    /** 识别注释行末的中英文句号 */
     private static final Pattern COMMENT_END = Pattern.compile("[。.]+\\s*(?:\\*/|$)", Pattern.MULTILINE);
+    /** 定位常见的自我辩护和含糊表达，检查结果提供具体行号 */
     private static final Pattern DEFENSIVE_COMMENT = Pattern.compile("兜底|万一|免得|不值得|不用担心|只好|不是笔误|收摊|攥着");
+    /** 只对标准常量名要求单独中文说明，框架字段和序列化编号另有约定 */
+    private static final Pattern CONSTANT_NAME = Pattern.compile("[A-Z][A-Z0-9_]+");
 
     /** 收集指定目录下的 Java 文件，子目录递归检查 */
     private static void collectFiles(
@@ -172,6 +177,9 @@ public class CheckJavaStyle {
             if (node instanceof MethodTree) {
                 return ((MethodTree) node).getName().toString();
             }
+            if (node instanceof VariableTree) {
+                return ((VariableTree) node).getName().toString();
+            }
             return ((ClassTree) node).getSimpleName().toString();
         }
 
@@ -185,11 +193,18 @@ public class CheckJavaStyle {
             for (Tree member : node.getMembers()) {
                 if (member instanceof MethodTree) {
                     methodsStarted = true;
-                } else if (methodsStarted && member instanceof VariableTree) {
+                } else if (member instanceof VariableTree) {
                     VariableTree field = (VariableTree) member;
-                    if (field.getModifiers().getFlags().contains(Modifier.STATIC)
-                            && field.getModifiers().getFlags().contains(Modifier.FINAL)) {
-                        report(field, "可配置常量应放在所属类的方法之前");
+                    boolean isInterface = node.getKind() == Tree.Kind.INTERFACE;
+                    boolean explicitConstant = field.getModifiers().getFlags().contains(Modifier.STATIC)
+                        && field.getModifiers().getFlags().contains(Modifier.FINAL);
+                    if (isInterface || explicitConstant) {
+                        if (methodsStarted) {
+                            report(field, "可配置常量应放在所属类的方法之前");
+                        }
+                        if (CONSTANT_NAME.matcher(field.getName().toString()).matches()) {
+                            checkExplanation(field);
+                        }
                     }
                 }
             }

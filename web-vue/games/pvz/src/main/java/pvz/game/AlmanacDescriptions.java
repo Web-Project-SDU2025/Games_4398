@@ -9,6 +9,7 @@ import pvz.zombie.ZombieDefinition;
 
 /** 只保存图鉴的中文名称与能力介绍，数值从游戏资料读取，避免调整平衡后介绍仍显示旧数据 */
 public final class AlmanacDescriptions {
+    /** 按植物编号排列的图鉴说明，供左侧列表和详情共用 */
     private static final String[][] PLANTS = {
         {"SunFlower", "向日葵", "持续生产阳光，为后续种植提供资源"},
         {"TwinSunflower", "双子向日葵", "每次同时生产两颗阳光，适合需要更多资源的防线"},
@@ -32,6 +33,7 @@ public final class AlmanacDescriptions {
         {"WallNutBowling", "坚果保龄球", "保龄球关卡专用，向前滚动撞伤僵尸，命中后在行间弹跳"},
         {"RedWallNutBowling", "爆炸坚果保龄球", "保龄球关卡专用，接触僵尸后爆炸，波及附近敌人"}
     };
+    /** 按僵尸编号排列的图鉴说明，顺序与僵尸目录一致 */
     private static final String[][] ZOMBIES = {
         {"Zombie", "没有防具，沿所在行前进，接触植物后啃食"},
         {"ConeheadZombie", "路障提供额外血量，路障被打掉后露出普通僵尸本体"},

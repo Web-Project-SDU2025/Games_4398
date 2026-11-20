@@ -43,6 +43,7 @@ import static org.mockito.Mockito.*;
 
 /** 使用独立内存替身检查字块币交易边界，课程数据库保持原值 */
 class BlockcoinTests {
+    /** 为消费和通关用例提供固定的业务编号 */
     private static final String RUN = "a88f3c18-67c7-46fa-bd50-66e8566b29a4";
     /** 管理员操作使用固定合法编号，重试应复用此编号 */
     private static final String OPERATION = "ce2e3140-c77f-4088-885a-e4c7988f0914";
@@ -167,6 +168,38 @@ class BlockcoinTests {
         verify(rooms, times(2)).save(room);
     }
 
+    /** 满级小橙仍可互动成长，继续喂食不会溢出等级经验 */
+    @Test
+    void maximumPetLevelIsOneHundredAndCareCanStillIncreaseGrowth() {
+        Fixture fixture = fixture(30);
+        PetRoomRepository rooms = mock(PetRoomRepository.class);
+        PetCareRepository records = mock(PetCareRepository.class);
+        PetRoom room = new PetRoom();
+        room.setUserId(12);
+        room.setExperience(3952);
+        room.setFood(2);
+        room.setFullness(52);
+        PetCare care = new PetCare();
+        when(rooms.findById(12)).thenReturn(Optional.of(room));
+        when(records.findById(12)).thenReturn(Optional.of(care));
+        PetRoomService pets = new PetRoomService(rooms, fixture.service, records, fixture.petBatches);
+
+        Map<?, ?> full = (Map<?, ?>) pets.readRoom().getData();
+        assertEquals(99, full.get("level"));
+        assertEquals(100, full.get("maxLevel"));
+        assertEquals(32, full.get("progress"));
+        Map<?, ?> fed = (Map<?, ?>) pets.interact("feed").getData();
+        assertEquals(100, fed.get("level"));
+        assertEquals(40, fed.get("progress"));
+        assertEquals(3960, room.getExperience());
+        assertEquals(3966L, fed.get("growth"));
+        room.setFullness(52);
+        Map<?, ?> fedAgain = (Map<?, ?>) pets.interact("feed").getData();
+        assertEquals(100, fedAgain.get("level"));
+        assertEquals(3960, room.getExperience());
+        assertEquals(3971L, fedAgain.get("growth"));
+    }
+
     /** 新宠物从一点成长值起步，短时间重复抚摸不会再次记分 */
     @Test
     void petGrowthStartsAboveZeroAndRewardsCare() {
@@ -223,6 +256,8 @@ class BlockcoinTests {
 
         Map<?, ?> initial = (Map<?, ?>) pets.readRoom().getData();
         assertEquals("小橙", initial.get("nickname"));
+        assertEquals(100, initial.get("meterMax"));
+        assertEquals(100, initial.get("maxLevel"));
         assertEquals(1, pets.rename("  ").getCode());
         assertEquals(1, pets.rename("小橙\n奶糖").getCode());
         assertEquals(1, pets.rename("橙".repeat(25)).getCode());

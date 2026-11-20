@@ -18,25 +18,43 @@ import pvz.tools.TextDrawing;
 
 /** 管理选关页布局和绘制，关卡启动仍交给 Game，避免选关界面改变战斗数据 */
 public class LevelSelection {
+    /** 关卡封面每行摆放的列数 */
     private static final int COLUMNS = 3;
+    /** 关卡封面每页摆放的行数 */
     private static final int ROWS = 2;
+    /** 每页容量由封面网格的行列数决定 */
     private static final int PAGE_SIZE = COLUMNS * ROWS;
+    /** 第一张卡片离左边的像素距离 */
     private static final int FIRST_LEFT = 70;
+    /** 第一张卡片离顶部的像素距离 */
     private static final int FIRST_TOP = 110;
+    /** 相邻两列卡片起点之间的像素距离 */
     private static final int COLUMN_GAP = 230;
+    /** 相邻两行卡片起点之间的像素距离 */
     private static final int ROW_GAP = 192;
+    /** 卡片绘制和点击区域的宽度 */
     private static final int TILE_WIDTH = 200;
+    /** 卡片绘制和点击区域的高度 */
     private static final int TILE_HEIGHT = 176;
+    /** 封面扣除卡片两侧留白后的宽度 */
     private static final int COVER_WIDTH = TILE_WIDTH - 28;
+    /** 封面绘制高度，下方空间留给关卡名称 */
     private static final int COVER_HEIGHT = 129;
+    /** 选关标题在窗口顶部的绘制区域 */
     private static final Rectangle TITLE_BOUNDS = new Rectangle(100, 20, 600, 56);
+    /** 返回主菜单的按钮区域 */
     private static final Rectangle BACK = new Rectangle(20, 534, 120, 44);
+    /** 上一页的按钮区域 */
     private static final Rectangle PREVIOUS = new Rectangle(194, 534, 110, 44);
+    /** 下一页的按钮区域 */
     private static final Rectangle NEXT = new Rectangle(496, 534, 110, 44);
     /** 右下角原开始按钮改为编辑器入口，进入关卡使用双击封面或回车 */
     private static final Rectangle EDITOR = new Rectangle(660, 534, 120, 44);
+    /** 浅色卡片上的深色文字 */
     private static final Color INK = new Color(51, 36, 21);
+    /** 标题和深色背景上的浅色文字 */
     private static final Color TITLE = new Color(255, 239, 163);
+    /** 当前选中关卡的强调色 */
     private static final Color SELECTED = new Color(43, 105, 35);
     private final Assets assets;
     private final List<Integer> levels = new ArrayList<Integer>();

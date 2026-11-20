@@ -29,8 +29,11 @@ import pvz.zombie.ZombieSpawn;
 
 /** 按战斗职责验证血量、子弹、爆炸和僵尸特殊动作，集中保存场景用例而不按单个品种建类 */
 public class CombatTest {
+    /** 战斗用例使用草坪中间一行，方便同时布置前后目标 */
     private static final int TEST_ROW = 2;
+    /** 测试植物所在的列，给子弹留出飞行距离 */
     private static final int TEST_COLUMN = 5;
+    /** 模拟战斗的起始毫秒数 */
     private static final long START_TIME = 1000;
     /** 子弹命中场景使用草坪中间位置，避免僵尸提前离开画面 */
     private static final int TEST_CENTER = 450;

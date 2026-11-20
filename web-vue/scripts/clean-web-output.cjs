@@ -3,14 +3,17 @@ const path = require("node:path");
 
 // 只整理本项目的前端生成目录，运行目录在同步完成后单独处理
 const WORKSPACE = path.resolve(__dirname, "../..");
+// Vite 的正式输出，打包时作为后端静态资源
 const SOURCE_OUTPUT = path.join(
   WORKSPACE,
   "java-server/java-server/src/main/resources/public",
 );
+// 后端运行时的静态副本，开发启动会读取这里
 const RUNTIME_OUTPUT = path.join(
   WORKSPACE,
   "java-server/java-server/target/classes/public",
 );
+// 只清理带指纹的脚本与样式，图片和游戏资源另行维护
 const ASSET_DIRECTORIES = ["js", "css"];
 // Vite 指纹文件由名称、八位摘要和扩展名组成，其他命名的文件继续保留
 const GENERATED_FILENAME = /^[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(js|css)$/;

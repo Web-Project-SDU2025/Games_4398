@@ -1,5 +1,6 @@
 java-server/java-server/src/main/resources/application.yml
 java-server/java-server/src/main/resources/application-local.properties
+java-server/java-server/src/main/resources/application-local-db.yml
 java-server/java-server/src/main/java/cn/edu/sdu/java/server/JavaServerApplication.java
 java-server/java-server/src/main/java/cn/edu/sdu/java/server/SystemApplicationListener.java
 java-server/java-server/src/main/java/cn/edu/sdu/java/server/configs/ApplicationConfiguration.java

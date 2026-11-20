@@ -1,8 +1,14 @@
+// 饱腹值低于或等于此值时，优先提醒喂食
 const HUNGRY_AT = 34;
+// 精力低于或等于此值时，优先提醒休息
 const TIRED_AT = 25;
+// 亲密度达到此值且状态良好时，使用较亲近的表达
 const FAMILIAR_AT = 65;
+// 小屋加载中或旧接口未返回昵称时显示的名字
 export const PET_DEFAULT_NAME = "小橙";
+// 小屋和浮动桌宠空闲时换一句自言自语的间隔，单位为毫秒
 export const THOUGHT_ROTATION_MS = 6500;
+// 不涉及数值的闲聊句子，排在状态和库存提示之后
 const IDLE_LINES = [
   "我喜欢窝在垫子上，刚好能看见整间小屋",
   "我听见你回来了，还想跟你待一会儿",
@@ -10,7 +16,8 @@ const IDLE_LINES = [
 
 // 第一句说当前最需要的照顾，其余几句轮流提起对应的状态
 export function idlePetThought(room, index) {
-  const slot = index % 4;
+  const slots = 2 + IDLE_LINES.length;
+  const slot = index % slots;
   if (slot === 0) {
     return petThought(room, "");
   }
@@ -37,11 +44,29 @@ export function petThought(room, topic) {
   if (topic === "tidy-toy") {
     return "我去把球拨回垫子边，下次还能接着玩";
   }
-  if (topic === "star") {
-    return "我在窗上藏了一颗小星星，你找到啦！";
+  if (topic === "window-morning") {
+    return "我看见湖上发亮啦，想再晒一会儿太阳";
   }
-  if (topic === "window") {
-    return "我喜欢趴在窗边晒太阳，玻璃上好像还有个小秘密";
+  if (topic === "window-evening") {
+    return "我看见湖对岸的灯一盏盏亮了，天也快黑啦";
+  }
+  if (topic === "window-night") {
+    return "我想从山边那颗开始，先往低处连，再连到右上方";
+  }
+  if (topic === "curtain-closed") {
+    return "我把窗帘拉上啦，小屋里安静多了";
+  }
+  if (topic === "chime") {
+    return "我看见风铃晃起来了，还以为湖上的风吹进来了";
+  }
+  if (topic === "star-next") {
+    return "我记住这一颗啦，下一颗在哪儿呢";
+  }
+  if (topic === "star-retry") {
+    return "我好像连岔了，这回从山边那颗开始吧";
+  }
+  if (topic === "keepsake") {
+    return "我把今晚的星空画成明信片啦，想和你一起留着";
   }
   if (topic === "plant") {
     return "我看见仙人掌晃了一下，差点以为它在跟我打招呼";
@@ -56,7 +81,7 @@ export function petThought(room, topic) {
     return "我喜欢那盏暖暖的小灯，夜里看到它就很安心";
   }
   if (topic === "clock") {
-    return "我听见咔哒一声，分针又往前走了一格";
+    return "我把窗景留在刚选的时段，指针过一会儿就会自己走回去";
   }
   if (topic === "floor") {
     return "我刚在地板上踩出一串小脚印，一转头就找不着了";

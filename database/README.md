@@ -2,6 +2,8 @@
 
 项目使用课程分配的数据库 `java_1_02`。前后端在本机运行，数据库位于线上，连接配置保持不变。
 
+单独打包后端时，`java-server/java-server/src/main/resources/application-local-db.yml` 中的 `spring.datasource` 会随 JAR 上传，数据库密码直接写在 `password` 字段。该文件不纳入 Git，普通后端 JAR 含数据库凭据，只上传到部署后端的服务器，不放进前端包或公开下载目录。教师运行包仍使用外部的 `config/application-local.properties`，打包时会移除 JAR 内的本机配置。
+
 `../web-db.sql` 是迁移后的数据库导出文件，包含当前表结构、账号和菜单。导入前请先选中目标数据库。
 
 完整导出文件和 `backups/` 只保存在本机。公开仓库中的 `schema.sql` 提供空表结构，`seed.sql` 提供角色和菜单，供初始化空数据库使用。向已有数据库重复导入可能影响现有数据。

@@ -6,6 +6,7 @@ import {
 
 // 注册表中的地址限定在游戏发布目录，目录结构与构建输出一致
 const GAME_PREFIX = "/games/";
+// 只接受登记在游戏目录下的清单入口
 const MANIFEST_SUFFIX = "/game.json";
 
 // 读取并校验注册表中的所有地址，重复条目与无效路径直接指出配置问题

@@ -64,33 +64,41 @@ import pvz.world.Layout;
 public class LevelEditor extends JFrame implements EditorDragController {
     /** 编号选择框与保存范围共用上限，避免一处扩展后另一处仍按旧范围检查 */
     private static final int MAX_LEVEL_NUMBER = 99;
-    /** 阳光数值的上限与单次调整量 */
+    /** 编辑器允许填写的初始阳光上限 */
     private static final int MAX_INITIAL_SUN = 9990;
+    /** 初始阳光控件每次调整的数值 */
     private static final int INITIAL_SUN_STEP = 25;
-    /** 天降阳光间隔的秒数范围与调整量 */
+    /** 天降阳光允许的最短间隔，单位为秒 */
     private static final double MIN_SKY_SUN_SECONDS = 0.5;
+    /** 天降阳光允许的最长间隔，单位为秒 */
     private static final double MAX_SKY_SUN_SECONDS = 120.0;
+    /** 天降阳光间隔控件的调整步长，单位为秒 */
     private static final double SKY_SUN_STEP_SECONDS = 0.5;
-    /** 首波等待与两波间隔的秒数上限 */
+    /** 开始关卡到第一波僵尸出现的最长等待秒数 */
     private static final double MAX_FIRST_WAVE_SECONDS = 600.0;
+    /** 相邻两波僵尸允许的最长间隔，单位为秒 */
     private static final double MAX_WAVE_INTERVAL_SECONDS = 300.0;
     /** 波次时间控件每次调整的秒数 */
     private static final double WAVE_TIME_STEP_SECONDS = 1.0;
-    /** 出怪间隔的毫秒数上限与调整量 */
+    /** 同一波内相邻僵尸出现的最长间隔，单位为毫秒 */
     private static final int MAX_SPAWN_SPACING = 5000;
+    /** 出怪间隔控件每次调整的毫秒数 */
     private static final int SPAWN_SPACING_STEP = 50;
     /** 编号、波数和卡槽控件每次调整的数量 */
     private static final int COUNT_STEP = 1;
     /** 时间控件在秒与毫秒之间转换的倍率 */
     private static final double MILLISECONDS_PER_SECOND = 1000.0;
-    /** 关卡编号输入框的宽高，单位为像素 */
+    /** 关卡编号输入框的宽度，单位为像素 */
     private static final int LEVEL_FIELD_WIDTH = 58;
+    /** 关卡编号输入框的高度，单位为像素 */
     private static final int LEVEL_FIELD_HEIGHT = 26;
-    /** 编辑网格滚动区的初始宽高，单位为像素 */
+    /** 编辑网格滚动区的初始宽度，单位为像素 */
     private static final int GRID_VIEW_WIDTH = 744;
+    /** 编辑网格滚动区的初始高度，单位为像素 */
     private static final int GRID_VIEW_HEIGHT = 548;
-    /** 参数滚动区的初始宽高，单位为像素 */
+    /** 参数滚动区的初始宽度，单位为像素 */
     private static final int PARAMETERS_VIEW_WIDTH = 360;
+    /** 参数滚动区的初始高度，单位为像素 */
     private static final int PARAMETERS_VIEW_HEIGHT = 700;
 
     /** 拖动时跟着鼠标走的那个僵尸画多大 */
@@ -122,6 +130,7 @@ public class LevelEditor extends JFrame implements EditorDragController {
 
     /** 截图预览保持四比三，与选关封面相同，避免挤占参数面板 */
     private static final int SCREENSHOT_WIDTH = 160;
+    /** 与预览宽度配对，保持截图的四比三比例 */
     private static final int SCREENSHOT_HEIGHT = 120;
 
     /** 提供图片素材，试玩时也要交给游戏 */

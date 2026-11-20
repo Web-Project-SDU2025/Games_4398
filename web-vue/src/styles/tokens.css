@@ -6,38 +6,47 @@
   --scrollbar-size: 10px;
   /* 登录背景和工作区内容区共用底色 */
   --color-workspace-background: #141619;
+  /* 页面、顶栏、次级面板、浮起面板和输入框的底色 */
   --color-paper: #1b2838;
   --color-header: #171a21;
   --color-paper-2: #202f40;
   --color-paper-3: #2a3f53;
   --color-field: #101923;
+  /* 正文、次要文字和边线的颜色 */
   --color-ink: #e5edf3;
   --color-muted: #a9bdce;
   --color-rule: #486078;
+  /* 强调按钮的底色、深色交互状态和对应文字 */
   --color-accent: #66c0f4;
   --color-accent-dark: #1a5b85;
   --color-accent-ink: #102434;
+  /* 键盘焦点、成功、错误、弹窗遮罩和透明背景 */
   --color-focus: #b6e3ff;
   --color-success: #bedc88;
   --color-error: #ffb4ab;
   --color-overlay: #080d16cc;
   --color-clear: transparent;
+  /* 正文和醒目标题分别使用的字体栈 */
   --font-body: Arial, "Microsoft YaHei", sans-serif;
   --font-display: "Arial Black", "Microsoft YaHei", sans-serif;
+  /* 从紧凑控件到大区块的共享间距，单位为像素 */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 40px;
   --space-2xl: 64px;
+  /* 控件圆角、小号辅助文字和正文字号 */
   --radius-control: 3px;
   --text-small: 13px;
   --text-body: 15px;
+  /* 短反馈、按下、面板、弹窗和减弱动效模式的时长 */
   --dur-short: 150ms;
   --dur-press: 120ms;
   --dur-panel: 200ms;
   --dur-dialog: 220ms;
   --dur-reduced: 100ms;
+  /* 面板显示或收起时使用的减速曲线 */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -64,16 +73,19 @@
   --color-accent: #76a7ff;
   --color-accent-dark: #244875;
   --color-accent-ink: #101923;
+  /* 启动或返回游戏的按钮使用较亮的底色和深色文字 */
   --color-play-action: #c7e2ff;
   --color-play-action-ink: #17243a;
   --color-focus: #b6d4ff;
   --color-success: #6ed5ad;
   --color-error: #ffb4ab;
+  /* 钱包金额使用暖色，侧栏文字与选中项使用独立配色 */
   --color-amber: #e9bf78;
   --color-sidebar: #15191f;
   --color-sidebar-muted: #a3aec0;
   --color-selected: #255bc7;
   --color-selected-ink: #f8faff;
+  /* 工作区控件和卡片分别使用的圆角 */
   --radius-control: 6px;
   --radius-card: 8px;
 }

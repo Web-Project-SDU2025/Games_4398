@@ -10,11 +10,17 @@ const props = defineProps({
   speed: { type: Number, default: 1 },
 });
 
+// 网格绘制的最远深度，超过这个位置的线条与背景融为一体
 const FAR_DEPTH = 48;
+// 地面和顶面到视线的距离，决定网格的透视张角
 const GRID_HEIGHT = 2.12;
+// 登录背景同时显示的粒子数量
 const PARTICLE_COUNT = 84;
+// 两次重绘之间至少间隔的毫秒数
 const FRAME_INTERVAL = 30;
+// 单帧允许推进的最长秒数，切回标签页后画面不会突然跳远
 const MAX_FRAME_SECONDS = 0.08;
+// 画布像素倍率上限，避免高分屏消耗过多绘制资源
 const MAX_PIXEL_RATIO = 1.5;
 const surface = ref(null);
 let context;

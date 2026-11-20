@@ -13,12 +13,15 @@ import java.util.zip.ZipOutputStream;
 
 /** 为 Java 游戏安装浏览器素材并交换关卡，所有写入限定在当前账户游戏目录 */
 public final class GameFiles {
-    /** 单次解包的文件数量、体积和缓冲区大小 */
+    /** 单次解包允许的文件数量上限 */
     private static final int MAX_FILES = 4000;
+    /** 单次解包允许的总字节数上限 */
     private static final long MAX_BYTES = 256L * 1024 * 1024;
+    /** 复制或解包数据时每次读入的字节数 */
     private static final int BUFFER_SIZE = 8192;
-    /** 文本写入和数据备份的体积上限 */
+    /** 单个文本文件允许写入的字节数 */
     private static final int MAX_TEXT_BYTES = 2 * 1024 * 1024;
+    /** 一个账户的数据备份允许占用的最大字节数 */
     private static final int MAX_BACKUP_BYTES = 8 * 1024 * 1024;
 
     /** 此类提供文件操作方法，由游戏页面按账户目录调用 */
@@ -32,7 +35,7 @@ public final class GameFiles {
             String version,
             String preservedPaths
     ) throws IOException {
-        Path root = Path.of(directory).toAbsolutePath().normalize();
+        Path root = readRoot(directory);
         Files.createDirectories(root);
         Path marker = root.resolve(".asset-version");
         if (Files.exists(marker) && Files.readString(marker).equals(version)) {
@@ -92,9 +95,16 @@ public final class GameFiles {
 
     /** 素材可选的游戏只创建账户目录，后续 main 参数仍可引用这个路径 */
     public static String prepare(String directory) throws IOException {
-        Path root = Path.of(directory).toAbsolutePath().normalize();
+        Path root = readRoot(directory);
         Files.createDirectories(root);
         return root.toString();
+    }
+
+    /** 将账户目录转为统一的绝对路径，供读写和目录边界检查使用 */
+    private static Path readRoot(String directory) {
+        Path accountPath = Path.of(directory);
+        Path absolutePath = accountPath.toAbsolutePath();
+        return absolutePath.normalize();
     }
 
     /** 校验相对路径，拒绝绝对路径和跳出当前账户目录的压缩包条目 */
@@ -111,7 +121,7 @@ public final class GameFiles {
             String directory,
             String relative
     ) throws IOException {
-        Path root = Path.of(directory).toAbsolutePath().normalize();
+        Path root = readRoot(directory);
         Path levels = inside(root, relative);
         Files.createDirectories(levels);
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -121,7 +131,9 @@ public final class GameFiles {
         if (bytes.size() > MAX_BACKUP_BYTES) {
             throw new IOException("数据备份超过八兆字节，请分批导出");
         }
-        return Base64.getEncoder().encodeToString(bytes.toByteArray());
+        Base64.Encoder encoder = Base64.getEncoder();
+        byte[] archive = bytes.toByteArray();
+        return encoder.encodeToString(archive);
     }
 
     /** 递归导出指定数据目录，限制单文件体积并保留相对路径 */
@@ -138,7 +150,9 @@ public final class GameFiles {
                     if (Files.size(file) > MAX_TEXT_BYTES) {
                         throw new IOException("单个数据文件超过两兆字节");
                     }
-                    String name = root.relativize(file).toString().replace('\\', '/');
+                    Path relative = root.relativize(file);
+                    String localName = relative.toString();
+                    String name = localName.replace('\\', '/');
                     output.putNextEntry(new ZipEntry(name));
                     Files.copy(file, output);
                     output.closeEntry();
@@ -157,7 +171,7 @@ public final class GameFiles {
         if (content.length > MAX_TEXT_BYTES) {
             throw new IOException("数据文件应小于两兆字节");
         }
-        Path root = Path.of(directory).toAbsolutePath().normalize();
+        Path root = readRoot(directory);
         Path target = inside(root, relative);
         Files.createDirectories(target.getParent());
         Files.write(target, content);

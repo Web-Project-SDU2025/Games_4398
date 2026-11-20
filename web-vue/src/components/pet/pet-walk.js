@@ -1,9 +1,14 @@
 import { MathUtils, Vector3 } from "three";
 
+// 完成一轮四足步态走过的距离
 const STRIDE_LENGTH = 0.88;
+// 每只脚在步态中相对站姿前后摆动的距离
 const STRIDE_SWEEP = 0.19;
+// 摆腿阶段的最大抬脚高度
 const STRIDE_LIFT = 0.13;
+// 前爪着地时腕关节的高度
 const FRONT_ANKLE_HEIGHT = 0.125;
+// 后爪着地时脚掌中心的高度
 const BACK_ANKLE_HEIGHT = 0.115;
 
 // 为四条腿保留各自的坐姿，再根据归位路线切换到四足步态
@@ -63,6 +68,7 @@ export function createPetWalk(pet) {
     active = false;
     chest.position.copy(chestPosition);
     chest.scale.set(1, 1, 1);
+    chest.rotation.x = 0;
     head.position.copy(headPosition);
     head.rotation.x = 0;
     collar.position.copy(collarPosition);

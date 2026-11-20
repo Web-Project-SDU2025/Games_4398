@@ -3,25 +3,20 @@ import { attachTailRoot } from "./pet-model.js";
 import { createRestClip, restEyesClosed } from "./pet-rest.js";
 import { createPetWalk } from "./pet-walk.js";
 
+// 两个关节动作相互过渡的秒数
 const BLEND_SECONDS = 0.16;
+// 摸摸的总时长，场景按同一时间解锁下一次互动
+export const PET_DURATION = 0.9;
+// 摸摸的关节关键帧和闭眼时段，时间单位为秒
 const MOTIONS = {
   pet: {
-    times: [0, 0.21, 0.52, 0.9],
+    times: [0, 0.21, 0.52, PET_DURATION],
     headTilt: [0, 0.19, 0.13, 0],
     headNod: [0, -0.07, -0.055, 0],
     lean: [0, 0.044, 0.023, 0],
     tailSwing: [0, 0.24, -0.19, 0],
     pawReach: [0, 0, 0, 0],
     closedFrom: 0.1, closedUntil: 0.65,
-  },
-  feed: {
-    times: [0, 0.3, 0.47, 0.59, 0.7, 0.83, 1.14],
-    headTilt: [0, 0.07, 0.07, 0.07, 0.07, 0.07, 0],
-    headNod: [0, 0.28, 0.39, 0.29, 0.39, 0.28, 0],
-    lean: [0, 0.09, 0.12, 0.11, 0.12, 0.09, 0],
-    tailSwing: [0, 0.1, 0.08, 0.05, 0.1, 0.07, 0],
-    pawReach: [0, 0, 0, 0, 0, 0, 0],
-    closedFrom: 0.32, closedUntil: 0.9,
   },
 };
 

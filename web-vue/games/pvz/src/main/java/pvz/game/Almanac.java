@@ -22,24 +22,39 @@ import pvz.zombie.ZombieDefinition;
 
 /** 管理只读图鉴，复用 GIF 帧播放，不生成战斗对象或改变当前关卡 */
 public class Almanac {
+    /** 图鉴卡片每行的列数 */
     private static final int COLUMNS = 5;
+    /** 每页最多显示的图鉴条目数 */
     private static final int PAGE_SIZE = 20;
+    /** 第一列卡片离窗口左侧的距离 */
     private static final int GRID_LEFT = 28;
+    /** 第一行卡片离窗口顶部的距离 */
     private static final int GRID_TOP = 137;
+    /** 图鉴中每格的横向步长 */
     private static final int CELL_WIDTH = 82;
+    /** 图鉴中每格的纵向步长 */
     private static final int CELL_HEIGHT = 91;
     /** 小鬼素材会被预览区域自动放大，额外缩小以体现它比普通僵尸矮小 */
     private static final double IMP_PREVIEW_SCALE = 0.8;
     /** 只截取草坪内部，避免详情背景混入房屋、卡槽或道路 */
     private static final Rectangle LAWN_SAMPLE = new Rectangle(300, 180, 480, 360);
+    /** 植物标签的绘制和点击区域 */
     private static final Rectangle PLANTS_TAB = new Rectangle(45, 82, 160, 40);
+    /** 僵尸标签的绘制和点击区域 */
     private static final Rectangle ZOMBIES_TAB = new Rectangle(235, 82, 160, 40);
+    /** 返回主菜单的按钮区域 */
     private static final Rectangle BACK = new Rectangle(25, 536, 100, 44);
+    /** 上一页按钮区域 */
     private static final Rectangle PREVIOUS = new Rectangle(145, 536, 78, 44);
+    /** 下一页按钮区域 */
     private static final Rectangle NEXT = new Rectangle(267, 536, 78, 44);
+    /** 暂停或继续详情预览动画的按钮区域 */
     private static final Rectangle PAUSE = new Rectangle(355, 536, 92, 44);
+    /** 浅色纸面上使用的深色文字 */
     private static final Color INK = new Color(55, 35, 24);
+    /** 深色按钮与标题上使用的浅色文字 */
     private static final Color LIGHT = new Color(255, 239, 163);
+    /** 选中标签与卡片的强调色 */
     private static final Color SELECTED = new Color(37, 102, 35);
     private final Assets assets;
     private boolean plants = true;

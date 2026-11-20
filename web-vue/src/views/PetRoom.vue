@@ -42,8 +42,8 @@
       <div v-if="room" class="pet-room-meters">
         <div v-for="meter in meters" :key="meter.name" class="pet-room-meter" :data-meter="meter.name">
           <label :for="meter.name">{{ meter.label }}</label>
-          <strong>{{ room[meter.name] }} / {{ meter.max }}</strong>
-          <progress :id="meter.name" :value="room[meter.name]" :max="meter.max"></progress>
+          <strong>{{ room[meter.name] }} / {{ meterMax }}</strong>
+          <progress :id="meter.name" :value="room[meter.name]" :max="meterMax"></progress>
         </div>
         <div class="pet-room-growth">
           <div class="pet-care-heading">
@@ -64,7 +64,7 @@
           <button type="button" :disabled="busy || !catReady || !room.canPlay" @click="playWithCat">
             <span class="i-ep-basketball" aria-hidden="true"></span>逗玩
           </button>
-          <button type="button" :disabled="busy || !catReady || room.energy >= 100" @click="restCat">
+          <button type="button" :disabled="busy || !catReady || room.energy >= meterMax" @click="restCat">
             <span class="i-ep-moon" aria-hidden="true"></span>休息
           </button>
         </div>
@@ -88,18 +88,38 @@
         <p v-if="!canBuy" class="pet-room-limit">{{ shopLimit }}</p>
       </section>
       <section class="pet-care-section" aria-labelledby="pet-explore-title">
-        <h3 id="pet-explore-title">逛逛小屋</h3>
+        <header class="pet-care-heading">
+          <h3 id="pet-explore-title">逛逛小屋</h3>
+          <span v-if="windowState.label" class="pet-room-window-state">窗景 · {{ windowState.label }}</span>
+        </header>
         <div class="pet-room-explore">
+          <template v-if="!sceneFailed">
+            <button type="button" :aria-pressed="windowState.curtainClosed" @click="exploreSpot('curtain')">
+              <span class="i-ep-tickets" aria-hidden="true"></span><span>窗帘</span>
+            </button>
+            <button type="button" @click="exploreSpot('chime')">
+              <span class="i-ep-bell" aria-hidden="true"></span><span>风铃</span>
+            </button>
+          </template>
           <button v-for="item in roomSpots" :key="item.name" type="button" @click="exploreSpot(item.name)">
-            <span :class="item.icon" aria-hidden="true"></span>{{ item.label }}
+            <span :class="item.icon" aria-hidden="true"></span><span>{{ item.label }}</span>
           </button>
           <button v-if="!sceneFailed" type="button" :disabled="!catReady || busy" @click="shiftToy">
-            <span class="i-ep-rank" aria-hidden="true"></span>挪球
+            <span class="i-ep-rank" aria-hidden="true"></span><span>挪球</span>
           </button>
           <button v-if="!sceneFailed" type="button" :disabled="!catReady || busy" @click="shiftBowl">
-            <span class="i-ep-rank" aria-hidden="true"></span>挪碗
+            <span class="i-ep-rank" aria-hidden="true"></span><span>挪碗</span>
           </button>
         </div>
+        <div v-if="windowState.showStars" class="pet-room-explore" role="group" aria-label="夜空星位">
+          <button v-for="(star, index) in PET_STARS" :key="star.name" type="button"
+            :aria-pressed="index < windowState.progress" @click="exploreSpot(star.name)">
+            <span class="i-ep-star" aria-hidden="true"></span><span>{{ star.label }}</span>
+          </button>
+        </div>
+        <button v-if="keepsake" class="pet-keepsake-open" type="button" aria-haspopup="dialog" @click="openKeepsake">
+          <span class="i-ep-postcard" aria-hidden="true"></span>星空明信片
+        </button>
       </section>
       <p class="pet-room-status" role="status">{{ notice }}</p>
       <button v-if="room" type="button" class="pet-rank-open" @click="openLeaderboard">
@@ -107,6 +127,29 @@
       </button>
       <button v-if="!room && !busy" type="button" @click="loadRoom">重新加载</button>
     </aside>
+    <dialog ref="keepsakeDialog" class="pet-rank-dialog pet-keepsake-dialog" aria-labelledby="pet-keepsake-title" @click.self="closeKeepsake">
+      <header class="pet-care-heading">
+        <h2 id="pet-keepsake-title">星空明信片</h2>
+        <button type="button" aria-label="关闭明信片" title="关闭明信片" @click="closeKeepsake">
+          <span class="i-ep-close" aria-hidden="true"></span>
+        </button>
+      </header>
+      <figure v-if="keepsake" class="pet-keepsake">
+        <img class="pet-keepsake-image" :src="keepsakeArtwork" width="480" height="576" alt="连着三颗金星的湖畔夜景" />
+        <figcaption>
+          <div class="pet-keepsake-postmark" aria-hidden="true">
+            <span class="i-ep-star" aria-hidden="true"></span>
+            <span>湖畔小屋</span>
+          </div>
+          <h3>我们看过的第一片星空</h3>
+          <p>我记得那晚，我们一颗一颗连起了星星，湖对岸的灯还亮着</p>
+          <footer class="pet-keepsake-signature">
+            <strong>{{ keepsake.nickname }} 留念</strong>
+            <time :datetime="keepsake.date">{{ keepsakeDate }}</time>
+          </footer>
+        </figcaption>
+      </figure>
+    </dialog>
     <dialog ref="renameDialog" class="pet-rank-dialog" aria-labelledby="pet-rename-title">
       <form class="pet-rename-form" @submit.prevent="saveNickname">
         <h2 id="pet-rename-title">修改宠物昵称</h2>
@@ -157,25 +200,33 @@ import { useWalletStore } from "../stores/wallet.js";
 import { generalRequest } from "../services/genServ.js";
 import { createPetScene } from "../components/pet/pet-scene.js";
 import { idlePetThought, petThought, PET_DEFAULT_NAME, THOUGHT_ROTATION_MS } from "../logic/petSpeech.js";
+import { PET_STARS, savePetKeepsake } from "../logic/petKeepsake.js";
 import "../styles/pet-room.css";
 
+// 每次按视角按钮旋转 30 度
 const TURN_RADIANS = Math.PI / 6;
+// 互动回应停留的毫秒数，睡眠回应不使用这个计时器
 const THOUGHT_DURATION = 5500;
-const METER_MAX = 100;
+// 旧版接口还未提供数值上限时，进度条和按钮沿用原来的满值
+const DEFAULT_METER_MAX = 100;
+// 离开小屋时最多等服务器汇总这么多毫秒，不让通知阻住切页
+const SETTLEMENT_WAIT_MS = 3000;
+// 明信片显示首次发现的本地日期，不显示具体时刻
+const KEEPSAKE_DATE_FORMAT = new Intl.DateTimeFormat("zh-CN", { dateStyle: "long" });
+// 摆件名称、图标和对应的场景位置
 const roomSpots = [
-  { name: "window", icon: "i-ep-grid", label: "窗户" },
   { name: "plant", icon: "i-ep-pear", label: "盆栽" },
   { name: "rug", icon: "i-ep-collection", label: "软垫" },
   { name: "bowl", icon: "i-ep-bowl", label: "食碗" },
   { name: "toy", icon: "i-ep-basketball", label: "玩具球" },
   { name: "floor", icon: "i-ep-map-location", label: "地板" },
   { name: "lamp", icon: "i-ep-sunny", label: "落地灯" },
-  { name: "clock", icon: "i-ep-clock", label: "挂钟" },
 ];
+// 宠物档案中需要展示的状态及顺序
 const meters = [
-  { name: "fullness", label: "饱腹", max: METER_MAX },
-  { name: "bond", label: "亲密", max: METER_MAX },
-  { name: "energy", label: "精力", max: METER_MAX },
+  { name: "fullness", label: "饱腹" },
+  { name: "bond", label: "亲密" },
+  { name: "energy", label: "精力" },
 ];
 const app = useAppStore();
 const wallet = useWalletStore();
@@ -185,6 +236,10 @@ const room = ref(null);
 const busy = ref(false);
 const catReady = ref(true);
 const sceneFailed = ref(false);
+const windowState = ref({ label: "", showStars: false, curtainClosed: false, progress: 0 });
+const keepsake = ref(null);
+const keepsakeArtwork = ref("");
+const keepsakeDialog = ref(null);
 const notice = ref("正在载入小屋");
 const rankDialog = ref(null);
 const renameDialog = ref(null);
@@ -242,12 +297,65 @@ const petName = computed(readPetName);
 const nicknameLimit = computed(readNicknameLimit);
 const renameInvalid = computed(readRenameInvalid);
 
+// 场景按钮与画布共享窗景和星位进度
+function updateWindowState(state) {
+  windowState.value = state;
+}
+
+// 每次进入小屋或切换账户只清空本次解锁，不删除首次发现的纪念记录
+function resetKeepsake() {
+  closeKeepsake();
+  keepsake.value = null;
+  keepsakeArtwork.value = "";
+}
+
+// 本次连完才显示明信片，旧记录只用来保留最初的日期和昵称
+function collectKeepsake(artwork) {
+  if (keepsake.value) {
+    return;
+  }
+  keepsakeArtwork.value = artwork;
+  const foundAt = new Date();
+  try {
+    keepsake.value = savePetKeepsake(window.localStorage, app.userInfo.id, petName.value, foundAt);
+    notice.value = "星空明信片已点亮";
+  } catch (error) {
+    keepsake.value = { nickname: petName.value, date: foundAt.toISOString() };
+    notice.value = "浏览器无法保存明信片，本次仍可查看";
+  }
+}
+
+// 将保存的发现时间显示为本地年月日
+function readKeepsakeDate() {
+  if (!keepsake.value) {
+    return "";
+  }
+  const foundAt = new Date(keepsake.value.date);
+  return KEEPSAKE_DATE_FORMAT.format(foundAt);
+}
+
+const keepsakeDate = computed(readKeepsakeDate);
+
+// 本次解锁后可以打开明信片，关闭时由原生弹窗还原焦点
+function openKeepsake() {
+  if (keepsake.value && !keepsakeDialog.value.open) {
+    keepsakeDialog.value.showModal();
+  }
+}
+
+// 切换账户或关闭弹窗时不再显示上一张明信片
+function closeKeepsake() {
+  if (keepsakeDialog.value && keepsakeDialog.value.open) {
+    keepsakeDialog.value.close();
+  }
+}
+
 // 空闲时轮换气泡，不覆盖当前互动或睡眠的回应
 function advanceThought() {
   if (document.hidden || thoughtTopic.value) {
     return;
   }
-  if ((renameDialog.value && renameDialog.value.open) || (rankDialog.value && rankDialog.value.open)) {
+  if (renameDialog.value.open || rankDialog.value.open || keepsakeDialog.value.open) {
     return;
   }
   thoughtIndex.value = thoughtIndex.value + 1;
@@ -397,10 +505,20 @@ function closeLeaderboard() {
   clearLeaderboard();
 }
 
+// 优先用服务器返回的满值，旧版接口仍可正常显示
+function readMeterMax() {
+  if (room.value && room.value.meterMax > 0) {
+    return room.value.meterMax;
+  }
+  return DEFAULT_METER_MAX;
+}
+
+const meterMax = computed(readMeterMax);
+
 // 只有库存有粮且饱腹还有空间时，才显示可用的喂食按钮
 function readCanFeed() {
   const state = room.value;
-  return state && state.food > 0 && state.fullness < METER_MAX;
+  return state && state.food > 0 && state.fullness < meterMax.value;
 }
 
 // 价格和交易限额由服务端发回，按钮用它们提前提示是否可以买
@@ -523,7 +641,7 @@ async function settleRoom(token) {
       method: "POST",
       headers: { Authorization: "Bearer " + token },
       keepalive: true,
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(SETTLEMENT_WAIT_MS),
     });
     const result = await response.json();
     if (result.code === 0 && result.data && token === app.userInfo.token) {
@@ -587,10 +705,11 @@ function resetView() {
 // 创建画布失败时保留原画和照顾按钮，养成不依赖 WebGL
 function openRoom() {
   roomToken = app.userInfo.token;
+  resetKeepsake();
   thoughtRotation = window.setInterval(advanceThought, THOUGHT_ROTATION_MS);
   window.addEventListener("pagehide", settleOnPageHide);
   try {
-    scene = createPetScene(stage.value, petCat, sayAbout, setCatReady);
+    scene = createPetScene(stage.value, petCat, sayAbout, setCatReady, updateWindowState, collectKeepsake);
   } catch (error) {
     sceneFailed.value = true;
   }
@@ -606,6 +725,10 @@ function switchRoom() {
   thoughtIndex.value = 0;
   closeRename();
   closeLeaderboard();
+  resetKeepsake();
+  if (scene) {
+    scene.resetWindow();
+  }
   requestNumber = requestNumber + 1;
   requestId = "";
   room.value = null;
@@ -628,6 +751,7 @@ function closeRoom() {
   clearThought();
   closeRename();
   closeLeaderboard();
+  closeKeepsake();
   requestNumber = requestNumber + 1;
   if (scene) {
     scene.dispose();

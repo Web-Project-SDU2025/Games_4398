@@ -12,7 +12,9 @@ import pvz.tools.AssetToolkit;
 
 /** 负责关卡截图的导入、读取和等比例显示，编辑器与选关页共用以免路径规则不一致 */
 public final class LevelScreenshot {
+    /** 关卡截图在素材目录下的相对保存位置 */
     private static final String DIRECTORY = "levels/screenshots";
+    /** 截图画面以外的留边颜色 */
     private static final Color BACKGROUND = new Color(45, 45, 45);
 
     /** 仅提供工具方法，不创建持有重复素材状态的对象 */

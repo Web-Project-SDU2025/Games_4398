@@ -34,7 +34,9 @@ import pvz.level.LevelLoader;
 
 /** 验证阳光数字恢复旧版样式，以及菜单、选关、返回和进入指定关卡的连接 */
 public class GameInterfaceTest {
+    /** 从零到整数上限的阳光数值，用于检查文本占位 */
     private static final int[] SUN_VALUES = {0, 50, 100, 1000, 99999, Integer.MAX_VALUE};
+    /** 测试绘制边界和指针映射的常见屏幕缩放倍率 */
     private static final double[] DISPLAY_SCALES = {1.0, 1.25, 1.5, 2.0};
 
     /** 参数 assets 和 project 提供资源与输出位置，验证后保存界面截图用于人工检查 */

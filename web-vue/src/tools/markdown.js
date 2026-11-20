@@ -1,7 +1,9 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
+// 消息正文同步渲染 Markdown，保留换行和表格语法
 const MARKDOWN_OPTIONS = { breaks: true, gfm: true, async: false };
+// 只允许正文需要的 HTML 元素和属性
 const HTML_OPTIONS = {
   ALLOWED_TAGS: [
     "p",

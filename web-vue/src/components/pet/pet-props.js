@@ -1,17 +1,38 @@
 import { MathUtils, Vector3 } from "three";
 import { BOWL_RADIUS, BOWL_START, TOY_RADIUS, TOY_START } from "./pet-floor.js";
 
+// 归位时每秒走过的场景距离
 const WALK_SPEED = 1.85;
+// 即使物件挪动很少，也给每段移动留出这个最短秒数
 const MIN_MOVE_DURATION = 0.32;
+// 从坐姿站到四条腿上的秒数
 const STAND_DURATION = 0.28;
+// 回到垫子中央后坐下所用的秒数
 const SIT_DURATION = 0.27;
+// 拾取或放下物件所用的秒数
 const PICKUP_DURATION = 0.27;
+// 松手后等待归位的秒数，留时间看清物件的新位置
 const RETURN_DELAY = 0.48;
+// 拨球时猫与球中心的距离
 const TOY_REACH = 0.76;
+// 叼碗时猫与食碗中心的距离，预留头部和碗的空间
 const BOWL_REACH = 1.05;
+// 小于这个位移时视为仍在原位
 const MIN_DISPLACEMENT = 0.045;
+// 物件拖动范围的左右半宽
 const EDGE_WIDTH = 2.52;
+// 物件拖动范围的前侧边界
 const EDGE_DEPTH = 1.93;
+// 物件拖动范围的后侧边界，避免推到墙边摆件里
+const BACK_EDGE_DEPTH = -0.62;
+// 两件物品的碰撞半径之外保留的间距
+const PROP_GAP = 0.04;
+// 拖动物件时给宠物身体留出的空间
+const CAT_CLEARANCE = 0.63;
+// 叼碗时将碗抬离垫子的高度
+const BOWL_LIFT = 0.23;
+// 停步或起步时调整步幅的秒数
+const STRIDE_BLEND_SECONDS = 0.14;
 
 // 计算物件的新位置，不能推到猫身上、另一件物品里或画面边缘外
 export function dragPropPosition(name, position, other, cat) {
@@ -24,9 +45,9 @@ export function dragPropPosition(name, position, other, cat) {
     reserved = TOY_START;
   }
   const horizontal = MathUtils.clamp(position.x, -EDGE_WIDTH + radius, EDGE_WIDTH - radius);
-  const depth = MathUtils.clamp(position.z, -0.62, EDGE_DEPTH - radius);
-  const clear = radius + otherRadius + 0.04;
-  if (Math.hypot(horizontal - cat.x, depth - cat.z) < radius + 0.63) {
+  const depth = MathUtils.clamp(position.z, BACK_EDGE_DEPTH, EDGE_DEPTH - radius);
+  const clear = radius + otherRadius + PROP_GAP;
+  if (Math.hypot(horizontal - cat.x, depth - cat.z) < radius + CAT_CLEARANCE) {
     return null;
   }
   if (Math.hypot(horizontal - other.x, depth - other.z) < clear) {
@@ -128,7 +149,7 @@ export function readPropReturn(route, now) {
     }
   }
   if (route.name === "bowl") {
-    item.y = lift * 0.23;
+    item.y = lift * BOWL_LIFT;
   }
   return { cat: cat, item: item, face: face, stand: stand, distance: distance, stride: stride, reach: reach, done: elapsed >= route.finished };
 }
@@ -140,5 +161,5 @@ function smoothProgress(elapsed, start, end) {
 
 // 起步和停步时渐变步幅，行进距离决定四条腿的落脚顺序
 function strideWeight(elapsed, start, end) {
-  return Math.min(1, (elapsed - start) / 0.14, (end - elapsed) / 0.14);
+  return Math.min(1, (elapsed - start) / STRIDE_BLEND_SECONDS, (end - elapsed) / STRIDE_BLEND_SECONDS);
 }

@@ -20,6 +20,7 @@ import pvz.world.Layout;
 
 /** 验证传送带和保龄球的入场时序、满队列与补位，逐步核对真实卡片边界 */
 public class ConveyorRegressionTest {
+    /** 传送带回归用例的模拟起始时间，单位为毫秒 */
     private static final long START_TIME = 10000;
 
     /** 参数 assets 和 root 提供素材与输出位置，检查后保留截图供人工核对 */

@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { BOWL_START, createPetFloor, TOY_START } from "../src/components/pet/pet-floor.js";
+import { BOWL_RADIUS, BOWL_RIM, BOWL_START, createPetFloor, TOY_START } from "../src/components/pet/pet-floor.js";
 import { createPetPicker } from "../src/components/pet/pet-picker.js";
 import { createPetMotion } from "../src/components/pet/pet-motion.js";
 import { PLAY_CONTACT, PLAY_DURATION, readPlayPose } from "../src/components/pet/pet-play.js";
 import { REST_DURATION } from "../src/components/pet/pet-rest.js";
+import { applyFeedLean, FEED_DURATION, readFeedPose } from "../src/components/pet/pet-feed.js";
+import { CLOCK_TURN, createClockPreview, readClockAngles, readClockHour } from "../src/components/pet/pet-clock.js";
+import { createWindowFade, readWindowView, WINDOW_NIGHT } from "../src/components/pet/pet-window.js";
+import { createStarCelebration, readStarCelebration } from "../src/components/pet/pet-star-celebration.js";
 import { createPetModel } from "../src/components/pet/pet-model.js";
 import { dragPropPosition, makePropReturn, readPropReturn } from "../src/components/pet/pet-props.js";
 
@@ -127,13 +131,242 @@ test("睡眠过渡时整个头部都留在地垫上方", function testHeadCleara
   }
   pet.root.scale.setScalar(0.93);
   motion.play("rest", false);
+  const lowestByFrame = [];
   for (let frame = 0; frame <= 500; frame = frame + 1) {
+    lowest = Infinity;
     motion.update(1 / 60, frame / 60, false);
     pet.root.updateMatrixWorld(true);
     pet.head.traverse(checkMesh);
+    lowestByFrame.push(lowest);
   }
   assert.ok(lowest > rugTop, "头部最低点：" + lowest);
+  const lowestHeadHeight = Math.min.apply(null, lowestByFrame);
+  assert.ok(lowestHeadHeight > rugTop, "睡眠过渡的头部最低点：" + lowestHeadHeight);
   motion.dispose();
+});
+
+// 真实饱腹值不会影响站起和靠碗路线，三口后抬头离开
+test("进食路线俯身到食碗并在三口后回座", function testFeedPose() {
+  const bowl = { x: -1.55, z: 0.85 };
+  const standing = readFeedPose(0.15, bowl, 0.93);
+  assert.ok(Math.abs(standing.x) < 0.0001);
+  assert.ok(standing.stand > 0);
+  const arrived = readFeedPose(1.05, bowl, 0.93);
+  assert.equal(arrived.stand, 1);
+  assert.ok(arrived.x < 0 || arrived.z > 0);
+  const firstBite = readFeedPose(1.85, bowl, 0.93);
+  assert.ok(firstBite.lean > 0.9);
+  assert.equal(firstBite.foodCount, 7);
+  const lastBite = readFeedPose(2.75, bowl, 0.93);
+  assert.equal(lastBite.foodCount, 0);
+  assert.equal(readFeedPose(FEED_DURATION + 0.1, bowl, 0.93).foodCount, 0);
+  const raised = readFeedPose(3, bowl, 0.93);
+  assert.ok(raised.lean < firstBite.lean);
+  const seated = readFeedPose(FEED_DURATION, bowl, 0.93);
+  assert.ok(Math.abs(seated.stand) < 0.0001);
+});
+
+// 对准实物模型，逐帧检查宠物网格没有进入碗沿以下的空间
+test("进食时脸颊和四肢不穿进食碗", function testFeedClearance() {
+  const pet = makeTestPet();
+  const motion = createPetMotion(pet);
+  const bowlRadius = BOWL_RADIUS + BOWL_RIM.thickness;
+  const bowlTop = BOWL_RIM.height + BOWL_RIM.thickness;
+  const vertex = new THREE.Vector3();
+  let nearest = Infinity;
+
+  // 用世界坐标比较实际网格顶点和食碗范围
+  function checkMesh(node) {
+    if (!node.isMesh || !node.visible) {
+      return;
+    }
+    const vertices = node.geometry.getAttribute("position");
+    for (let index = 0; index < vertices.count; index = index + 1) {
+      node.getVertexPosition(index, vertex);
+      vertex.applyMatrix4(node.matrixWorld);
+      const radius = Math.hypot(vertex.x - BOWL_START.x, vertex.z - BOWL_START.z);
+      if (radius < bowlRadius) {
+        nearest = Math.min(nearest, vertex.y);
+      }
+    }
+  }
+
+  for (const size of [0.93, 1.074]) {
+    pet.root.scale.setScalar(size);
+    nearest = Infinity;
+    for (let frame = 0; frame <= Math.ceil(FEED_DURATION * 60); frame = frame + 1) {
+      const pose = readFeedPose(frame / 60, BOWL_START, size);
+      pet.root.position.set(pose.x, 0, pose.z);
+      pet.root.rotation.y = Math.atan2(BOWL_START.x - pose.x, BOWL_START.z - pose.z) * pose.stand;
+      motion.carry(pose, true);
+      applyFeedLean(pet, pose);
+      motion.syncTail();
+      pet.root.updateMatrixWorld(true);
+      pet.root.traverseVisible(checkMesh);
+    }
+    assert.ok(nearest > bowlTop, "模型最低点：" + nearest + "，碗沿：" + bowlTop);
+    assert.ok(nearest < bowlTop + 0.1, "低头时嘴部应靠近碗沿：" + nearest);
+  }
+  motion.dispose();
+});
+
+// 时针、分针和秒针跟随当前本地时间，表盘拨动后自动恢复
+test("挂钟按本地时间计时，交互后回到实时刻度", function testPetClock() {
+  const date = new Date(2026, 10, 20, 15, 30, 45, 0);
+  const angles = readClockAngles(date, 0);
+  assert.ok(Math.abs(angles.hour - (-3.5125 / 12 * CLOCK_TURN)) < 0.0001);
+  assert.ok(Math.abs(angles.minute - (-30.75 / 60 * CLOCK_TURN)) < 0.0001);
+  assert.ok(Math.abs(angles.second + 0.75 * CLOCK_TURN) < 0.0001);
+  const clock = createClockPreview();
+  assert.equal(clock.point(0, 0, date, 500), false);
+  assert.equal(clock.point(1, 0, date, 500), true);
+  const held = clock.readOffset(500, false, date);
+  assert.ok(held > -16 && held < -15);
+  clock.release(1000, date);
+  assert.equal(clock.readOffset(1500, false, date), held);
+  const returning = clock.readOffset(2330, false, date);
+  assert.ok(returning > held && returning < 0);
+  assert.equal(clock.readOffset(2330, true, date), 0);
+  assert.equal(clock.readOffset(2460, false, date), 0);
+});
+
+// 表盘拖过十二点时取完整的 24 小时，三个时段按约定整点切换
+test("拨钟时段跨过中午和午夜后仍按本地时间选窗景", function testClockWindowTime() {
+  const morning = new Date(2026, 10, 20, 6, 0);
+  const beforeSunset = new Date(2026, 10, 20, 15, 59);
+  const beforeNight = new Date(2026, 10, 20, 18, 59);
+  const beforeMidnight = new Date(2026, 10, 20, 23, 59);
+  assert.equal(readClockHour(morning, -1), 5);
+  assert.equal(readClockHour(morning, 720), 18);
+  assert.equal(readClockHour(beforeMidnight, 1), 0);
+  assert.equal(readWindowView(readClockHour(morning, -1)), WINDOW_NIGHT);
+  assert.equal(readWindowView(readClockHour(morning, 0)), 0);
+  assert.equal(readWindowView(readClockHour(beforeSunset, 0)), 0);
+  assert.equal(readWindowView(readClockHour(beforeSunset, 1)), 1);
+  assert.equal(readWindowView(readClockHour(beforeNight, 1)), WINDOW_NIGHT);
+  assert.equal(readWindowView(readClockHour(beforeMidnight, 1)), WINDOW_NIGHT);
+});
+
+// 在晨光刚淡入晚霞时转向夜色，下一帧必须接着当前两张图的比例
+test("连续拨钟会从当前混合画面接着过渡", function testWindowFadeRetarget() {
+  const fade = createWindowFade();
+  fade.select(1, 100, false);
+  assert.deepEqual(fade.update(100, false), [1, 0, 0]);
+  const current = fade.update(230, false).slice();
+  assert.deepEqual(current, [0.5, 0.5, 0]);
+  fade.select(WINDOW_NIGHT, 230, false);
+  assert.deepEqual(fade.update(230, false), current);
+  fade.select(WINDOW_NIGHT, 360, false);
+  assert.deepEqual(fade.update(360, false), [0.25, 0.25, 0.5]);
+  assert.deepEqual(fade.update(490, false), [0, 0, 1]);
+});
+
+// 减弱动效保留短暂的颜色混合，不引入额外的位移或等待
+test("减弱动效时窗景更快完成淡入", function testReducedWindowFade() {
+  const fade = createWindowFade();
+  fade.select(WINDOW_NIGHT, 100, true);
+  assert.deepEqual(fade.update(150, true), [0.5, 0, 0.5]);
+  assert.deepEqual(fade.update(200, true), [0, 0, 1]);
+});
+
+// 金光先穿过连线再消散，减弱动效时余光不移动
+test("连星奖励在完整和减弱动效下都能结束", function testStarCelebration() {
+  const moving = readStarCelebration(230, false);
+  assert.equal(moving.path, 0.5);
+  assert.equal(moving.opacity, 1);
+  const fading = readStarCelebration(640, false);
+  assert.equal(fading.path, 1);
+  assert.equal(fading.drift, 0.5);
+  assert.equal(fading.opacity, 0.5);
+  assert.equal(readStarCelebration(820, false), null);
+  const reduced = readStarCelebration(60, true);
+  assert.deepEqual(reduced, { path: 1, drift: 0, opacity: 0.5 });
+  assert.equal(readStarCelebration(120, true), null);
+});
+
+// 取消播放时立即隐藏所有光点，之后重新触发仍从星轨起点走
+test("星轨动效停止后可以从头播放", function testStarCelebrationReset() {
+  const group = new THREE.Group();
+  const points = [[-1, 0], [0, 1], [1, 0]];
+  const effect = createStarCelebration(group, points, 0.15);
+  const tracer = group.children[0];
+  effect.play(100);
+  effect.update(330, false);
+  assert.equal(tracer.visible, true);
+  assert.equal(tracer.position.x, 0);
+  assert.equal(tracer.position.y, 1);
+  effect.stop();
+  for (const spark of group.children) {
+    assert.equal(spark.visible, false);
+  }
+  effect.play(1000);
+  effect.update(1000, false);
+  assert.equal(tracer.visible, true);
+  assert.equal(tracer.position.x, -1);
+  assert.equal(tracer.material.depthWrite, false);
+  tracer.geometry.dispose();
+  tracer.material.dispose();
+});
+
+// 顺拨两圈再逆拨一圈，时针必须记住之前走过的整小时
+test("拖动分针跨过半圈和十二点时，时针按比例连续转动", function testClockDragTurns() {
+  const clock = createClockPreview();
+  const date = new Date(2026, 10, 20, 3, 0, 0);
+  const later = new Date(2026, 10, 20, 3, 0, 30);
+  let now = 0;
+  let previousHour = readClockAngles(date, 0).hour;
+
+  // 每次拖过五分钟，检查时针只转动对应角度
+  function dragTo(minute, expectedChange) {
+    const angle = minute / 60 * CLOCK_TURN;
+    now = now + 100;
+    assert.equal(clock.point(Math.sin(angle), Math.cos(angle), date, now), true);
+    const offset = clock.readOffset(now, false, date);
+    const hands = readClockAngles(date, offset);
+    const change = (previousHour - hands.hour) / CLOCK_TURN * 720;
+    assert.ok(Math.abs(change - expectedChange) < 0.0001);
+    previousHour = hands.hour;
+  }
+
+  dragTo(0, 0);
+  for (let minute = 5; minute <= 120; minute = minute + 5) {
+    dragTo(minute, 5);
+  }
+  assert.equal(clock.readOffset(now, false, date), 120);
+  assert.equal(clock.readOffset(now, false, later), 119.5);
+  for (let minute = 115; minute >= 60; minute = minute - 5) {
+    dragTo(minute, -5);
+  }
+  assert.equal(clock.readOffset(now, false, date), 60);
+  clock.release(now, date);
+  assert.equal(clock.readOffset(now + 1000, false, date), 60);
+  assert.equal(clock.readOffset(now + 1500, false, date), 0);
+});
+
+// 先拨钟再拖动家具，确保两个投影平面各自保持正确方向
+test("表盘投影和地面投影互不干扰", function testClockPicking() {
+  const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.1, 20);
+  camera.position.set(0, 3, 5);
+  camera.lookAt(0, 1, 0);
+  camera.updateMatrixWorld(true);
+  const face = new THREE.Object3D();
+  face.position.set(1, 2, -2);
+  const picker = createPetPicker(camera, null, []);
+
+  // 模拟画布正常获取的位置范围
+  function readBounds() {
+    return { top: 0, left: 0, width: 200, height: 200 };
+  }
+
+  const canvas = { getBoundingClientRect: readBounds };
+  const position = new THREE.Vector3(1.4, 2.1, -2);
+  position.project(camera);
+  const pointer = { clientX: (position.x + 1) * 100, clientY: (1 - position.y) * 100 };
+  const dial = picker.readClockPoint(pointer, canvas, face);
+  assert.ok(Math.abs(dial.x - 0.4) < 0.0001);
+  assert.ok(Math.abs(dial.y - 0.1) < 0.0001);
+  const ground = picker.readDragPoint({ clientX: 100, clientY: 150 }, canvas, 0.2);
+  assert.ok(Math.abs(ground.y - 0.2) < 0.0001);
 });
 
 // 还没站稳时身体不平移，站稳后才迈步，拨球时腿不再迈动
@@ -194,7 +427,7 @@ test("四足步态先撑起胸腹，再交替迈前后腿", function testWalkMot
 function assertTailAttached(pet) {
   assert.equal(pet.tail.position.x, 0);
   const root = pet.tail.getWorldPosition(new THREE.Vector3());
-  const trunk = pet.hitParts[1];
+  const trunk = pet.root.getObjectByName("chestMesh");
   trunk.worldToLocal(root);
   assert.ok(root.z < -0.8);
   assert.ok(root.length() < 1);
@@ -274,7 +507,7 @@ test("射线优先选中可见物件，猫不会吞掉相邻点击", function te
   const ball = new THREE.Mesh(shape);
   furniture.add(ball);
   const spots = [{ name: "toy", object: furniture }];
-  const picker = createPetPicker(camera, [cat], spots);
+  const picker = createPetPicker(camera, cat, spots);
   const click = { clientX: 150, clientY: 130 };
 
   // 模拟带偏移量的画布，确保窗口坐标不会被当成画布坐标
@@ -287,7 +520,7 @@ test("射线优先选中可见物件，猫不会吞掉相邻点击", function te
   assert.equal(picker.read(click, canvas).name, "toy");
   furniture.position.z = -0.12;
   furniture.updateMatrixWorld(true);
-  assert.equal(picker.read(click, canvas).name, "toy");
+  assert.equal(picker.read(click, canvas).name, "pet");
   furniture.position.z = -0.8;
   furniture.updateMatrixWorld(true);
   assert.equal(picker.read(click, canvas).name, "pet");
@@ -295,4 +528,60 @@ test("射线优先选中可见物件，猫不会吞掉相邻点击", function te
   furniture.visible = false;
   furniture.updateMatrixWorld(true);
   assert.equal(picker.read(click, canvas).name, "pet");
+});
+
+// 耳朵与身体之间的空白不能摸到猫，透明图案和藏起来的网格也不能抢点击
+test("只拾取宠物实际可见的网格", function testPetSilhouette() {
+  const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.1, 12);
+  camera.position.z = 5;
+  camera.updateMatrixWorld();
+  const pet = new THREE.Group();
+  const shape = new THREE.SphereGeometry(0.3, 16, 12);
+  const body = new THREE.Mesh(shape);
+  const ear = new THREE.Mesh(shape);
+  ear.position.x = 1;
+  const sticker = new THREE.Mesh(shape, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }));
+  sticker.position.x = 0.5;
+  pet.add(body, ear, sticker);
+  pet.updateMatrixWorld(true);
+  const picker = createPetPicker(camera, pet, []);
+
+  // 画布对应四个场景单位，像素坐标可以直接对应模型的位置
+  function readBounds() {
+    return { width: 200, height: 200, left: 0, top: 0 };
+  }
+  const canvas = { getBoundingClientRect: readBounds };
+  const earPoint = { clientX: 150, clientY: 100 };
+  const gap = { clientX: 125, clientY: 100 };
+  assert.equal(picker.read(earPoint, canvas).name, "pet");
+  assert.equal(picker.read(gap, canvas).name, "");
+  ear.visible = false;
+  assert.equal(picker.read(earPoint, canvas).name, "");
+});
+
+// 容器和子网格交叠时，应该拾取具体星位而不是整个窗框
+test("夜空星位与窗框分别拾取", function testWindowPicking() {
+  const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.1, 12);
+  camera.position.z = 5;
+  camera.updateMatrixWorld();
+  const frame = new THREE.Group();
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.1));
+  const star = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8));
+  const stars = new THREE.Group();
+  star.position.z = 0.2;
+  stars.add(star);
+  frame.add(glass, stars);
+  frame.updateMatrixWorld(true);
+  const spots = [{ name: "window", object: frame }, { name: "star-ridge", object: star }];
+  const picker = createPetPicker(camera, null, spots);
+
+  // 射线正对星星，也会穿过它后面的玻璃
+  function readBounds() {
+    return { width: 200, height: 200, left: 0, top: 0 };
+  }
+  const canvas = { getBoundingClientRect: readBounds };
+  const click = { clientX: 100, clientY: 100 };
+  assert.equal(picker.read(click, canvas).name, "star-ridge");
+  stars.visible = false;
+  assert.equal(picker.read(click, canvas).name, "window");
 });

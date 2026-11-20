@@ -16,11 +16,15 @@ import {
 
 // 共用运行器与发布位置均隶属于前端，临时类文件每次使用全新目录
 const RUNTIME_SOURCE = "games/runtime/src/main/java";
+// 共用运行器的测试源码，只在运行游戏测试时编译
 const RUNTIME_TEST_SOURCE = "games/runtime/src/test/java";
+// 浏览器运行器的源码目录，发布时从这里复制
 const RUNTIME_WEB_SOURCE = "games/runtime/web";
 // 平台与游戏共用颜色、指针和滚动条样式，运行页通过构建副本加载
 const SHARED_STYLE_SOURCE = "src/styles";
+// 发布页需要的主题参数与指针样式
 const SHARED_STYLE_FILES = ["tokens.css", "cursor.css"];
+// 启动页及其依赖的浏览器模块，各游戏共用同一份发布副本
 const RUNTIME_WEB_FILES = [
   "game-manifest.mjs",
   "game-resources.mjs",
@@ -37,11 +41,14 @@ const RUNTIME_WEB_FILES = [
   "native-player.js",
   "native-player.css",
 ];
+// 只识别构建工具生成的资源文件名，避免清理手写素材
 const GENERATED_RESOURCE_PATTERN = /^\d+-[a-f0-9]{20}\.bin$/;
+// 使用测试模式时运行的公共 Java 测试入口
 const RUNTIME_TEST_CLASSES = [
   "platform.runtime.GameFilesTest",
   "platform.runtime.MainGameTest",
 ];
+// 有测试开关时运行测试，否则只生成交付文件
 const RUN_TESTS = process.argv.includes("--test");
 // 固定归档时间使相同源码生成相同资源指纹，页面缓存按真实内容更新
 const ARCHIVE_TIME = "2020-01-01T00:00:00Z";

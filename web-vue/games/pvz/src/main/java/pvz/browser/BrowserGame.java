@@ -24,6 +24,7 @@ public final class BrowserGame {
     private static final int FIRST_LEVEL = 0;
     /** 文件导入允许的关卡规模，避免错误时间和数量让编辑器难以操作 */
     private static final int MAX_IMPORTED_SPAWNS = 4000;
+    /** 导入关卡允许的最晚出怪时间，单位为毫秒 */
     private static final long MAX_IMPORTED_TIME = 3600000;
     /** 编辑器编号范围与原有图形界面保持一致 */
     private static final int MAX_LEVEL_NUMBER = 99;

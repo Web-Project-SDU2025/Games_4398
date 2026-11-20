@@ -10,7 +10,7 @@ import * as support from "../src/logic/support.js";
 import * as limits from "../src/logic/limits.js";
 import * as dashboard from "../src/logic/dashboard.js";
 import { coinAmount } from "../src/logic/store.js";
-import { idlePetThought, petThought } from "../src/logic/petSpeech.js";
+import { idlePetThought, petThought, PET_DEFAULT_NAME } from "../src/logic/petSpeech.js";
 import {
   outcomeName,
   recordDescription,
@@ -25,6 +25,7 @@ import {
 
 // 桌宠说的是自己的感受，状态变化后不继续说上一句
 test("桌宠按当前状态和探索对象切换第一人称气泡", function testPetThought() {
+  assert.equal(PET_DEFAULT_NAME, "小橙");
   const room = { fullness: 26, food: 0, energy: 45, bond: 20 };
   assert.match(petThought(room, ""), /^我.*饿.*粮仓/);
   room.fullness = 68;
@@ -33,7 +34,8 @@ test("桌宠按当前状态和探索对象切换第一人称气泡", function te
   room.energy = 88;
   room.bond = 80;
   assert.match(petThought(room, ""), /^我.*是你/);
-  assert.match(petThought(room, "star"), /^我.*星星/);
+  assert.match(petThought(room, "window-night"), /^我.*右上方/);
+  assert.match(petThought(room, "keepsake"), /^我.*明信片/);
   assert.match(petThought(null, ""), /^我/);
   assert.match(idlePetThought(room, 1), /^我.*粮仓/);
   assert.notEqual(idlePetThought(room, 2), idlePetThought(room, 3));

@@ -6,11 +6,17 @@ export const PLAYER_MESSAGES = {
   stopGame: "4398-stop-game",
   gameStopped: "4398-game-stopped",
 };
+// 普通 Java 游戏通过此入口接入公共运行器
 export const MAIN_ADAPTER = "platform.runtime.MainGame";
+// 把编辑器当前关卡号传给 Java 运行器的属性名
 export const EDITOR_LEVEL_PROPERTY = "platform.editor.level";
+// 指示 Java 运行器是否开放编辑器的属性名
 export const EDITOR_ACCESS_PROPERTY = "platform.editor.allowed";
+// 平台内嵌的 Java 游戏启动页面
 export const PLAYER_PAGE = "/games/java-player.html";
+// 账户目录只允许安全的单段目录名
 const OWNER_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
+// 没有账号信息时使用独立运行目录
 const DEFAULT_OWNER = "standalone";
 // 将账户编号转换成目录名，缺少编号或格式不符合规则时使用独立运行目录
 export function gameOwner(value) {

@@ -21,7 +21,9 @@ import pvz.zombie.ZombieSpawn;
 
 /** 用关卡数据和现有绘图器制作战场封面，不生成磁盘文件或启动另一局游戏 */
 public class LevelPreview {
+    /** 绘制静态预览时选用的素材时间点，单位为毫秒 */
     private static final long PREVIEW_TIME = 1000;
+    /** 封面上最多摆放的僵尸数量，避免遮挡草坪 */
     private static final int MAX_ZOMBIES = 5;
     private final Assets assets;
 
