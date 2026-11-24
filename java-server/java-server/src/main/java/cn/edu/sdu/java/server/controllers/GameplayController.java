@@ -3,6 +3,7 @@ package cn.edu.sdu.java.server.controllers;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.GameplayService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,5 +67,11 @@ public class GameplayController {
     @PostMapping("/billiards")
     public DataResponse billiards(@RequestBody DataRequest request) throws Exception {
         return billiards.report(request);
+    }
+
+    /** 读取当前账号最近一盘人机战报 */
+    @PostMapping("/billiards/report")
+    public DataResponse billiardsReport() throws JsonProcessingException {
+        return billiards.latestSingleReport();
     }
 }

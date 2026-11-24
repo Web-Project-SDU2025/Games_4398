@@ -754,6 +754,13 @@ body:has(.game-dialog[open]:is([data-kind="shop"], [data-kind="pack"], [data-kin
 .cashout-lines dt { color: var(--muted); }
 .cashout-lines dd { margin: 0; color: var(--gold); font: 800 20px/1 var(--digits); white-space: nowrap; }
 .cashout-lines > div:last-child { border-bottom: 0; }
+.result-personal-best {
+  display: inline-block;
+  margin-inline-start: .65em;
+  color: var(--gold);
+  font-size: .8em;
+  font-weight: 800;
+}
 .game-dialog ul, .game-dialog ol { width: fit-content; margin: 14px auto; text-align: left; color: #e1e7ee; }
 .shop-offers {
   display: flex;

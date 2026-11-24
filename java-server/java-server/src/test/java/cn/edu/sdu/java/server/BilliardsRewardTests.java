@@ -1,5 +1,6 @@
 package cn.edu.sdu.java.server;
 
+import cn.edu.sdu.java.server.controllers.GameplayController;
 import cn.edu.sdu.java.server.models.BilliardsRound;
 import cn.edu.sdu.java.server.models.Game;
 import cn.edu.sdu.java.server.models.GamePlay;
@@ -13,6 +14,7 @@ import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.services.BilliardsJudge;
 import cn.edu.sdu.java.server.services.BilliardsRewardService;
 import cn.edu.sdu.java.server.services.BlockcoinService;
+import cn.edu.sdu.java.server.services.GameplayService;
 import cn.edu.sdu.java.server.services.UserDetailsImpl;
 import cn.edu.sdu.java.server.util.BilliardsRewards;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,8 +27,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** 只检查台球奖励判定与重试，不启动后端或连接真实数据库 */
 class BilliardsRewardTests {
@@ -45,6 +51,47 @@ class BilliardsRewardTests {
     @Test
     void achievementAmountsAreReducedWithoutChangingVictory() {
         assertEquals(List.of(1L, 4L, 6L, 8L, 11L, 11L, 20L), BilliardsRewards.AMOUNTS);
+    }
+
+    /** 当前账户尚无完赛战报时，接口正常返回空数据 */
+    @Test
+    void noCompletedSingleRoundReturnsEmptyReport() throws Exception {
+        Fixture fixture = new Fixture();
+        GameplayController controller = new GameplayController(mock(GameplayService.class), fixture.service);
+        MockMvcBuilders.standaloneSetup(controller).build()
+                .perform(post("/api/gameplay/billiards/report"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    /** 从当前账号的已结算局读取成就，胜利奖励只计入到账金额 */
+    @Test
+    void completedSingleRoundReportUsesSettledValues() throws Exception {
+        Fixture fixture = new Fixture();
+        BilliardsRound round = new BilliardsRound();
+        round.setRoundId("12:" + RUN + ":" + ROUND);
+        round.setStateJson("""
+                {"aiMatch":true,"ended":true,"winner":0,"earned":67}
+                """);
+        round.setLastReward(25L);
+        when(fixture.rounds.findLatestCompletedSingle(12)).thenReturn(Optional.of(round));
+
+        GameplayController controller = new GameplayController(mock(GameplayService.class), fixture.service);
+        MockMvcBuilders.standaloneSetup(controller).build()
+                .perform(post("/api/gameplay/billiards/report")
+                        .contentType("application/json")
+                        .content("{\"data\":{\"userId\":99}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roundId").value(round.getRoundId()))
+                .andExpect(jsonPath("$.data.won").value(true))
+                .andExpect(jsonPath("$.data.achievements.length()").value(2))
+                .andExpect(jsonPath("$.data.achievements[0]").value("开门红"))
+                .andExpect(jsonPath("$.data.achievements[1]").value("一杆双收"))
+                .andExpect(jsonPath("$.data.reward").value(25));
+        verify(fixture.rounds).findLatestCompletedSingle(12);
+        verifyNoMoreInteractions(fixture.rounds);
+        verifyNoInteractions(fixture.coins);
     }
 
     /** 创建独立仓库替身，实际调用生产奖励服务 */

@@ -11,6 +11,7 @@ import * as limits from "../src/logic/limits.js";
 import * as dashboard from "../src/logic/dashboard.js";
 import { coinAmount } from "../src/logic/store.js";
 import { idlePetThought, petThought, PET_DEFAULT_NAME } from "../src/logic/petSpeech.js";
+import { readJokerBattleReport } from "../games/joker-table/web/battle-report.mjs";
 import {
   outcomeName,
   recordDescription,
@@ -149,6 +150,8 @@ function loadListComponent(filename, services) {
   services.recordDescription = recordDescription;
   services.visibleRecords = visibleRecords;
   services.recordActionError = recordActionError;
+  services.coinAmount = coinAmount;
+  services.readJokerBattleReport = readJokerBattleReport;
   const url = new URL(filename, import.meta.url);
   const source = fs.readFileSync(url, "utf8");
   const start = source.indexOf("<script>") + "<script>".length;
@@ -545,10 +548,11 @@ test("首页按游戏和记录版本刷新概览，返回缓存时直接显示",
     DashboardActivity: {},
     DashboardAccount: {},
     getInstalledGames: readInstalledGames,
-    coinAmount: coinAmount,
   });
   const state = component.data();
   state.userInfo = store.userInfo;
+  state.refreshJokerReport = component.methods.refreshJokerReport.bind(state);
+  state.refreshBilliardsReport = component.methods.refreshBilliardsReport.bind(state);
   state.loadDashboard = component.methods.loadDashboard.bind(state);
   await component.activated.call(state);
   const original = state.summary;

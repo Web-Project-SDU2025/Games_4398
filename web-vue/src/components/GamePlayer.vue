@@ -221,7 +221,7 @@ export default {
         this.focusPlayer();
       }
     },
-    // 接收记录、奖励和编辑器消息前同时核对账户、源窗口与来源地址
+    // 接收游戏消息前同时核对账户、源窗口与来源地址
     receiveMessage: function receiveMessage(event) {
       const frame = this.$refs.frame;
       const user = useAppStore().userInfo;
@@ -244,6 +244,12 @@ export default {
       }
       if (type === GAMEPLAY_MESSAGES.recordsChanged) {
         useAppStore().dataChanged("records");
+        return;
+      }
+      if (type === GAMEPLAY_MESSAGES.billiardsReportChanged) {
+        if (this.session.game && this.session.game.id === "billiards") {
+          useAppStore().dataChanged("billiardsReport");
+        }
         return;
       }
       if (type === GAMEPLAY_MESSAGES.walletChanged) {

@@ -14,6 +14,7 @@ import cn.edu.sdu.java.server.util.BilliardsRewards;
 import cn.edu.sdu.java.server.util.BlockcoinRules;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import cn.edu.sdu.java.server.util.GameplayRules;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.MessageDigest;
@@ -57,6 +58,30 @@ public class BilliardsRewardService {
         this.rounds = rounds;
         this.coins = coins;
         this.mapper = mapper;
+    }
+
+    /**
+     * 读取当前账号最近完成的人机战报
+     * 展示服务器记录的胜负、成就和本盘实际结算金额
+     */
+    @Transactional(readOnly = true)
+    public DataResponse latestSingleReport() throws JsonProcessingException {
+        Optional<BilliardsRound> latest = rounds.findLatestCompletedSingle(CommonMethod.getUserId());
+        if (latest.isEmpty()) {
+            return CommonMethod.getReturnData(null);
+        }
+        BilliardsRound round = latest.get();
+        JsonNode state = mapper.readTree(round.getStateJson());
+        int earned = state.path("earned").asInt();
+        List<String> achievements = new ArrayList<>();
+        for (int index = 0; index < BilliardsRewards.IDS.size(); index = index + 1) {
+            if ((earned & (1 << index)) != 0 && !"win".equals(BilliardsRewards.IDS.get(index))) {
+                achievements.add(BilliardsRewards.TITLES.get(index));
+            }
+        }
+        return CommonMethod.getReturnData(Map.of("roundId", round.getRoundId(),
+                "won", state.path("winner").asInt() == 0, "achievements", achievements,
+                "reward", round.getLastReward()));
     }
 
     /**

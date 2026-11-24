@@ -1,3 +1,5 @@
+import { saveJokerBattleReport } from "./battle-report.mjs";
+
 const parentFrame = window.parent;
 const framed = parentFrame !== window && location.origin !== "null";
 const owner = new URLSearchParams(location.search).get("owner");
@@ -15,6 +17,12 @@ if (framed && owner && /^[1-9][0-9]*$/.test(owner) && Number.isSafeInteger(Numbe
       localStorage.setItem(key + suffix, value);
     },
   };
+  globalThis.JokerRecordBattle = recordBattle;
+}
+
+// 只给当前播放器确认的账户记录已结束牌局
+function recordBattle(result) {
+  return saveJokerBattleReport(owner, result);
 }
 
 // 只接受同源播放器结束指令，离开子页以释放游戏循环和音频

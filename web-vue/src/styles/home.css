@@ -143,6 +143,115 @@
 .dashboard-stat-neutral .dashboard-stat-icon {
   color: var(--color-muted);
 }
+.dashboard-battle-report {
+  flex-shrink: 0;
+  margin-bottom: var(--dashboard-gap);
+  padding: var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+}
+.dashboard-battle-report-heading,
+.dashboard-battle-report-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+}
+.dashboard-battle-report-heading {
+  margin-bottom: var(--space-sm);
+}
+.dashboard-battle-report-heading h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.dashboard-battle-report-picker {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-field);
+}
+.dashboard-battle-report-picker button {
+  min-height: var(--dashboard-interval-height);
+  padding-inline: var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.dashboard-battle-report-picker button[aria-pressed="true"] {
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+}
+.dashboard-battle-report-picker button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.dashboard-battle-report-summary,
+.dashboard-battle-report-metrics dt {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.dashboard-battle-report-summary,
+.dashboard-battle-report-summary p {
+  margin: 0;
+}
+.battle-report-won {
+  color: var(--color-success);
+}
+.dashboard-battle-report-summary .joker-report-new-best {
+  margin-top: var(--space-xs);
+  color: var(--color-amber);
+}
+.dashboard-battle-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  width: min(100%, 300px);
+  margin: 0;
+}
+.dashboard-battle-report-metrics dd {
+  margin: var(--space-xs) 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.dashboard-billiards-metrics {
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: min(100%, 420px);
+}
+.dashboard-battle-report-metrics .dashboard-billiards-achievements {
+  font-size: 13px;
+  font-weight: 400;
+}
+.dashboard-billiards-achievements ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dashboard-billiards-achievements li {
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-control);
+  background: var(--color-paper-3);
+}
+.dashboard-billiards-reward {
+  color: var(--color-amber);
+}
+.dashboard-billiards-reward small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
 .dashboard-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

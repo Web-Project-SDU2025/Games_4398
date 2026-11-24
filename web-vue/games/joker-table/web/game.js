@@ -31,7 +31,8 @@
   };
 
   const storage = globalThis.JokerPlatformStorage;
-  let run = JokerRunStore.open(JokerEngine, storage);
+  const recordBattle = globalThis.JokerRecordBattle;
+  let run = JokerRunStore.open(JokerEngine, storage, recordBattle);
   let game = run.game;
   const selected = new Set();
   let recentCards = [];
@@ -623,13 +624,15 @@
   function showResult() {
     const state = game.state;
     const won = state.phase === 'won';
+    const record = run.hasNewPersonalBest()
+      ? '<span class="result-personal-best" role="status">个人新纪录</span>' : '';
     openDialog('result', `
       <div class="dialog-kicker">${anteLabel()} · ${blindName(currentBlind())}</div>
       <h2 class="dialog-title">${won ? '盲注全破' : '本局结束'}</h2>
       <p class="dialog-description">${won ? '你打过了全部八注。' : '本轮出牌次数已用完。'}</p>
       <dl class="cashout-lines">
         <div><dt>本轮得分</dt><dd>${format(state.score)} / ${format(currentBlind().target)}</dd></div>
-        <div><dt>最高单手</dt><dd>${format(state.bestHand?.total ?? 0)}</dd></div>
+        <div><dt>最高单手${record}</dt><dd>${format(state.bestHand?.total ?? 0)}</dd></div>
         <div><dt>累计得分</dt><dd>${format(state.totalScore)}</dd></div>
       </dl>
       <div class="dialog-actions">
@@ -705,7 +708,7 @@
 
   function reset() {
     closeDialog();
-    run = JokerRunStore.reset(JokerEngine, storage);
+    run = JokerRunStore.reset(JokerEngine, storage, recordBattle);
     game = run.game;
     selected.clear();
     recentCards = [];

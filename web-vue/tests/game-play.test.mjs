@@ -268,6 +268,7 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
   assert.equal(received[0].result.data.starter, 1);
   assert.equal(received[1].result.data.reward, 0);
   assert.equal(host.messages.some(hasRewardMessage), false);
+  assert.equal(host.messages.filter(isBilliardsReportChange).length, 0);
   tracker.reportBilliards({ roundId: "round", sequence: 2, shot: { first: 8, pots: [8] } });
   tracker.reportBilliards({ roundId: "round", sequence: 2, shot: { first: 8, pots: [8] } });
   await tracker.flush();
@@ -280,6 +281,7 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
   }
   assert.equal(received[2].result.data.reward, 21);
   assert.equal(notifications, 1);
+  assert.equal(host.messages.filter(isBilliardsReportChange).length, 1);
   const finishValues = [];
   for (const request of requests) {
     if (request.address.endsWith("/finish")) {
@@ -290,6 +292,11 @@ test("台球成就先记录且终局仅通知一次合并结算", async function
   assert.equal(finishValues[0].outcome, "passed");
   await tracker.stop();
 });
+
+// 人机结算完成才通知大厅刷新战报
+function isBilliardsReportChange(message) {
+  return message.type === "4398-billiards-report-changed";
+}
 
 // 被拒的一杆不能直接跳过后继续上报，同步失败只影响原盘，新盘仍可正常开局
 test("台球单杆被拒后停止该盘上报且允许重新开盘", async function testRejectedBilliardsRound() {
@@ -357,6 +364,7 @@ test("八球胜负分别结束记录且再来一局使用新会话", async funct
       await tracker.flush();
     }
     await tracker.stop();
+    assert.equal(host.messages.filter(isBilliardsReportChange).length, 0);
     const starts = [];
     const finishes = [];
     for (const request of requests) {

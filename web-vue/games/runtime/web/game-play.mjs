@@ -1,6 +1,7 @@
-// 游戏与平台共用状态消息，时长和奖励变化分别刷新对应缓存
+// 游戏与平台共用状态消息，记录、战报和奖励分别刷新对应缓存
 export const GAMEPLAY_MESSAGES = {
   recordsChanged: "4398-records-changed",
+  billiardsReportChanged: "4398-billiards-report-changed",
   walletChanged: "4398-wallet-changed",
   notice: "4398-gameplay-notice",
   accessRevoked: "4398-game-access-revoked",
@@ -96,6 +97,8 @@ export function createGameplayTracker(
           activeMilliseconds: 0,
           finished: false,
           finishQueued: false,
+          matchMode: event.matchMode,
+          reportNotified: false,
         });
       }
     }
@@ -196,6 +199,10 @@ export function createGameplayTracker(
       return;
     }
     if (event.type === "billiards" && result.data.ended === true) {
+      if (session.matchMode === "single" && !session.reportNotified) {
+        session.reportNotified = true;
+        notify(GAMEPLAY_MESSAGES.billiardsReportChanged, "");
+      }
       let outcome = "failed";
       if (result.data.winner === 0) {
         outcome = "passed";
@@ -379,6 +386,7 @@ export function createGameplayTracker(
         type: "begin",
         runId: genericRun,
         mode: "official",
+        matchMode: report.matchMode,
         activeMilliseconds: 0,
       });
     }

@@ -38,6 +38,7 @@ export const useAppStore = defineStore("gameApp", {
       },
       gameRevision: 0,
       recordRevision: 0,
+      billiardsReportRevision: 0,
     };
   },
   actions: {
@@ -124,6 +125,8 @@ export const useAppStore = defineStore("gameApp", {
         this.gameRevision = this.gameRevision + 1;
       } else if (kind === "records") {
         this.recordRevision = this.recordRevision + 1;
+      } else if (kind === "billiardsReport") {
+        this.billiardsReportRevision = this.billiardsReportRevision + 1;
       }
     },
     // 加载当前角色的菜单，前端不自行授予权限

@@ -260,11 +260,16 @@ test("离开专注播放器时退出平台全屏", async function testExitPlayer
 // 消息源与账户必须同时匹配，隐藏在其他页面时仍可刷新记录和奖励
 test("公共运行窗口只接收当前实例的同源消息", function testPlayerMessage() {
   let changes = 0;
+  let battleReports = 0;
   let closed = 0;
   let walletReads = 0;
   const account = user();
   // 记录缓存更新次数，后端数据请求由其他测试覆盖
   function dataChanged(kind) {
+    if (kind === "billiardsReport") {
+      battleReports = battleReports + 1;
+      return;
+    }
     assert.ok(["records", "games"].includes(kind));
     changes = changes + 1;
   }
@@ -289,12 +294,17 @@ test("公共运行窗口只接收当前实例的同源消息", function testPlay
     useWalletStore: useWalletStore,
     location: { origin: "https://platform.test" },
     PLAYER_MESSAGES: { gameStopped: "stopped" },
-    GAMEPLAY_MESSAGES: { recordsChanged: "records", accessRevoked: "revoked" },
+    GAMEPLAY_MESSAGES: {
+      recordsChanged: "records",
+      billiardsReportChanged: "billiards-report",
+      accessRevoked: "revoked",
+    },
   };
   loadPlayerComponent(context);
   const frameWindow = {};
   const state = {
     ownerToken: account.token,
+    session: { game: { id: "billiards" } },
     $refs: { frame: { contentWindow: frameWindow } },
     closeGame: closeGame,
   };
@@ -312,6 +322,13 @@ test("公共运行窗口只接收当前实例的同源消息", function testPlay
   event.source = frameWindow;
   context.component.methods.receiveMessage.call(state, event);
   assert.equal(changes, 1);
+  event.data.type = "billiards-report";
+  context.component.methods.receiveMessage.call(state, event);
+  assert.equal(battleReports, 1);
+  state.session.game.id = "joker-table";
+  context.component.methods.receiveMessage.call(state, event);
+  assert.equal(battleReports, 1);
+  state.session.game.id = "billiards";
   event.data.type = "revoked";
   context.component.methods.receiveMessage.call(state, event);
   assert.equal(changes, 3);
@@ -319,6 +336,9 @@ test("公共运行窗口只接收当前实例的同源消息", function testPlay
   assert.equal(walletReads, 1);
   account.token = "another-token";
   context.component.methods.receiveMessage.call(state, event);
+  event.data.type = "billiards-report";
+  context.component.methods.receiveMessage.call(state, event);
   assert.equal(changes, 3);
+  assert.equal(battleReports, 1);
   assert.equal(closed, 1);
 });

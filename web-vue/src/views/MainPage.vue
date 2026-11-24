@@ -14,7 +14,7 @@
           title="刷新游戏厅"
           aria-label="刷新游戏厅"
           :disabled="loading"
-          @click="loadDashboard"
+          @click="refreshDashboard"
         >
           <span class="i-ep-refresh" aria-hidden="true"></span>
         </button>
@@ -57,6 +57,91 @@
         ></span>
       </RouterLink>
     </div>
+    <section
+      v-if="activeBattleReport"
+      class="dashboard-battle-report"
+      aria-labelledby="battle-report-title"
+    >
+      <header class="dashboard-battle-report-heading">
+        <h2 id="battle-report-title">
+          {{ activeBattleReport === "billiards" ? "美式八球战报" : "小丑牌战报" }}
+        </h2>
+        <div
+          v-if="jokerReport && billiardsReport"
+          class="dashboard-battle-report-picker"
+          role="group"
+          aria-label="切换游戏战报"
+        >
+          <button
+            type="button"
+            :aria-pressed="activeBattleReport === 'joker'"
+            @click="selectedBattleReport = 'joker'"
+          >
+            小丑牌
+          </button>
+          <button
+            type="button"
+            :aria-pressed="activeBattleReport === 'billiards'"
+            @click="selectedBattleReport = 'billiards'"
+          >
+            美式八球
+          </button>
+        </div>
+      </header>
+      <div
+        v-if="activeBattleReport === 'joker'"
+        class="dashboard-battle-report-body dashboard-joker-report"
+      >
+        <div class="dashboard-battle-report-summary">
+          <p>
+            上局 · 第 {{ jokerReport.latest.ante }} 注 ·
+            <span :class="{ 'battle-report-won': jokerReport.latest.outcome === 'won' }">
+              {{ jokerReport.latest.outcome === "won" ? "通关" : "落败" }}
+            </span>
+          </p>
+          <p v-if="jokerReport.latest.newPersonalBest" class="joker-report-new-best">
+            刷新个人纪录
+          </p>
+        </div>
+        <dl class="dashboard-battle-report-metrics">
+          <div>
+            <dt>最高单手</dt>
+            <dd>{{ formatJokerScore(jokerReport.latest.score) }}</dd>
+          </div>
+          <div>
+            <dt>个人最高单手</dt>
+            <dd>{{ formatJokerScore(jokerReport.bestScore) }}</dd>
+          </div>
+        </dl>
+      </div>
+      <div v-else class="dashboard-battle-report-body dashboard-billiards-report">
+        <p class="dashboard-battle-report-summary">
+          上局 · 人机对局 ·
+          <span :class="{ 'battle-report-won': billiardsReport.won }">
+            {{ billiardsReport.won ? "胜利" : "落败" }}
+          </span>
+        </p>
+        <dl class="dashboard-battle-report-metrics dashboard-billiards-metrics">
+          <div>
+            <dt>成就</dt>
+            <dd class="dashboard-billiards-achievements">
+              <ul v-if="billiardsReport.achievements.length">
+                <li v-for="achievement in billiardsReport.achievements" :key="achievement">
+                  {{ achievement }}
+                </li>
+              </ul>
+              <span v-else>本局未解锁成就</span>
+            </dd>
+          </div>
+          <div>
+            <dt>实际到账</dt>
+            <dd class="dashboard-billiards-reward">
+              {{ formatCoins(billiardsReport.reward) }} <small>BC</small>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
     <div class="dashboard-main-grid">
       <DashboardAccount />
       <section
@@ -190,10 +275,16 @@ import { useGamePlayerStore } from "../stores/gamePlayer.js";
 import * as account from "../logic/account.js";
 import * as dashboard from "../logic/dashboard.js";
 import { getGames, getRecords } from "../services/gameServ.js";
+import { getBilliardsReport } from "../services/billiardsReport.js";
 import DashboardActivity from "../components/DashboardActivity.vue";
 import DashboardAccount from "../components/DashboardAccount.vue";
 import { getInstalledGames } from "../services/gameRuntime.js";
 import { launcherGames } from "../logic/gameRuntime.js";
+import { coinAmount } from "../logic/store.js";
+import {
+  jokerBattleReportPrefix,
+  readJokerBattleReport,
+} from "../../games/joker-table/web/battle-report.mjs";
 import {
   outcomeName,
   recordDescription,
@@ -206,6 +297,12 @@ function homeState() {
     summary: null,
     catalog: null,
     installedGames: [],
+    jokerReport: null,
+    billiardsReport: null,
+    selectedBattleReport: "",
+    billiardsReportRequestId: 0,
+    pendingBilliardsReportRevision: -1,
+    loadedBilliardsReportRevision: -1,
     loading: false,
     error: "",
     playNotice: "",
@@ -218,6 +315,115 @@ function homeState() {
 // 读取当前账户，作为首页汇总和显示身份的依据
 function readUserInfo() {
   return useAppStore().userInfo;
+}
+
+// 只读取当前已登录账户的战报
+function readJokerReportOwner() {
+  if (this.userInfo.loggedIn && this.userInfo.token) {
+    return this.userInfo.id;
+  }
+  return 0;
+}
+
+// 换号时同步替换上个账户的战报
+function refreshJokerReport() {
+  this.jokerReport = readJokerBattleReport(this.jokerReportOwner);
+}
+
+// 游戏在内嵌页面完成结算，同一大厅无需切页就能收到存储变化
+function onJokerReportStorage(event) {
+  const prefix = jokerBattleReportPrefix(this.jokerReportOwner);
+  if (prefix && (event.key === null || (
+    typeof event.key === "string" && event.key.startsWith(prefix)
+  ))) {
+    this.refreshJokerReport();
+  }
+}
+
+// 缓存中的大厅也会收到牌局结算更新
+function listenForJokerReport() {
+  window.addEventListener("storage", this.onJokerReportStorage);
+}
+
+// 为较大的单手得分保留千位分隔
+function formatJokerScore(score) {
+  return score.toLocaleString("zh-CN");
+}
+
+// 读取当前已登录账户的凭证，退出时清除战报
+function readBilliardsReportToken() {
+  if (this.userInfo.loggedIn) {
+    return this.userInfo.token;
+  }
+  return "";
+}
+
+// 八球实际结算时更新战报版本，普通计时请求不刷新战报
+function readBilliardsReportRevision() {
+  return useAppStore().billiardsReportRevision;
+}
+
+// 切换账户时立即隐藏上一账户的战报并作废其请求
+function changeBilliardsReportOwner() {
+  this.billiardsReport = null;
+  this.selectedBattleReport = "";
+  this.billiardsReportRequestId = this.billiardsReportRequestId + 1;
+  this.pendingBilliardsReportRevision = -1;
+  this.loadedBilliardsReportRevision = -1;
+  this.refreshBilliardsReport();
+}
+
+// 只应用当前账号当前版本的结算，重试期间保留已有战报
+async function refreshBilliardsReport() {
+  const token = this.billiardsReportToken;
+  const revision = this.billiardsReportRevision;
+  if (
+    !token ||
+    revision === this.pendingBilliardsReportRevision ||
+    revision === this.loadedBilliardsReportRevision
+  ) {
+    return;
+  }
+  const requestId = this.billiardsReportRequestId + 1;
+  this.billiardsReportRequestId = requestId;
+  this.pendingBilliardsReportRevision = revision;
+  try {
+    const response = await getBilliardsReport();
+    if (
+      requestId === this.billiardsReportRequestId &&
+      token === this.billiardsReportToken &&
+      revision === this.billiardsReportRevision &&
+      response.code === 0
+    ) {
+      this.billiardsReport = response.data || null;
+      this.loadedBilliardsReportRevision = revision;
+    }
+  } catch (error) {
+    // 下次进入大厅或手动刷新时可重试
+  } finally {
+    if (requestId === this.billiardsReportRequestId) {
+      this.pendingBilliardsReportRevision = -1;
+    }
+  }
+}
+
+// 保留用户当前查看的战报，必要时显示另一款已有战报的游戏
+function readActiveBattleReport() {
+  if (this.selectedBattleReport === "billiards" && this.billiardsReport) {
+    return "billiards";
+  }
+  if (this.jokerReport) {
+    return "joker";
+  }
+  if (this.billiardsReport) {
+    return "billiards";
+  }
+  return "";
+}
+
+// 只有一款游戏有战报时也记住当前显示项
+function rememberBattleReport(selection) {
+  this.selectedBattleReport = selection;
 }
 
 // 读取指定统计值，未成功读取时返回占位文字
@@ -445,6 +651,8 @@ async function loadDashboard() {
 
 // 返回首页时按数据版本检查，已加载且版本相同的概览直接显示
 function activateDashboard() {
+  this.refreshJokerReport();
+  this.refreshBilliardsReport();
   const store = useAppStore();
   if (
     !this.summary ||
@@ -455,8 +663,17 @@ function activateDashboard() {
   }
 }
 
-// 离开首页后让尚未完成的响应失效
+// 手动刷新时也重新读取八球战报
+function refreshDashboard() {
+  this.loadedBilliardsReportRevision = -1;
+  this.refreshBilliardsReport();
+  return this.loadDashboard();
+}
+
+// 销毁首页时停止监听战报，并使尚未完成的响应失效
 function invalidateRequest() {
+  window.removeEventListener("storage", this.onJokerReportStorage);
+  this.billiardsReportRequestId = this.billiardsReportRequestId + 1;
   this.requestId = this.requestId + 1;
 }
 
@@ -469,6 +686,10 @@ export default {
   data: homeState,
   computed: {
     userInfo: readUserInfo,
+    jokerReportOwner: readJokerReportOwner,
+    billiardsReportToken: readBilliardsReportToken,
+    billiardsReportRevision: readBilliardsReportRevision,
+    activeBattleReport: readActiveBattleReport,
     statistics: readStatistics,
     recentRecords: readRecentRecords,
     // 大厅和其他页面共享当前运行实例
@@ -505,6 +726,13 @@ export default {
     pendingText: readPendingText,
     emptyRecordText: readEmptyRecordText,
   },
+  watch: {
+    jokerReportOwner: { handler: refreshJokerReport, immediate: true },
+    billiardsReportToken: { handler: changeBilliardsReportOwner, immediate: true },
+    billiardsReportRevision: refreshBilliardsReport,
+    activeBattleReport: { handler: rememberBattleReport, immediate: true },
+  },
+  mounted: listenForJokerReport,
   activated: activateDashboard,
   beforeUnmount: invalidateRequest,
   methods: {
@@ -513,6 +741,12 @@ export default {
     metric: metric,
     recordMinutes: recordMinutes,
     recordTime: dashboard.formatRecordTime,
+    refreshJokerReport: refreshJokerReport,
+    onJokerReportStorage: onJokerReportStorage,
+    formatJokerScore: formatJokerScore,
+    formatCoins: coinAmount,
+    refreshBilliardsReport: refreshBilliardsReport,
+    refreshDashboard: refreshDashboard,
     loadDashboard: loadDashboard,
     isActive: isActive,
     playedGame: playedGame,
